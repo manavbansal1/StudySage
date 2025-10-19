@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.group_7.studysage.ui.theme.StudySageTheme
 
 @Composable
-fun QuizScreen() { // renamed from DashboardScreen to QuizScreen
+fun QuizScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -38,8 +38,8 @@ fun QuizScreen() { // renamed from DashboardScreen to QuizScreen
 
 @Preview(showBackground = true)
 @Composable
-fun QuizScreenPreview() { // renamed preview function to match
+fun QuizScreenPreview() {
     StudySageTheme {
-        QuizScreen() // updated function call
+        QuizScreen()
     }
 }
