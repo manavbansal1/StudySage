@@ -7,4 +7,14 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Added colors required by themes.xml -->
+    <color name="purple_primary">#FF6200EE</color>
+    <color name="purple_primary_dark">#FF3700B3</color>
+    <color name="purple_secondary">#FF03DAC5</color>
+    <color name="purple_accent">#FFBB86FC</color>
+    <color name="text_primary">#FF000000</color>
+    <color name="text_secondary">#FF6E6E6E</color>
+    <color name="background_light">#FFFFFFFF</color>
+    <color name="card_background">#FFF6F6F6</color>
 </resources>
