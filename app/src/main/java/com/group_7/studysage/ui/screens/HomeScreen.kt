@@ -7,9 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
@@ -24,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.ui.viewmodels.HomeViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,50 +32,63 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
 
+    val isLoading by viewModel.isLoading
+    val uploadStatus by viewModel.uploadStatus
+    val errorMessage by viewModel.errorMessage
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
                 val fileName = getFileName(context, uri)
-                Toast.makeText(
-                    context,
-                    "Notes received: $fileName",
-                    Toast.LENGTH_LONG
-                ).show()
-                viewModel.updateUploadStatus("File uploaded: $fileName")
+                viewModel.uploadAndProcessNote(context, uri, fileName)
             }
+        }
+    }
+
+    // Show messages
+    LaunchedEffect(uploadStatus) {
+        uploadStatus?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(24.dp)
     ) {
+        Spacer(modifier = Modifier.height(32.dp))
 
-
+        // Header Section
         Text(
             text = "StudySage",
-            modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.displayLarge,
             color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(2.dp))
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "From notes to mastery",
-            modifier = Modifier.fillMaxWidth(),
+            text = "Transform your notes into interactive learning",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // this is the uplosad card
+        // Upload Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -91,7 +104,7 @@ fun HomeScreen(
                 Icon(
                     imageVector = Icons.Default.CloudUpload,
                     contentDescription = "Upload",
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier.size(60.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
 
@@ -106,7 +119,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Upload lecture notes, slides, or documents to get started",
+                    text = "Upload notes and get AI-powered summaries instantly",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -134,50 +147,56 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(28.dp),
+                    enabled = !isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text(
-                        text = "Choose Files",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Processing...")
+                    } else {
+                        Text(
+                            text = "Choose Files",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Features Preview
-        Text(
-            text = "What's Next?",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Feature Items
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FeatureItem(
-                text = "📚 Auto-generated flashcards",
-                icon = Icons.Default.CheckCircle
-            )
-            FeatureItem(
-                text = "📝 Smart summaries",
-                icon = Icons.Default.CheckCircle
-            )
-            FeatureItem(
-                text = "🎮 Multiplayer study games",
-                icon = Icons.Default.CheckCircle
-            )
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
+            // Features Preview
+            Text(
+                text = "What's Next?",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FeatureItem(
+                    text = "📚 AI-generated summaries",
+                    icon = Icons.Default.CheckCircle
+                )
+                FeatureItem(
+                    text = "📝 Smart flashcards",
+                    icon = Icons.Default.CheckCircle
+                )
+                FeatureItem(
+                    text = "🎮 Study games",
+                    icon = Icons.Default.CheckCircle
+                )
+            }
     }
 }
 
@@ -214,6 +233,11 @@ private fun getFileName(context: android.content.Context, uri: Uri): String {
         }
     }
     return fileName
+}
+
+private fun formatDate(timestamp: Long): String {
+    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }
 
 @Preview(showBackground = true)

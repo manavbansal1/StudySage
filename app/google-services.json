@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1093026913697",
+    "project_id": "studysage-43e4f",
+    "storage_bucket": "studysage-43e4f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1093026913697:android:15b4bffb02ae3571cf7fe0",
+        "android_client_info": {
+          "package_name": "com.group_7.studysage"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_Ri12_zv3l8O4fHwSFqEhmV2YamLhhNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
