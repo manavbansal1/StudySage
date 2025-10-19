@@ -13,6 +13,7 @@ lifecycleViewmodelKtx = "2.9.4"
 navigationFragmentKtx = "2.9.5"
 navigationUiKtx = "2.9.5"
 compose = "1.5.8"
+googleServices = "4.4.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,3 +32,4 @@ androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
