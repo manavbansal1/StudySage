@@ -1,17 +1,14 @@
 package com.group_7.studysage.ui.viewmodels
 
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.State
 
-/**
- * sign o2ut functioality not implemented yet
- */
 class AuthViewModel(
-    private val authRepository: AuthRepository = AuthRepository()
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
@@ -23,12 +20,11 @@ class AuthViewModel(
     private val _isSignedIn = mutableStateOf(authRepository.isUserSignedIn())
     val isSignedIn: State<Boolean> = _isSignedIn
 
-
+    private val _userProfile = mutableStateOf<Map<String, Any>?>(null)
+    val userProfile: State<Map<String, Any>?> = _userProfile
 
     init {
-        if (_isSignedIn.value) {
-            // need a fxn here to load the users profile and get the notres, quiz, etc
-        }
+        if (_isSignedIn.value) loadUserProfile()
     }
 
     fun signUp(email: String, password: String, name: String) {
@@ -36,7 +32,6 @@ class AuthViewModel(
             _errorMessage.value = "All fields are required"
             return
         }
-
         if (password.length < 6) {
             _errorMessage.value = "Password must be at least 6 characters"
             return
@@ -49,7 +44,7 @@ class AuthViewModel(
             authRepository.signUp(email, password, name)
                 .onSuccess {
                     _isSignedIn.value = true
-                    // need a fxn here to load the users profile and get the notres, quiz, etc
+                    loadUserProfile()
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Sign up failed"
@@ -72,7 +67,7 @@ class AuthViewModel(
             authRepository.signIn(email, password)
                 .onSuccess {
                     _isSignedIn.value = true
-                    // need a fxn here to load the users profile and get the notres, quiz, etc
+                    loadUserProfile()
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Sign in failed"
@@ -82,11 +77,22 @@ class AuthViewModel(
         }
     }
 
+    fun signOut() {
+        authRepository.signOut()
+        _isSignedIn.value = false
+        _userProfile.value = null
+    }
+
     fun clearError() {
         _errorMessage.value = null
     }
 
     fun loadUserProfile() {
-        //to:do
+        viewModelScope.launch {
+            _isLoading.value = true
+            val profile = authRepository.getUserProfile()
+            _userProfile.value = profile
+            _isLoading.value = false
+        }
     }
 }

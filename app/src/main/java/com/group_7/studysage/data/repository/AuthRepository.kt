@@ -4,11 +4,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class AuthRepository @Inject constructor(
+class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
@@ -22,10 +19,32 @@ class AuthRepository @Inject constructor(
             val user = result.user!!
 
             val userProfile = mapOf(
+                "uid" to user.uid,
                 "name" to name,
                 "email" to email,
-                "createdAt" to System.currentTimeMillis()
+                "bio" to "Hey there! I’m using StudySage ✨",
+                "profileImageUrl" to "", // empty until user uploads one
+                "createdAt" to System.currentTimeMillis(),
+                "lastLogin" to System.currentTimeMillis(),
+                "level" to 1,
+                "xpPoints" to 0,
+                "streakDays" to 0,
+                "quizStats" to mapOf(
+                    "totalQuizzes" to 0,
+                    "averageScore" to 0.0,
+                    "highestScore" to 0.0
+                ),
+                "gameStats" to mapOf(
+                    "totalGamesPlayed" to 0,
+                    "wins" to 0,
+                    "losses" to 0
+                ),
+                "preferences" to mapOf(
+                    "darkMode" to false,
+                    "notifications" to true
+                )
             )
+
             firestore.collection("users").document(user.uid).set(userProfile).await()
 
             Result.success(user)
@@ -37,6 +56,14 @@ class AuthRepository @Inject constructor(
     suspend fun signIn(email: String, password: String): Result<FirebaseUser> {
         return try {
             val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+
+            // Update lastLogin field
+            result.user?.uid?.let { uid ->
+                firestore.collection("users").document(uid)
+                    .update("lastLogin", System.currentTimeMillis())
+                    .await()
+            }
+
             Result.success(result.user!!)
         } catch (e: Exception) {
             Result.failure(e)
@@ -61,4 +88,3 @@ class AuthRepository @Inject constructor(
         }
     }
 }
-
