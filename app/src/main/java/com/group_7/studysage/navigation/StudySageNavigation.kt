@@ -2,16 +2,8 @@ package com.group_7.studysage.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Quiz
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Games
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -22,9 +14,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.group_7.studysage.ui.screens.HomeScreen
-import com.group_7.studysage.ui.screens.GameScreen
-import com.group_7.studysage.ui.screens.QuizScreen
+import com.group_7.studysage.data.repository.AuthRepository
+import com.group_7.studysage.ui.screens.*
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.ui.viewmodels.AuthViewModel
@@ -35,23 +26,20 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Home : Screen("home", "Home", Icons.Filled.Home)
     object Quiz : Screen("quiz", "Quiz", Icons.Filled.Quiz)
     object Game : Screen("game", "Game", Icons.Filled.Games)
+    object Profile : Screen("profile", "Profile", Icons.Filled.AccountCircle)
 }
 
 @Composable
 fun StudySageNavigation(
     navController: NavHostController,
     authViewModel: AuthViewModel,
+    authRepository: AuthRepository,
     modifier: Modifier = Modifier
 ) {
     val isUserSignedIn by authViewModel.isSignedIn
 
     if (isUserSignedIn) {
-        // Authenticated navigation with bottom bar
-        val screens = listOf(
-            Screen.Home,
-            Screen.Quiz,
-            Screen.Game
-        )
+        val screens = listOf(Screen.Home, Screen.Quiz, Screen.Game, Screen.Profile)
 
         Scaffold(
             bottomBar = {
@@ -64,21 +52,12 @@ fun StudySageNavigation(
 
                     screens.forEach { screen ->
                         NavigationBarItem(
-                            icon = {
-                                screen.icon?.let { icon ->
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = screen.title
-                                    )
-                                }
-                            },
+                            icon = { screen.icon?.let { Icon(it, screen.title) } },
                             label = { Text(screen.title) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                             onClick = {
                                 navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -101,19 +80,15 @@ fun StudySageNavigation(
                 startDestination = Screen.Home.route,
                 modifier = Modifier.padding(innerPadding)
             ) {
-                composable(Screen.Home.route) {
-                    HomeScreen()
-                }
-                composable(Screen.Quiz.route) {
-                    QuizScreen()
-                }
-                composable(Screen.Game.route) {
-                    GameScreen()
+                composable(Screen.Home.route) { HomeScreen() }
+                composable(Screen.Quiz.route) { QuizScreen() }
+                composable(Screen.Game.route) { GameScreen() }
+                composable(Screen.Profile.route) {
+                    ProfileScreen(authRepository = authRepository)
                 }
             }
         }
     } else {
-        // Unauthenticated navigation (no bottom bar)
         NavHost(
             navController = navController,
             startDestination = Screen.SignIn.route,
@@ -121,23 +96,15 @@ fun StudySageNavigation(
         ) {
             composable(Screen.SignIn.route) {
                 SignInScreen(
-                    onNavigateToSignUp = {
-                        navController.navigate(Screen.SignUp.route)
-                    },
-                    onSignInSuccess = {
-                        // Navigation will be handled by MainActivity when auth state changes
-                    },
+                    onNavigateToSignUp = { navController.navigate(Screen.SignUp.route) },
+                    onSignInSuccess = { /* handled by authViewModel */ },
                     viewModel = authViewModel
                 )
             }
             composable(Screen.SignUp.route) {
                 SignUpScreen(
-                    onNavigateToSignIn = {
-                        navController.popBackStack()
-                    },
-                    onSignUpSuccess = {
-                        // Navigation will be handled by MainActivity when auth state changes
-                    },
+                    onNavigateToSignIn = { navController.popBackStack() },
+                    onSignUpSuccess = { /* handled by authViewModel */ },
                     viewModel = authViewModel
                 )
             }
