@@ -18,8 +18,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Add your Gemini AI API key here (or use BuildConfig)
-        buildConfigField("String", "GEMINI_API_KEY", "\"your_gemini_api_key_here\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"AIzaSyDTv4K1I5sbExsFjdiGlWuhTPZN8LVw908\"")
+
     }
 
     buildTypes {
