@@ -4,14 +4,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class AuthRepository @Inject constructor(
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
+class AuthRepository {
+    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
-) {
 
     val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
