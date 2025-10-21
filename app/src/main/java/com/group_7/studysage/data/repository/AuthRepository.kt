@@ -22,7 +22,7 @@ class AuthRepository(
                 "uid" to user.uid,
                 "name" to name,
                 "email" to email,
-                "bio" to "Hey there! I’m using StudySage ✨",
+                "bio" to "Hey there! I'm using StudySage ✨",
                 "profileImageUrl" to "", // empty until user uploads one
                 "createdAt" to System.currentTimeMillis(),
                 "lastLogin" to System.currentTimeMillis(),
@@ -85,6 +85,64 @@ class AuthRepository(
             document.data
         } catch (e: Exception) {
             null
+        }
+    }
+
+    suspend fun updateUserProfile(updates: Map<String, Any>): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            firestore.collection("users").document(userId).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateProfileImage(imageUrl: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            firestore.collection("users").document(userId)
+                .update("profileImageUrl", imageUrl)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateStreak(streakDays: Int): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            firestore.collection("users").document(userId)
+                .update("streakDays", streakDays)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addXP(points: Int): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val currentXP = (profile?.get("xpPoints") as? Long)?.toInt() ?: 0
+            val newXP = currentXP + points
+
+            // Simple level calculation: every 100 XP = 1 level
+            val newLevel = (newXP / 100) + 1
+
+            firestore.collection("users").document(userId)
+                .update(
+                    mapOf(
+                        "xpPoints" to newXP,
+                        "level" to newLevel
+                    )
+                )
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }
