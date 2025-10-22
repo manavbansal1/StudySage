@@ -29,9 +29,52 @@ class HomeViewModel(
     private val _recentNotes = mutableStateOf<List<Note>>(emptyList())
     val recentNotes: State<List<Note>> = _recentNotes
 
+    private val _testResult = mutableStateOf<String?>(null)
+    val testResult: State<String?> = _testResult
+
     init {
         loadRecentNotes()
     }
+
+//    fun testFirebaseConnection() {
+//        viewModelScope.launch {
+//            _isLoading.value = true
+//            _errorMessage.value = null
+//
+//            try {
+//                val result = notesRepository.testFirebaseConnection()
+//                result.onSuccess { message ->
+//                    _testResult.value = "✅ $message"
+//                }.onFailure { exception ->
+//                    _testResult.value = "❌ Test failed: ${exception.message}"
+//                }
+//            } catch (e: Exception) {
+//                _testResult.value = "❌ Test error: ${e.message}"
+//            }
+//
+//            _isLoading.value = false
+//        }
+//    }
+
+//    fun testGeminiConnection() {
+//        viewModelScope.launch {
+//            _isLoading.value = true
+//            _errorMessage.value = null
+//
+//            try {
+//                val result = notesRepository.testGeminiConnection()
+//                result.onSuccess { message ->
+//                    _testResult.value = message
+//                }.onFailure { exception ->
+//                    _testResult.value = exception.message ?: "❌ Gemini test failed"
+//                }
+//            } catch (e: Exception) {
+//                _testResult.value = "❌ Gemini test error: ${e.message}"
+//            }
+//
+//            _isLoading.value = false
+//        }
+//    }
 
     fun uploadAndProcessNote(context: Context, uri: Uri, fileName: String) {
         viewModelScope.launch {
