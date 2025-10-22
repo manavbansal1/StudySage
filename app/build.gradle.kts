@@ -20,6 +20,10 @@ android {
 
         // Add your Gemini AI API key here (or use BuildConfig)
         buildConfigField("String", "GEMINI_API_KEY", "\"your_gemini_api_key_here\"")
+
+        // Add Cloudinary credentials (replace with your actual values)
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"dczuk4cxa\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"StduySage\"")
     }
 
     buildTypes {
@@ -71,6 +75,7 @@ dependencies {
 
     // ViewModel Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
     // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.8.5")
@@ -85,17 +90,23 @@ dependencies {
     // Gemini AI
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
-    // Coil for Compose
-    implementation("io.coil-kt:coil-compose:2.4.0")
+    // Coil for Compose (image loading)
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
-    // HTTP client for file processing
+    // OkHttp for Cloudinary uploads
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Retrofit (if needed for other APIs)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Gson for JSON parsing (Cloudinary response)
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // Navigation (keeping for compatibility)
     implementation(libs.androidx.navigation.fragment.ktx)
