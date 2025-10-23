@@ -93,7 +93,7 @@ fun SignInScreen(
             ) {
                 // Email Field
                 OutlinedTextField(
-                    value = email,
+                    value = "dhoni7@gmail.com",
                     onValueChange = { email = it },
                     label = { Text("Email") },
                     leadingIcon = {
@@ -115,7 +115,7 @@ fun SignInScreen(
 
                 // Password Field
                 OutlinedTextField(
-                    value = password,
+                    value = "dhoni7",
                     onValueChange = { password = it },
                     label = { Text("Password") },
                     leadingIcon = {
