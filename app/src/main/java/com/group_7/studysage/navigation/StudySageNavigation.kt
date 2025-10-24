@@ -26,7 +26,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Home : Screen("home", "Home", Icons.Filled.Home)
     object Notes : Screen("notes", "Notes", Icons.Filled.Description)
     object Quiz : Screen("quiz", "Quiz", Icons.Filled.Quiz)
-    object Game : Screen("game", "Game", Icons.Filled.Games)
+    object Game : Screen("game", "Games", Icons.Filled.Games)
     object Profile : Screen("profile", "Profile", Icons.Filled.AccountCircle)
 }
 
