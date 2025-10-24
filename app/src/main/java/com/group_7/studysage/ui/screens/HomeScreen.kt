@@ -7,8 +7,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.ui.viewmodels.HomeViewModel
+import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,13 +43,32 @@ fun HomeScreen(
     val processedNote by viewModel.processedNote
     val recentNotes by viewModel.recentNotes
 
+    var showFilePickerDialog by remember { mutableStateOf(false) }
+    var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingFileName by remember { mutableStateOf("") }
+
+    // File picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
-                val fileName = getFileName(context, uri)
-                viewModel.uploadAndProcessNote(context, uri, fileName)
+                val fileInfo = FileUtils.getFileInfo(context, uri)
+                if (fileInfo != null) {
+                    val validationResult = FileUtils.validateFile(context, uri)
+                    when (validationResult) {
+                        is FileUtils.ValidationResult.Success -> {
+                            pendingFileUri = uri
+                            pendingFileName = fileInfo.name
+                            showFilePickerDialog = true
+                        }
+                        is FileUtils.ValidationResult.Error -> {
+                            Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } else {
+                    Toast.makeText(context, "Could not read file", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -88,7 +106,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Transform your notes into interactive learning",
+            text = "Transform your documents into interactive learning",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -120,7 +138,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Upload Your Notes",
+                    text = "Upload Your Documents",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -128,11 +146,27 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Upload notes and get AI-powered summaries instantly",
+                    text = "Upload PDF, Word docs, or text files for AI-powered analysis",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Supported formats
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    listOf("PDF", "TXT", "DOC", "DOCX").forEach { format ->
+                        AssistChip(
+                            onClick = { },
+                            label = { Text(format, style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -143,10 +177,12 @@ fun HomeScreen(
                             addCategory(Intent.CATEGORY_OPENABLE)
                             val mimeTypes = arrayOf(
                                 "application/pdf",
-                                "image/*",
                                 "text/plain",
                                 "application/msword",
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                "text/markdown",
+                                "application/rtf",
+                                "image/*"
                             )
                             putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
                         }
@@ -169,11 +205,27 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Processing...")
                     } else {
+                        Icon(
+                            Icons.Default.Upload,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Choose Files",
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
+                }
+
+                if (isLoading && uploadStatus != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = uploadStatus!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
@@ -191,12 +243,25 @@ fun HomeScreen(
 
         // Recent Notes Section
         if (recentNotes.isNotEmpty()) {
-            Text(
-                text = "Recent Notes",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Notes",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                IconButton(onClick = { viewModel.refreshNotes() }) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -211,7 +276,7 @@ fun HomeScreen(
         // Features Preview (only show if no recent notes)
         if (recentNotes.isEmpty() && processedNote == null) {
             Text(
-                text = "What's Next?",
+                text = "What StudySage Can Do",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
@@ -224,19 +289,74 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FeatureItem(
-                    text = "📚 AI-generated summaries",
+                    text = "📄 Extract text from PDFs",
                     icon = Icons.Default.CheckCircle
                 )
                 FeatureItem(
-                    text = "📝 Smart flashcards",
+                    text = "📝 AI-generated summaries",
                     icon = Icons.Default.CheckCircle
                 )
                 FeatureItem(
-                    text = "🎮 Study games",
+                    text = "🔑 Key points extraction",
+                    icon = Icons.Default.CheckCircle
+                )
+                FeatureItem(
+                    text = "🏷️ Smart tagging",
+                    icon = Icons.Default.CheckCircle
+                )
+                FeatureItem(
+                    text = "🎯 Study-focused content",
                     icon = Icons.Default.CheckCircle
                 )
             }
         }
+    }
+
+    // File processing confirmation dialog
+    if (showFilePickerDialog && pendingFileUri != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showFilePickerDialog = false
+                pendingFileUri = null
+                pendingFileName = ""
+            },
+            title = { Text("Process Document") },
+            text = {
+                Column {
+                    Text("File: $pendingFileName")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "This will analyze your document with AI to create summaries and extract key information.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingFileUri?.let { uri ->
+                            viewModel.uploadAndProcessNote(context, uri, pendingFileName)
+                        }
+                        showFilePickerDialog = false
+                        pendingFileUri = null
+                        pendingFileName = ""
+                    }
+                ) {
+                    Text("Process")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showFilePickerDialog = false
+                        pendingFileUri = null
+                        pendingFileName = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -261,12 +381,21 @@ fun ProcessedNoteCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "✨ Summary Generated!",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Document Processed!",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 IconButton(onClick = onDismiss) {
                     Icon(
@@ -309,12 +438,23 @@ fun ProcessedNoteCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 note.keyPoints.take(3).forEach { point ->
-                    Text(
-                        text = "• $point",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            text = point,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -349,12 +489,24 @@ fun RecentNoteCard(note: Note) {
                     modifier = Modifier.weight(1f)
                 )
 
-                Text(
-                    text = formatDate(note.createdAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                SuggestionChip(
+                    onClick = { },
+                    label = {
+                        Text(
+                            text = note.fileType,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = formatDate(note.createdAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -410,17 +562,6 @@ fun FeatureItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-}
-
-private fun getFileName(context: android.content.Context, uri: Uri): String {
-    var fileName = "Unknown file"
-    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-        if (cursor.moveToFirst() && nameIndex != -1) {
-            fileName = cursor.getString(nameIndex)
-        }
-    }
-    return fileName
 }
 
 private fun formatDate(timestamp: Long): String {

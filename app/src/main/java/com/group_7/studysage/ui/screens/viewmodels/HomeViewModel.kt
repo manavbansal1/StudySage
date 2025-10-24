@@ -36,46 +36,6 @@ class HomeViewModel(
         loadRecentNotes()
     }
 
-//    fun testFirebaseConnection() {
-//        viewModelScope.launch {
-//            _isLoading.value = true
-//            _errorMessage.value = null
-//
-//            try {
-//                val result = notesRepository.testFirebaseConnection()
-//                result.onSuccess { message ->
-//                    _testResult.value = "✅ $message"
-//                }.onFailure { exception ->
-//                    _testResult.value = "❌ Test failed: ${exception.message}"
-//                }
-//            } catch (e: Exception) {
-//                _testResult.value = "❌ Test error: ${e.message}"
-//            }
-//
-//            _isLoading.value = false
-//        }
-//    }
-
-//    fun testGeminiConnection() {
-//        viewModelScope.launch {
-//            _isLoading.value = true
-//            _errorMessage.value = null
-//
-//            try {
-//                val result = notesRepository.testGeminiConnection()
-//                result.onSuccess { message ->
-//                    _testResult.value = message
-//                }.onFailure { exception ->
-//                    _testResult.value = exception.message ?: "❌ Gemini test failed"
-//                }
-//            } catch (e: Exception) {
-//                _testResult.value = "❌ Gemini test error: ${e.message}"
-//            }
-//
-//            _isLoading.value = false
-//        }
-//    }
-
     fun uploadAndProcessNote(context: Context, uri: Uri, fileName: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -83,6 +43,24 @@ class HomeViewModel(
             clearMessages()
 
             try {
+                // Validate file type
+                val supportedTypes = listOf(".pdf", ".txt", ".doc", ".docx", ".md", ".rtf")
+                val isSupported = supportedTypes.any { fileName.endsWith(it, ignoreCase = true) }
+
+                if (!isSupported) {
+                    _errorMessage.value = "Unsupported file type. Please upload PDF, TXT, DOC, or DOCX files."
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                // Check file size (limit to 10MB)
+                val fileSize = context.contentResolver.openInputStream(uri)?.available() ?: 0
+                if (fileSize > 10 * 1024 * 1024) { // 10MB limit
+                    _errorMessage.value = "File too large. Please upload files smaller than 10MB."
+                    _isLoading.value = false
+                    return@launch
+                }
+
                 val result = notesRepository.uploadNotesAndProcess(
                     context = context,
                     uri = uri,
@@ -97,11 +75,22 @@ class HomeViewModel(
                     _uploadStatus.value = "Document processed successfully!"
                     loadRecentNotes() // Refresh the notes list
                 }.onFailure { exception ->
-                    _errorMessage.value = "Error processing file: ${exception.message}"
+                    val errorMsg = when {
+                        exception.message?.contains("authentication", ignoreCase = true) == true ->
+                            "Please sign in to upload files"
+                        exception.message?.contains("network", ignoreCase = true) == true ->
+                            "Network error. Please check your connection"
+                        exception.message?.contains("API", ignoreCase = true) == true ->
+                            "AI processing temporarily unavailable. Please try again"
+                        exception.message?.contains("PDF", ignoreCase = true) == true ->
+                            "PDF processing failed. Please try a different file"
+                        else -> "Error processing file: ${exception.message}"
+                    }
+                    _errorMessage.value = errorMsg
                 }
 
             } catch (e: Exception) {
-                _errorMessage.value = "Error processing file: ${e.message}"
+                _errorMessage.value = "Unexpected error: ${e.message}"
             }
 
             _isLoading.value = false
@@ -114,9 +103,14 @@ class HomeViewModel(
                 val notes = notesRepository.getUserNotes()
                 _recentNotes.value = notes.take(5) // Show only last 5 notes
             } catch (e: Exception) {
-                // Handle error silently for now
+                // Handle error silently for now, or show a subtle error
+                _errorMessage.value = "Failed to load recent notes"
             }
         }
+    }
+
+    fun refreshNotes() {
+        loadRecentNotes()
     }
 
     fun clearMessages() {
@@ -126,5 +120,39 @@ class HomeViewModel(
 
     fun clearProcessedNote() {
         _processedNote.value = null
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    // Test connectivity methods (optional)
+    fun testAIConnection() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _testResult.value = "Testing AI connectivity..."
+
+            try {
+                // Simple test with a basic text file simulation
+                val testContent = "This is a test document for AI processing."
+                val summary = notesRepository.generateAISummary(testContent)
+
+                if (summary.isNotBlank()) {
+                    _testResult.value = "✅ AI connection successful"
+                } else {
+                    _testResult.value = "❌ AI connection failed"
+                }
+            } catch (e: Exception) {
+                _testResult.value = "❌ AI test failed: ${e.message}"
+            }
+
+            _isLoading.value = false
+        }
+    }
+
+    fun retryProcessing(context: Context, uri: Uri, fileName: String) {
+        // Clear previous errors and try again
+        clearMessages()
+        uploadAndProcessNote(context, uri, fileName)
     }
 }

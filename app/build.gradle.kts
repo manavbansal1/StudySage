@@ -86,7 +86,10 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
 
-    // Gemini AI
+    // Firebase AI (Vertex AI in Firebase)
+    implementation("com.google.firebase:firebase-vertexai:16.0.2")
+
+    // Gemini AI (Google AI Client SDK) - Keep this as fallback
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
     // Coil for Compose (image loading)
@@ -103,6 +106,9 @@ dependencies {
     // Retrofit (if needed for other APIs)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // PDF processing
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     // Gson for JSON parsing (Cloudinary response)
     implementation("com.google.code.gson:gson:2.10.1")
