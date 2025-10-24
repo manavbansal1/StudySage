@@ -3,6 +3,7 @@ package com.group_7.studysage.data.repository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository(
@@ -42,7 +43,8 @@ class AuthRepository(
                 "preferences" to mapOf(
                     "darkMode" to false,
                     "notifications" to true
-                )
+                ),
+                "groups" to listOf<Map<String, Any>>() // List of group summaries
             )
 
             firestore.collection("users").document(user.uid).set(userProfile).await()
@@ -143,6 +145,126 @@ class AuthRepository(
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // ==================== GROUP MANAGEMENT ====================
+
+    /**
+     * Add a group summary to user's profile
+     * Each user stores a lightweight summary of their groups for quick access
+     */
+    suspend fun addGroupToUserProfile(groupId: String, groupName: String, groupPic: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+
+            val groupSummary = mapOf(
+                "groupId" to groupId,
+                "groupName" to groupName,
+                "groupPic" to groupPic,
+                "lastMessage" to "",
+                "lastMessageTime" to 0L,
+                "lastMessageSender" to "",
+                "joinedAt" to System.currentTimeMillis()
+            )
+
+            firestore.collection("users").document(userId)
+                .update("groups", FieldValue.arrayUnion(groupSummary))
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Update the most recent message in user's group summary
+     */
+    suspend fun updateGroupLastMessage(
+        groupId: String,
+        message: String,
+        senderName: String,
+        timestamp: Long
+    ): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
+
+            val updatedGroups = groups.map { group ->
+                if (group["groupId"] == groupId) {
+                    group.toMutableMap().apply {
+                        put("lastMessage", message)
+                        put("lastMessageTime", timestamp)
+                        put("lastMessageSender", senderName)
+                    }
+                } else {
+                    group
+                }
+            }
+
+            firestore.collection("users").document(userId)
+                .update("groups", updatedGroups)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove a group from user's profile
+     */
+    suspend fun removeGroupFromUserProfile(groupId: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
+
+            val updatedGroups = groups.filter { it["groupId"] != groupId }
+
+            firestore.collection("users").document(userId)
+                .update("groups", updatedGroups)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get all groups for current user
+     */
+    suspend fun getUserGroups(): List<Map<String, Any>> {
+        return try {
+            val profile = getUserProfile()
+            (profile?.get("groups") as? List<Map<String, Any>>) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Search for user by email
+     */
+    suspend fun getUserByEmail(email: String): Map<String, Any>? {
+        return try {
+            val querySnapshot = firestore.collection("users")
+                .whereEqualTo("email", email)
+                .limit(1)
+                .get()
+                .await()
+
+            if (querySnapshot.documents.isNotEmpty()) {
+                querySnapshot.documents.first().data
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 }
