@@ -11,11 +11,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.navArgument
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.ui.screens.*
 import com.group_7.studysage.ui.screens.auth.SignInScreen
@@ -26,12 +24,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object SignIn : Screen("sign_in", "Sign In")
     object SignUp : Screen("sign_up", "Sign Up")
     object Home : Screen("home", "Home", Icons.Filled.Home)
+    object Courses : Screen("courses", "Courses", Icons.Filled.School)
     object Notes : Screen("notes", "Notes", Icons.Filled.Description)
-    object Groups : Screen("groups", "Groups", Icons.Filled.Groups)
+    object Quiz : Screen("quiz", "Quiz", Icons.Filled.Quiz)
+    object Game : Screen("game", "Games", Icons.Filled.Games)
     object Profile : Screen("profile", "Profile", Icons.Filled.AccountCircle)
-    object GroupChat : Screen("group_chat/{groupId}", "Group Chat") {
-        fun createRoute(groupId: String) = "group_chat/$groupId"
-    }
 }
 
 @Composable
@@ -44,42 +41,37 @@ fun StudySageNavigation(
     val isUserSignedIn by authViewModel.isSignedIn
 
     if (isUserSignedIn) {
-        val screens = listOf(Screen.Home, Screen.Notes, Screen.Groups, Screen.Profile)
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentDestination = navBackStackEntry?.destination
-
-        // Check if we're on a detail screen (like GroupChat)
-        val isDetailScreen = currentDestination?.route?.startsWith("group_chat/") == true
+        val screens = listOf(Screen.Home, Screen.Courses, Screen.Notes, Screen.Quiz, Screen.Game, Screen.Profile)
 
         Scaffold(
             bottomBar = {
-                // Only show bottom navigation if we're not on a detail screen
-                if (!isDetailScreen) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        screens.forEach { screen ->
-                            NavigationBarItem(
-                                icon = { screen.icon?.let { Icon(it, screen.title) } },
-                                label = { Text(screen.title) },
-                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                                onClick = {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                                )
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+
+                    screens.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { screen.icon?.let { Icon(it, screen.title) } },
+                            label = { Text(screen.title) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer
                             )
-                        }
+                        )
                     }
                 }
             },
@@ -90,42 +82,13 @@ fun StudySageNavigation(
                 startDestination = Screen.Home.route,
                 modifier = Modifier.padding(innerPadding)
             ) {
-                composable(Screen.Home.route) {
-                    HomeScreen()
-                }
-
-                composable(Screen.Notes.route) {
-                    NotesScreen()
-                }
-
-                composable(Screen.Groups.route) {
-                    GroupScreen(
-                        onGroupClick = { groupId ->
-                            navController.navigate(Screen.GroupChat.createRoute(groupId))
-                        }
-                    )
-                }
-
+                composable(Screen.Home.route) { HomeScreen() }
+                composable(Screen.Courses.route) { CoursesScreen() }
+                composable(Screen.Notes.route) { NotesScreen() }
+//                composable(Screen.Quiz.route) { QuizScreen() }
+//                composable(Screen.Game.route) { GameScreen() }
                 composable(Screen.Profile.route) {
                     ProfileScreen(authRepository = authRepository)
-                }
-
-                // Group Chat Screen with groupId parameter
-                composable(
-                    route = Screen.GroupChat.route,
-                    arguments = listOf(
-                        navArgument("groupId") {
-                            type = NavType.StringType
-                        }
-                    )
-                ) { backStackEntry ->
-                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-                    GroupChatScreen(
-                        groupId = groupId,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        }
-                    )
                 }
             }
         }
