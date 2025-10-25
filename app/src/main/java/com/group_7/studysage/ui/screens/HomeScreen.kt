@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.ui.viewmodels.HomeViewModel
@@ -44,6 +45,7 @@ fun HomeScreen(
     val recentNotes by viewModel.recentNotes
 
     var showFilePickerDialog by remember { mutableStateOf(false) }
+    var showCourseSelectionDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
 
@@ -60,7 +62,7 @@ fun HomeScreen(
                         is FileUtils.ValidationResult.Success -> {
                             pendingFileUri = uri
                             pendingFileName = fileInfo.name
-                            showFilePickerDialog = true
+                            showCourseSelectionDialog = true
                         }
                         is FileUtils.ValidationResult.Error -> {
                             Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
@@ -305,56 +307,34 @@ fun HomeScreen(
                     icon = Icons.Default.CheckCircle
                 )
                 FeatureItem(
-                    text = "🎯 Study-focused content",
+                    text = "📚 Course organization",
                     icon = Icons.Default.CheckCircle
                 )
             }
         }
     }
 
-    // File processing confirmation dialog
-    if (showFilePickerDialog && pendingFileUri != null) {
-        AlertDialog(
-            onDismissRequest = {
-                showFilePickerDialog = false
+    // Course selection dialog
+    if (showCourseSelectionDialog && pendingFileUri != null) {
+        CourseSelectionDialog(
+            fileName = pendingFileName,
+            onDismiss = {
+                showCourseSelectionDialog = false
                 pendingFileUri = null
                 pendingFileName = ""
             },
-            title = { Text("Process Document") },
-            text = {
-                Column {
-                    Text("File: $pendingFileName")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "This will analyze your document with AI to create summaries and extract key information.",
-                        style = MaterialTheme.typography.bodyMedium
+            onCourseSelected = { selectedCourse ->
+                pendingFileUri?.let { uri ->
+                    viewModel.uploadAndProcessNote(
+                        context = context,
+                        uri = uri,
+                        fileName = pendingFileName,
+                        courseId = selectedCourse?.id
                     )
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pendingFileUri?.let { uri ->
-                            viewModel.uploadAndProcessNote(context, uri, pendingFileName)
-                        }
-                        showFilePickerDialog = false
-                        pendingFileUri = null
-                        pendingFileName = ""
-                    }
-                ) {
-                    Text("Process")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showFilePickerDialog = false
-                        pendingFileUri = null
-                        pendingFileName = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
+                showCourseSelectionDialog = false
+                pendingFileUri = null
+                pendingFileName = ""
             }
         )
     }
@@ -457,6 +437,25 @@ fun ProcessedNoteCard(
                     }
                 }
             }
+
+            // Show course association if any
+            if (note.courseId.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.School,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Added to course",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
         }
     }
 }
@@ -502,11 +501,33 @@ fun RecentNoteCard(note: Note) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = formatDate(note.createdAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = formatDate(note.createdAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (note.courseId.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.School,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Course",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

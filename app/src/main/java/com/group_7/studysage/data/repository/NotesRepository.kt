@@ -31,7 +31,8 @@ data class Note(
     val updatedAt: Long = System.currentTimeMillis(),
     val userId: String = "",
     val fileUrl: String = "",
-    val fileType: String = ""
+    val fileType: String = "",
+    val courseId: String = "" // New field for course association
 )
 
 class NotesRepository {
@@ -67,6 +68,7 @@ class NotesRepository {
         context: Context,
         uri: Uri,
         fileName: String,
+        courseId: String? = null, // Optional course association
         onProgress: (String) -> Unit
     ): Result<Note> {
 
@@ -105,7 +107,6 @@ class NotesRepository {
 
             onProgress("Generating AI summary...")
 
-
             val summary = generateAISummary(fileContent as String)
             val keyPoints = extractKeyPoints(fileContent)
             val tags = generateTags(fileContent)
@@ -125,7 +126,8 @@ class NotesRepository {
                 tags = tags,
                 userId = userId,
                 fileUrl = "",
-                fileType = getFileType(fileName)
+                fileType = getFileType(fileName),
+                courseId = courseId ?: "" // Associate with course if provided
             )
 
             // Save to Firestore
@@ -157,6 +159,65 @@ class NotesRepository {
         }
     }
 
+    // Add method to get notes for a specific course
+    suspend fun getNotesForCourse(courseId: String): List<Note> {
+        return try {
+            val userId = auth.currentUser?.uid ?: return emptyList()
+
+            val querySnapshot = firestore.collection("notes")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("courseId", courseId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            querySnapshot.documents.mapNotNull { document ->
+                try {
+                    document.toObject(Note::class.java)?.copy(id = document.id)
+                } catch (e: Exception) {
+                    Log.e("NotesRepository", "Error parsing note: ${e.message}")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NotesRepository", "Error fetching notes for course: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // Update existing getUserNotes to optionally filter by course
+    suspend fun getUserNotes(courseId: String? = null): List<Note> {
+        return try {
+            val userId = auth.currentUser?.uid ?: return emptyList()
+
+            var query = firestore.collection("notes")
+                .whereEqualTo("userId", userId)
+
+            // Filter by course if provided
+            courseId?.let {
+                query = query.whereEqualTo("courseId", it)
+            }
+
+            val querySnapshot = query
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            querySnapshot.documents.mapNotNull { document ->
+                try {
+                    document.toObject(Note::class.java)?.copy(id = document.id)
+                } catch (e: Exception) {
+                    Log.e("NotesRepository", "Error parsing note: ${e.message}")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NotesRepository", "Error fetching user notes: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // Rest of the methods remain the same...
     private suspend fun processTextFile(fileBytes: ByteArray, onProgress: (String) -> Unit): String {
         onProgress("Extracting text content...")
         return String(fileBytes, Charsets.UTF_8)
@@ -213,7 +274,6 @@ class NotesRepository {
         }
     }
 
-
     private suspend fun processDocumentFile(fileBytes: ByteArray, fileName: String, onProgress: (String) -> Unit): String {
         return try {
             onProgress("Processing document...")
@@ -253,30 +313,6 @@ class NotesRepository {
         }
     }
 
-    suspend fun getUserNotes(): List<Note> {
-        return try {
-            val userId = auth.currentUser?.uid ?: return emptyList()
-
-            val querySnapshot = firestore.collection("notes")
-                .whereEqualTo("userId", userId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-                .get()
-                .await()
-
-            querySnapshot.documents.mapNotNull { document ->
-                try {
-                    document.toObject(Note::class.java)?.copy(id = document.id)
-                } catch (e: Exception) {
-                    Log.e("NotesRepository", "Error parsing note: ${e.message}")
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("NotesRepository", "Error fetching user notes: ${e.message}")
-            emptyList()
-        }
-    }
-
     suspend fun getNoteById(noteId: String): Note? {
         return try {
             val document = firestore.collection("notes").document(noteId).get().await()
@@ -289,7 +325,6 @@ class NotesRepository {
 
     suspend fun generateAISummary(content: String): String {
         return try {
-            // TO:DO need to tweak this so as to make a better summary
             val limitedContent = if (content.length > 8000) {
                 content.take(8000) + "..."
             } else content

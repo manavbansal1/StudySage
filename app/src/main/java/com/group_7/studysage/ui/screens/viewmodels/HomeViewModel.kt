@@ -36,7 +36,13 @@ class HomeViewModel(
         loadRecentNotes()
     }
 
-    fun uploadAndProcessNote(context: Context, uri: Uri, fileName: String) {
+    // Updated method to accept courseId parameter
+    fun uploadAndProcessNote(
+        context: Context,
+        uri: Uri,
+        fileName: String,
+        courseId: String? = null
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -65,6 +71,7 @@ class HomeViewModel(
                     context = context,
                     uri = uri,
                     fileName = fileName,
+                    courseId = courseId, // Pass the courseId
                     onProgress = { status ->
                         _uploadStatus.value = status
                     }
@@ -150,9 +157,9 @@ class HomeViewModel(
         }
     }
 
-    fun retryProcessing(context: Context, uri: Uri, fileName: String) {
+    fun retryProcessing(context: Context, uri: Uri, fileName: String, courseId: String? = null) {
         // Clear previous errors and try again
         clearMessages()
-        uploadAndProcessNote(context, uri, fileName)
+        uploadAndProcessNote(context, uri, fileName, courseId)
     }
 }
