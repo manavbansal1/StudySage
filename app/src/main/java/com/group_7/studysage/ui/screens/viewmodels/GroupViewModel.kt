@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FieldValue
 
 data class GroupItem(
     val groupId: String,
@@ -168,36 +169,10 @@ class GroupViewModel(
                 val userName = user["name"] as? String ?: "Unknown User"
                 val userProfilePic = user["profileImageUrl"] as? String ?: ""
 
-                // Add user to group
-                val result = groupRepository.addMemberToGroup(groupId, userId, userName, userProfilePic)
+                // Use the complete function that updates both group and user profile
+                val result = groupRepository.addMemberToGroupComplete(groupId, userId, userName, userProfilePic)
 
                 result.onSuccess {
-                    // Get group info
-                    val groupProfile = groupRepository.getGroupProfile(groupId)
-                    val groupName = groupProfile?.get("name") as? String ?: ""
-                    val groupPic = groupProfile?.get("profilePic") as? String ?: ""
-
-                    // Add group to user's profile using Firestore directly
-                    // We need to update the other user's profile, not current user
-                    val groupSummary = mapOf(
-                        "groupId" to groupId,
-                        "groupName" to groupName,
-                        "groupPic" to groupPic,
-                        "lastMessage" to "",
-                        "lastMessageTime" to 0L,
-                        "lastMessageSender" to "",
-                        "joinedAt" to System.currentTimeMillis()
-                    )
-
-                    // Update the target user's profile
-                    val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    val userGroups = user["groups"] as? MutableList<Map<String, Any>> ?: mutableListOf()
-                    userGroups.add(groupSummary)
-
-                    firestore.collection("users").document(userId)
-                        .update("groups", userGroups)
-                        .await()
-
                     // Reload groups to show updated member count
                     loadGroups()
                 }

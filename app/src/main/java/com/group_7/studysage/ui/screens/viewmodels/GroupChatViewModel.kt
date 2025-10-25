@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FieldValue
 
 sealed class GroupChatUiState {
     object Loading : GroupChatUiState()
@@ -46,29 +47,31 @@ class GroupChatViewModel(
             _uiState.value = GroupChatUiState.Loading
 
             try {
-                val groupProfile = groupRepository.getGroupProfile(groupId)
+                // Set up real-time listener instead of one-time read
+                groupRepository.observeGroupProfile(groupId).collect { groupProfile ->
+                    if (groupProfile == null) {
+                        _uiState.value = GroupChatUiState.Error("Group not found")
+                        return@collect
+                    }
 
-                if (groupProfile == null) {
-                    _uiState.value = GroupChatUiState.Error("Group not found")
-                    return@launch
+                    val groupName = groupProfile["name"] as? String ?: "Unknown Group"
+                    val groupPic = groupProfile["profilePic"] as? String ?: ""
+                    val memberCount = (groupProfile["memberCount"] as? Long)?.toInt() ?: 0
+                    val members = groupProfile["members"] as? List<Map<String, Any>> ?: emptyList()
+
+                    val currentUserId = authRepository.currentUser?.uid ?: ""
+                    val isAdmin = groupRepository.isUserAdmin(groupId, currentUserId)
+
+                    _uiState.value = GroupChatUiState.Success(
+                        groupName = groupName,
+                        groupPic = groupPic,
+                        memberCount = memberCount,
+                        isAdmin = isAdmin,
+                        members = members
+                    )
                 }
-
-                val groupName = groupProfile["name"] as? String ?: "Unknown Group"
-                val groupPic = groupProfile["profilePic"] as? String ?: ""
-                val memberCount = (groupProfile["memberCount"] as? Long)?.toInt() ?: 0
-                val members = groupProfile["members"] as? List<Map<String, Any>> ?: emptyList()
-
-                val currentUserId = authRepository.currentUser?.uid ?: ""
-                val isAdmin = groupRepository.isUserAdmin(groupId, currentUserId)
-
-                _uiState.value = GroupChatUiState.Success(
-                    groupName = groupName,
-                    groupPic = groupPic,
-                    memberCount = memberCount,
-                    isAdmin = isAdmin,
-                    members = members
-                )
             } catch (e: Exception) {
+                e.printStackTrace()
                 _uiState.value = GroupChatUiState.Error(e.message ?: "Failed to load group data")
             }
         }
@@ -77,10 +80,12 @@ class GroupChatViewModel(
     fun loadMessages(groupId: String) {
         viewModelScope.launch {
             try {
-                val messagesList = groupRepository.getMessages(groupId, limit = 100)
-                _messages.value = messagesList.reversed() // Show oldest first
+                // Set up real-time listener for messages
+                groupRepository.observeMessages(groupId, limit = 100).collect { messagesList ->
+                    _messages.value = messagesList.reversed()
+                }
             } catch (e: Exception) {
-                // Handle error silently or show notification
+                // Handle error
             }
         }
     }
@@ -122,7 +127,6 @@ class GroupChatViewModel(
 
                 if (user == null) {
                     _uiState.value = GroupChatUiState.Error("User not found with email: $email")
-                    // Reload previous state after showing error
                     loadGroupData(groupId)
                     return@launch
                 }
@@ -131,35 +135,10 @@ class GroupChatViewModel(
                 val userName = user["name"] as? String ?: "Unknown User"
                 val userProfilePic = user["profileImageUrl"] as? String ?: ""
 
-                // Add user to group
-                val result = groupRepository.addMemberToGroup(groupId, userId, userName, userProfilePic)
+                // Use the complete function that updates both group and user profile
+                val result = groupRepository.addMemberToGroupComplete(groupId, userId, userName, userProfilePic)
 
                 result.onSuccess {
-                    // Get group info
-                    val groupProfile = groupRepository.getGroupProfile(groupId)
-                    val groupName = groupProfile?.get("name") as? String ?: ""
-                    val groupPic = groupProfile?.get("profilePic") as? String ?: ""
-
-                    // Add group to user's profile
-                    val groupSummary = mapOf(
-                        "groupId" to groupId,
-                        "groupName" to groupName,
-                        "groupPic" to groupPic,
-                        "lastMessage" to "",
-                        "lastMessageTime" to 0L,
-                        "lastMessageSender" to "",
-                        "joinedAt" to System.currentTimeMillis()
-                    )
-
-                    // Update the target user's profile
-                    val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    val userGroups = user["groups"] as? MutableList<Map<String, Any>> ?: mutableListOf()
-                    userGroups.add(groupSummary)
-
-                    firestore.collection("users").document(userId)
-                        .update("groups", userGroups)
-                        .await()
-
                     // Reload group data
                     loadGroupData(groupId)
                 }
