@@ -26,8 +26,6 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Home : Screen("home", "Home", Icons.Filled.Home)
     object Courses : Screen("courses", "Courses", Icons.Filled.School)
     object Notes : Screen("notes", "Notes", Icons.Filled.Description)
-    object Quiz : Screen("quiz", "Quiz", Icons.Filled.Quiz)
-    object Game : Screen("game", "Games", Icons.Filled.Games)
     object Profile : Screen("profile", "Profile", Icons.Filled.AccountCircle)
 }
 
@@ -41,7 +39,7 @@ fun StudySageNavigation(
     val isUserSignedIn by authViewModel.isSignedIn
 
     if (isUserSignedIn) {
-        val screens = listOf(Screen.Home, Screen.Courses, Screen.Notes, Screen.Quiz, Screen.Game, Screen.Profile)
+        val screens = listOf(Screen.Home, Screen.Courses, Screen.Notes, Screen.Profile)
 
         Scaffold(
             bottomBar = {
@@ -85,8 +83,6 @@ fun StudySageNavigation(
                 composable(Screen.Home.route) { HomeScreen() }
                 composable(Screen.Courses.route) { CoursesScreen() }
                 composable(Screen.Notes.route) { NotesScreen() }
-//                composable(Screen.Quiz.route) { QuizScreen() }
-//                composable(Screen.Game.route) { GameScreen() }
                 composable(Screen.Profile.route) {
                     ProfileScreen(authRepository = authRepository)
                 }

@@ -80,8 +80,6 @@ class CourseRepository {
 
             val querySnapshot = firestore.collection("courses")
                 .whereEqualTo("userId", userId)
-                .whereEqualTo("isArchived", false)
-                .orderBy("updatedAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
 

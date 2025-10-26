@@ -39,6 +39,22 @@ fun AddCourseDialog(
     var credits by remember { mutableStateOf("") }
     var selectedColor by remember { mutableStateOf(courseColors.first()) }
 
+    // Error states for validation
+    var titleError by remember { mutableStateOf(false) }
+    var codeError by remember { mutableStateOf(false) }
+    var instructorError by remember { mutableStateOf(false) }
+    var creditsError by remember { mutableStateOf(false) }
+
+    // Validation function
+    fun validateFields(): Boolean {
+        titleError = title.isBlank()
+        codeError = code.isBlank()
+        instructorError = instructor.isBlank()
+        creditsError = credits.isBlank() || credits.toIntOrNull() == null || credits.toInt() < 0
+
+        return !titleError && !codeError && !instructorError && !creditsError
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -59,60 +75,86 @@ fun AddCourseDialog(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                // Course Title
+                // Course Title (Required)
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Course Title") },
+                    onValueChange = {
+                        title = it
+                        titleError = false // Clear error when user types
+                    },
+                    label = { Text("Course Title *") },
                     placeholder = { Text("e.g., Introduction to Computer Science") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = titleError,
+                    supportingText = if (titleError) {
+                        { Text("Course title is required", color = MaterialTheme.colorScheme.error) }
+                    } else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Course Code
+                // Course Code (Required)
                 OutlinedTextField(
                     value = code,
-                    onValueChange = { code = it.uppercase() },
-                    label = { Text("Course Code") },
+                    onValueChange = {
+                        code = it.uppercase()
+                        codeError = false // Clear error when user types
+                    },
+                    label = { Text("Course Code *") },
                     placeholder = { Text("e.g., CS101") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = codeError,
+                    supportingText = if (codeError) {
+                        { Text("Course code is required", color = MaterialTheme.colorScheme.error) }
+                    } else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Instructor
+                // Instructor (Required)
                 OutlinedTextField(
                     value = instructor,
-                    onValueChange = { instructor = it },
-                    label = { Text("Instructor (Optional)") },
+                    onValueChange = {
+                        instructor = it
+                        instructorError = false // Clear error when user types
+                    },
+                    label = { Text("Instructor *") },
                     placeholder = { Text("e.g., Dr. Smith") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = instructorError,
+                    supportingText = if (instructorError) {
+                        { Text("Instructor name is required", color = MaterialTheme.colorScheme.error) }
+                    } else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Credits
+                // Credits (Required)
                 OutlinedTextField(
                     value = credits,
                     onValueChange = { newValue ->
                         if (newValue.isEmpty() || (newValue.toIntOrNull() != null && newValue.toInt() >= 0)) {
                             credits = newValue
+                            creditsError = false // Clear error when user types valid input
                         }
                     },
-                    label = { Text("Credits (Optional)") },
+                    label = { Text("Credits *") },
                     placeholder = { Text("e.g., 3") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = creditsError,
+                    supportingText = if (creditsError) {
+                        { Text("Valid credit amount is required", color = MaterialTheme.colorScheme.error) }
+                    } else null
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Description
+                // Description (Optional)
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -147,51 +189,59 @@ fun AddCourseDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Color Selection
                 Text(
-                    text = "Course Color",
+                    text = "Choose Course Color *",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(bottom = 24.dp)
                 ) {
                     items(courseColors) { color ->
                         ColorOption(
                             color = color,
-                            isSelected = color == selectedColor,
+                            isSelected = selectedColor == color,
                             onClick = { selectedColor = color }
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // Required fields note
+                Text(
+                    text = "* Required fields",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-                // Buttons
+                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
                         enabled = !isLoading
                     ) {
                         Text("Cancel")
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
                     Button(
                         onClick = {
-                            val creditsInt = credits.toIntOrNull() ?: 0
-                            onConfirm(title, code, instructor, description, creditsInt, selectedColor)
+                            if (validateFields()) {
+                                val creditsInt = credits.toIntOrNull() ?: 0
+                                onConfirm(title.trim(), code.trim(), instructor.trim(), description.trim(), creditsInt, selectedColor)
+                            }
                         },
-                        enabled = !isLoading && title.isNotBlank() && code.isNotBlank(),
+                        enabled = !isLoading,
+                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )

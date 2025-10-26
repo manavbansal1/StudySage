@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 data class CourseUiState(
     val courses: List<Course> = emptyList(),
+    val allCourses: List<Course> = emptyList(), // Store all courses for filtering
     val selectedSemester: String = Semester.FALL.displayName,
     val selectedYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString(),
     val availableYears: List<String> = emptyList(),
@@ -42,6 +43,8 @@ class CourseViewModel(
 
             try {
                 val allCourses = courseRepository.getUserCourses()
+
+                // Filter courses based on selected semester and year
                 val filteredCourses = allCourses.filter { course ->
                     course.semester == _uiState.value.selectedSemester &&
                             course.year == _uiState.value.selectedYear
@@ -49,6 +52,7 @@ class CourseViewModel(
 
                 _uiState.update {
                     it.copy(
+                        allCourses = allCourses,
                         courses = filteredCourses,
                         isLoading = false
                     )
@@ -187,12 +191,23 @@ class CourseViewModel(
 
     fun setSemesterFilter(semester: String) {
         _uiState.update { it.copy(selectedSemester = semester) }
-        loadCourses()
+        // Filter existing courses instead of reloading from repository
+        filterCourses()
     }
 
     fun setYearFilter(year: String) {
         _uiState.update { it.copy(selectedYear = year) }
-        loadCourses()
+        // Filter existing courses instead of reloading from repository
+        filterCourses()
+    }
+
+    private fun filterCourses() {
+        val currentState = _uiState.value
+        val filteredCourses = currentState.allCourses.filter { course ->
+            course.semester == currentState.selectedSemester &&
+                    course.year == currentState.selectedYear
+        }
+        _uiState.update { it.copy(courses = filteredCourses) }
     }
 
     private fun loadAvailableYears() {
