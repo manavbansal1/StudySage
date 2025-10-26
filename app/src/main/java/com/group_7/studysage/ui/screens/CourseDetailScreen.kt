@@ -94,6 +94,7 @@ fun CourseDetailScreen(
 
     Scaffold(
         topBar = {
+
             TopAppBar(
                 title = {
                     Text(
