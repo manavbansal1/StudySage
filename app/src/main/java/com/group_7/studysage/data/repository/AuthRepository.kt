@@ -6,6 +6,18 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.tasks.await
 
+// ==================== DATA CLASS FOR INVITES ====================
+data class GroupInvite(
+    val inviteId: String = "",
+    val groupId: String = "",
+    val groupName: String = "",
+    val groupPic: String = "",
+    val invitedBy: String = "",
+    val invitedByName: String = "",
+    val timestamp: Long = 0L,
+    val status: String = "pending" // pending, accepted, rejected
+)
+
 class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -44,7 +56,8 @@ class AuthRepository(
                     "darkMode" to false,
                     "notifications" to true
                 ),
-                "groups" to listOf<Map<String, Any>>() // List of group summaries
+                "groups" to listOf<Map<String, Any>>(), // List of group summaries
+                "groupInvites" to listOf<Map<String, Any>>() // ⚠️ NEW - List of pending invites
             )
 
             firestore.collection("users").document(user.uid).set(userProfile).await()
@@ -265,6 +278,186 @@ class AuthRepository(
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    // ==================== GROUP INVITE MANAGEMENT (NEW) ====================
+
+    /**
+     * Send a group invite to a user
+     */
+    suspend fun sendGroupInvite(
+        recipientEmail: String,
+        groupId: String,
+        groupName: String,
+        groupPic: String
+    ): Result<Unit> {
+        return try {
+            val currentUserId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val currentUserProfile = getUserProfile()
+            val currentUserName = currentUserProfile?.get("name") as? String ?: "Unknown"
+
+            // Find recipient user
+            val recipient = getUserByEmail(recipientEmail)
+                ?: return Result.failure(Exception("User not found with email: $recipientEmail"))
+
+            val recipientId = recipient["uid"] as? String
+                ?: return Result.failure(Exception("Invalid user data"))
+
+            // Check if user is already a member
+            val recipientGroups = recipient["groups"] as? List<Map<String, Any>> ?: emptyList()
+            val alreadyMember = recipientGroups.any { it["groupId"] == groupId }
+            if (alreadyMember) {
+                return Result.failure(Exception("User is already a member of this group"))
+            }
+
+            // Check if invite already exists
+            val recipientInvites = recipient["groupInvites"] as? List<Map<String, Any>> ?: emptyList()
+            val inviteExists = recipientInvites.any {
+                it["groupId"] == groupId && it["status"] == "pending"
+            }
+            if (inviteExists) {
+                return Result.failure(Exception("Invite already sent to this user"))
+            }
+
+            // Create invite
+            val inviteId = firestore.collection("users").document().id
+            val invite = mapOf(
+                "inviteId" to inviteId,
+                "groupId" to groupId,
+                "groupName" to groupName,
+                "groupPic" to groupPic,
+                "invitedBy" to currentUserId,
+                "invitedByName" to currentUserName,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to "pending"
+            )
+
+            // Add invite to recipient's profile
+            firestore.collection("users").document(recipientId)
+                .update("groupInvites", FieldValue.arrayUnion(invite))
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get all pending invites for current user
+     */
+    suspend fun getPendingInvites(): List<GroupInvite> {
+        return try {
+            val userId = currentUser?.uid ?: return emptyList()
+            val profile = getUserProfile()
+            val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
+
+            invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
+                try {
+                    GroupInvite(
+                        inviteId = invite["inviteId"] as? String ?: "",
+                        groupId = invite["groupId"] as? String ?: "",
+                        groupName = invite["groupName"] as? String ?: "",
+                        groupPic = invite["groupPic"] as? String ?: "",
+                        invitedBy = invite["invitedBy"] as? String ?: "",
+                        invitedByName = invite["invitedByName"] as? String ?: "",
+                        timestamp = (invite["timestamp"] as? Long) ?: 0L,
+                        status = invite["status"] as? String ?: "pending"
+                    )
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Get count of pending invites
+     */
+    suspend fun getPendingInviteCount(): Int {
+        return try {
+            val invites = getPendingInvites()
+            invites.size
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    /**
+     * Accept a group invite
+     */
+    suspend fun acceptGroupInvite(inviteId: String, groupId: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
+
+            // Find and update the invite
+            val updatedInvites = invites.map { invite ->
+                if (invite["inviteId"] == inviteId) {
+                    invite.toMutableMap().apply {
+                        put("status", "accepted")
+                    }
+                } else {
+                    invite
+                }
+            }
+
+            // Update invites in user profile
+            firestore.collection("users").document(userId)
+                .update("groupInvites", updatedInvites)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Reject a group invite
+     */
+    suspend fun rejectGroupInvite(inviteId: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
+
+            // Remove the invite
+            val updatedInvites = invites.filter { it["inviteId"] != inviteId }
+
+            // Update invites in user profile
+            firestore.collection("users").document(userId)
+                .update("groupInvites", updatedInvites)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Delete an invite (for cleanup)
+     */
+    suspend fun deleteInvite(inviteId: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
+
+            val updatedInvites = invites.filter { it["inviteId"] != inviteId }
+
+            firestore.collection("users").document(userId)
+                .update("groupInvites", updatedInvites)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.GroupRepository
+import com.group_7.studysage.data.repository.GroupInvite
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,8 +41,18 @@ class GroupViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _pendingInvites = MutableStateFlow<List<GroupInvite>>(emptyList())
+    val pendingInvites: StateFlow<List<GroupInvite>> = _pendingInvites.asStateFlow()
+
+    private val _pendingInviteCount = MutableStateFlow(0)
+    val pendingInviteCount: StateFlow<Int> = _pendingInviteCount.asStateFlow()
+
+    private val _showInviteOverlay = MutableStateFlow(false)
+    val showInviteOverlay: StateFlow<Boolean> = _showInviteOverlay.asStateFlow()
+
     init {
         loadGroups()
+        loadPendingInvites()
     }
 
     fun loadGroups() {
@@ -73,6 +84,80 @@ class GroupViewModel(
                 _uiState.value = GroupUiState.Success(groupItems)
             } catch (e: Exception) {
                 _uiState.value = GroupUiState.Error(e.message ?: "Failed to load groups")
+            }
+        }
+    }
+
+    fun loadPendingInvites() {
+        viewModelScope.launch {
+            try {
+                val invites = authRepository.getPendingInvites()
+                _pendingInvites.value = invites
+                _pendingInviteCount.value = invites.size
+            } catch (e: Exception) {
+                // Handle error silently
+            }
+        }
+    }
+
+    fun toggleInviteOverlay() {
+        _showInviteOverlay.value = !_showInviteOverlay.value
+    }
+
+    fun acceptInvite(invite: GroupInvite) {
+        viewModelScope.launch {
+            try {
+                // 1. Accept the invite (marks it as accepted in user's invites)
+                val acceptResult = authRepository.acceptGroupInvite(invite.inviteId, invite.groupId)
+
+                acceptResult.onSuccess {
+                    // 2. Get user profile info
+                    val userProfile = authRepository.getUserProfile()
+                    val userId = authRepository.currentUser?.uid ?: return@launch
+                    val userName = userProfile?.get("name") as? String ?: "User"
+                    val userProfilePic = userProfile?.get("profileImageUrl") as? String ?: ""
+
+                    // 3. Add user to group members
+                    val addResult = groupRepository.addMemberToGroup(
+                        groupId = invite.groupId,
+                        userId = userId,
+                        userName = userName,
+                        userProfilePic = userProfilePic
+                    )
+
+                    addResult.onSuccess {
+                        // 4. Add group to user's profile
+                        authRepository.addGroupToUserProfile(
+                            groupId = invite.groupId,
+                            groupName = invite.groupName,
+                            groupPic = invite.groupPic
+                        )
+
+                        // 5. Delete the invite after successful acceptance
+                        authRepository.deleteInvite(invite.inviteId)
+
+                        // 6. Reload both groups and invites
+                        loadGroups()
+                        loadPendingInvites()
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    fun rejectInvite(invite: GroupInvite) {
+        viewModelScope.launch {
+            try {
+                val result = authRepository.rejectGroupInvite(invite.inviteId)
+
+                result.onSuccess {
+                    // Reload invites
+                    loadPendingInvites()
+                }
+            } catch (e: Exception) {
+                // Handle error
             }
         }
     }
@@ -147,38 +232,6 @@ class GroupViewModel(
 
                 result.onFailure { error ->
                     _uiState.value = GroupUiState.Error(error.message ?: "Failed to leave group")
-                }
-            } catch (e: Exception) {
-                _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
-            }
-        }
-    }
-
-    fun addMemberByEmail(groupId: String, email: String) {
-        viewModelScope.launch {
-            try {
-                // Search for user by email
-                val user = authRepository.getUserByEmail(email)
-
-                if (user == null) {
-                    _uiState.value = GroupUiState.Error("User not found with email: $email")
-                    return@launch
-                }
-
-                val userId = user["uid"] as? String ?: return@launch
-                val userName = user["name"] as? String ?: "Unknown User"
-                val userProfilePic = user["profileImageUrl"] as? String ?: ""
-
-                // Use the complete function that updates both group and user profile
-                val result = groupRepository.addMemberToGroupComplete(groupId, userId, userName, userProfilePic)
-
-                result.onSuccess {
-                    // Reload groups to show updated member count
-                    loadGroups()
-                }
-
-                result.onFailure { error ->
-                    _uiState.value = GroupUiState.Error(error.message ?: "Failed to add member")
                 }
             } catch (e: Exception) {
                 _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")

@@ -118,16 +118,16 @@ class GroupRepository(
     }
 
     /**
-     * Add member to group and update their user profile
+     * Add member to group (now only updates group, doesn't touch user profile)
+     * User profile is updated when they accept the invite
      */
-    suspend fun addMemberToGroupComplete(
+    suspend fun addMemberToGroup(
         groupId: String,
         userId: String,
         userName: String,
         userProfilePic: String
     ): Result<Unit> {
         return try {
-            // 1. Add member to group document
             val newMember = mapOf(
                 "userId" to userId,
                 "name" to userName,
@@ -143,26 +143,6 @@ class GroupRepository(
                         "memberCount" to FieldValue.increment(1)
                     )
                 )
-                .await()
-
-            // 2. Get group info for the user's profile
-            val groupData = getGroupProfile(groupId)
-            val groupName = groupData?.get("name") as? String ?: ""
-            val groupPic = groupData?.get("profilePic") as? String ?: ""
-
-            // 3. Add group to user's profile
-            val groupSummary = mapOf(
-                "groupId" to groupId,
-                "groupName" to groupName,
-                "groupPic" to groupPic,
-                "lastMessage" to "",
-                "lastMessageTime" to 0L,
-                "lastMessageSender" to "",
-                "joinedAt" to System.currentTimeMillis()
-            )
-
-            firestore.collection("users").document(userId)
-                .update("groups", FieldValue.arrayUnion(groupSummary))
                 .await()
 
             Result.success(Unit)
