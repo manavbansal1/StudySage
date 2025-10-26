@@ -1,578 +1,927 @@
 package com.group_7.studysage.ui.screens
 
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.group_7.studysage.data.repository.Note
-import com.group_7.studysage.ui.theme.StudySageTheme
+import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.ui.viewmodels.HomeViewModel
-import com.group_7.studysage.utils.FileUtils
-import java.text.SimpleDateFormat
-import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Data class as specified
+data class DailyTask(
+    val id: String,
+    val title: String,
+    val description: String,
+    val xpReward: Int,
+    val icon: ImageVector,
+    val isCompleted: Boolean = false
+)
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = viewModel()
+    navController: NavController,
+    homeViewModel: HomeViewModel = viewModel(),
+    modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
+    // Fetch user name from ViewModel (now comes from Firebase)
+    val userFullName by homeViewModel.userFullName
+    val userProfile by homeViewModel.userProfile
+    val isLoadingProfile by homeViewModel.isLoadingProfile
 
-    val isLoading by viewModel.isLoading
-    val uploadStatus by viewModel.uploadStatus
-    val errorMessage by viewModel.errorMessage
-    val processedNote by viewModel.processedNote
-    val recentNotes by viewModel.recentNotes
+    // Local state for tasks (start empty, load in LaunchedEffect)
+    val tasksState = remember { mutableStateListOf<DailyTask>() }
 
-    var showFilePickerDialog by remember { mutableStateOf(false) }
-    var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
-    var pendingFileName by remember { mutableStateOf("") }
+    // Load sample daily tasks once
+    LaunchedEffect(Unit) {
+        val sample = listOf(
+            DailyTask(
+                id = "1",
+                title = "Complete a Quiz",
+                description = "Test your knowledge",
+                xpReward = 25,
+                icon = Icons.Default.MenuBook
+            ),
+            DailyTask(
+                id = "2",
+                title = "Study for 30 mins",
+                description = "Focus time",
+                xpReward = 50,
+                icon = Icons.Default.MenuBook
+            ),
+            DailyTask(
+                id = "3",
+                title = "Review Flashcards",
+                description = "Memorize concepts",
+                xpReward = 30,
+                icon = Icons.Default.MenuBook
+            ),
+            DailyTask(
+                id = "4",
+                title = "Join Group Study",
+                description = "Collaborate with peers",
+                xpReward = 40,
+                icon = Icons.Default.MenuBook
+            )
+        )
+        tasksState.clear()
+        tasksState.addAll(sample)
+    }
 
-    // File picker launcher
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
-                val fileInfo = FileUtils.getFileInfo(context, uri)
-                if (fileInfo != null) {
-                    val validationResult = FileUtils.validateFile(context, uri)
-                    when (validationResult) {
-                        is FileUtils.ValidationResult.Success -> {
-                            pendingFileUri = uri
-                            pendingFileName = fileInfo.name
-                            showFilePickerDialog = true
+    // Calculate stats
+    val completedTasksCount = tasksState.count { it.isCompleted }
+    val totalTasks = tasksState.size
+    val currentLevel = 5 // Mock data - replace with actual from ViewModel
+    val levelProgress = 0.65f // Mock data - 65% to next level
+
+    val pageCount = tasksState.size
+    val pagerState = rememberPagerState(pageCount = { pageCount })
+
+    // Dark gradient background matching website theme
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = Color.Transparent
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF2D1B4E),  // Lighter starting point
+                            Color(0xFF3D2B5E),  // Lighter ending point
+                            Color(0xFF2D1B4E)   // Back to starting for subtle variation
+                        )
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                // HEADER with improved typography
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left side - User greeting
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // Show loading indicator or actual name with better typography
+                        if (isLoadingProfile) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color(0xFF9333EA)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Loading...",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.5f)
+                                )
+                            }
+                        } else {
+                            // Professional "Welcome back" style
+                            Text(
+                                text = "Welcome back",
+                                fontSize = 16.sp,
+                                color = Color(0xFFB0B0C0),
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = 0.8.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = userFullName,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                letterSpacing = 0.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        is FileUtils.ValidationResult.Error -> {
-                            Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Right side - Clean Avatar (matching ProfileScreen)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.clickable { navController.navigate("profile") }
+                    ) {
+                        val profileImage = userProfile?.get("profileImageUrl") as? String
+                        val firstInitial = userFullName.firstOrNull()?.uppercaseChar() ?: 'U'
+
+                        if (!profileImage.isNullOrBlank()) {
+                            // Profile image with purple border
+                            Image(
+                                painter = rememberAsyncImagePainter(profileImage),
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .border(4.dp, Color(0xFF9333EA), CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Letter avatar with purple border (matching ProfileScreen)
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .border(4.dp, Color(0xFF9333EA), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = firstInitial.toString(),
+                                    color = Color(0xFF9333EA),
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // DAILY TASKS SECTION HEADER with updated colors
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Daily Tasks",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Complete tasks to earn XP",
+                            fontSize = 13.sp,
+                            color = Color(0xFFB0B0C0)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Circular completion indicator with purple theme
+                    Box(contentAlignment = Alignment.Center) {
+                        val completionProgress = if (totalTasks > 0) completedTasksCount.toFloat() / totalTasks else 0f
+                        val animatedCompletion by animateFloatAsState(
+                            targetValue = completionProgress,
+                            animationSpec = tween(800),
+                            label = "completion"
+                        )
+
+                        CircularProgressIndicator(
+                            progress = { animatedCompletion },
+                            modifier = Modifier.size(48.dp),
+                            color = Color(0xFF9333EA),
+                            strokeWidth = 4.dp,
+                            trackColor = Color(0xFF4A3A5E).copy(alpha = 0.3f),
+                        )
+                        Text(
+                            text = "$completedTasksCount/$totalTasks",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF9333EA)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // DAILY TASKS PAGER
+                if (pageCount > 0) {
+                    Column {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier
+                                .height(170.dp)
+                                .fillMaxWidth()
+                        ) { page ->
+                            val task = tasksState[page]
+                            EnhancedTaskCard(
+                                task = task,
+                                onToggleCompleted = { toggled ->
+                                    val index = tasksState.indexOfFirst { it.id == task.id }
+                                    if (index >= 0) {
+                                        tasksState[index] = tasksState[index].copy(isCompleted = toggled)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp)
+                                    .fillMaxWidth()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Enhanced Pager Indicators with purple theme
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            repeat(pageCount) { index ->
+                                val isSelected = pagerState.currentPage == index
+                                val width by animateFloatAsState(
+                                    targetValue = if (isSelected) 24f else 8f,
+                                    animationSpec = tween(300),
+                                    label = "indicator_width"
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp)
+                                        .width(width.dp)
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(
+                                            if (isSelected) Color(0xFF9333EA)
+                                            else Color(0xFF4A3A5E).copy(alpha = 0.5f)
+                                        )
+                                        .animateContentSize()
+                                )
+                            }
                         }
                     }
                 } else {
-                    Toast.makeText(context, "Could not read file", Toast.LENGTH_SHORT).show()
+                    // Enhanced Empty State with dark theme
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF2D1B4E).copy(alpha = 0.6f)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFF9333EA).copy(alpha = 0.3f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "🎉",
+                                fontSize = 48.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "All Done!",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Great job completing today's tasks",
+                                fontSize = 14.sp,
+                                color = Color(0xFFB0B0C0),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
-            }
-        }
-    }
 
-    // Show messages
-    LaunchedEffect(uploadStatus) {
-        uploadStatus?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-        }
-    }
+                Spacer(modifier = Modifier.height(24.dp))
 
-    LaunchedEffect(errorMessage) {
-        errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Header Section
-        Text(
-            text = "StudySage",
-            style = MaterialTheme.typography.displayLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Transform your documents into interactive learning",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Upload Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CloudUpload,
-                    contentDescription = "Upload",
-                    modifier = Modifier.size(60.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
+                // QUICK ACTIONS SECTION
                 Text(
-                    text = "Upload Your Documents",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "Quick Actions",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = "Upload PDF, Word docs, or text files for AI-powered analysis",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Supported formats
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    listOf("PDF", "TXT", "DOC", "DOCX").forEach { format ->
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(format, style = MaterialTheme.typography.labelSmall) },
-                            modifier = Modifier.padding(horizontal = 2.dp)
+                // 2x2 Grid of quick actions with website colors
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        QuickActionButton(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Book,
+                            label = "Take Quiz",
+                            backgroundColor = Color(0xFF9333EA),
+                            onClick = { /* Navigate to quiz */ }
+                        )
+                        QuickActionButton(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Style,
+                            label = "Flashcards",
+                            backgroundColor = Color(0xFF7C3AED),
+                            onClick = { /* Navigate to flashcards */ }
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        QuickActionButton(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Groups,
+                            label = "Study Groups",
+                            backgroundColor = Color(0xFFB794F6),
+                            onClick = { navController.navigate("groups") }
+                        )
+                        QuickActionButton(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.SportsEsports,
+                            label = "Games",
+                            backgroundColor = Color(0xFFA855F7),
+                            onClick = { /* Navigate to games */ }
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                            type = "*/*"
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            val mimeTypes = arrayOf(
-                                "application/pdf",
-                                "text/plain",
-                                "application/msword",
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                "text/markdown",
-                                "application/rtf",
-                                "image/*"
-                            )
-                            putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-                        }
-                        filePickerLauncher.launch(intent)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    enabled = !isLoading,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Processing...")
-                    } else {
-                        Icon(
-                            Icons.Default.Upload,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Choose Files",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                }
+                // RECENTLY OPENED PDFs SECTION
+                val recentPdfs by homeViewModel.recentlyOpenedPdfs
 
-                if (isLoading && uploadStatus != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = uploadStatus!!,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Show processed note summary if available
-        processedNote?.let { note ->
-            ProcessedNoteCard(
-                note = note,
-                onDismiss = { viewModel.clearProcessedNote() }
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Recent Notes Section
-        if (recentNotes.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recent Notes",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                IconButton(onClick = { viewModel.refreshNotes() }) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            recentNotes.forEach { note ->
-                RecentNoteCard(note = note)
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Features Preview (only show if no recent notes)
-        if (recentNotes.isEmpty() && processedNote == null) {
-            Text(
-                text = "What StudySage Can Do",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FeatureItem(
-                    text = "📄 Extract text from PDFs",
-                    icon = Icons.Default.CheckCircle
-                )
-                FeatureItem(
-                    text = "📝 AI-generated summaries",
-                    icon = Icons.Default.CheckCircle
-                )
-                FeatureItem(
-                    text = "🔑 Key points extraction",
-                    icon = Icons.Default.CheckCircle
-                )
-                FeatureItem(
-                    text = "🏷️ Smart tagging",
-                    icon = Icons.Default.CheckCircle
-                )
-                FeatureItem(
-                    text = "🎯 Study-focused content",
-                    icon = Icons.Default.CheckCircle
-                )
-            }
-        }
-    }
-
-    // File processing confirmation dialog
-    if (showFilePickerDialog && pendingFileUri != null) {
-        AlertDialog(
-            onDismissRequest = {
-                showFilePickerDialog = false
-                pendingFileUri = null
-                pendingFileName = ""
-            },
-            title = { Text("Process Document") },
-            text = {
-                Column {
-                    Text("File: $pendingFileName")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "This will analyze your document with AI to create summaries and extract key information.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pendingFileUri?.let { uri ->
-                            viewModel.uploadAndProcessNote(context, uri, pendingFileName)
-                        }
-                        showFilePickerDialog = false
-                        pendingFileUri = null
-                        pendingFileName = ""
-                    }
-                ) {
-                    Text("Process")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showFilePickerDialog = false
-                        pendingFileUri = null
-                        pendingFileName = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun ProcessedNoteCard(
-    note: Note,
-    onDismiss: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Document Processed!",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = note.title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = note.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            if (note.keyPoints.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Key Points:",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                note.keyPoints.take(3).forEach { point ->
+                if (recentPdfs.isNotEmpty()) {
+                    // Recently Opened Header
                     Row(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.Top
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(end = 8.dp)
+                            text = "Recently Opened",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
-                        Text(
-                            text = point,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.weight(1f)
+
+                        TextButton(onClick = { /* TODO: Navigate to all PDFs */ }) {
+                            Text(
+                                text = "See All",
+                                fontSize = 14.sp,
+                                color = Color(0xFF9333EA)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Horizontal scrolling PDF cards
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 0.dp)
+                    ) {
+                        items(recentPdfs.size) { index ->
+                            val pdf = recentPdfs[index]
+                            RecentPdfCard(
+                                pdfName = pdf["pdfName"] as? String ?: "Unknown",
+                                subject = pdf["subject"] as? String ?: "",
+                                progress = (pdf["progress"] as? Number)?.toFloat() ?: 0f,
+                                pageCount = (pdf["pageCount"] as? Number)?.toInt() ?: 0,
+                                lastPage = (pdf["lastPage"] as? Number)?.toInt() ?: 0,
+                                onClick = {
+                                    homeViewModel.openPdf(pdf["pdfUrl"] as? String ?: "")
+                                }
+                            )
+                        }
+                    }
+                } else {
+                    // Empty state when no PDFs
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF3D2564).copy(alpha = 0.5f)
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            Color(0xFF6B4BA6).copy(alpha = 0.3f)
                         )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(text = "📄", fontSize = 40.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No PDFs opened yet",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Start reading to see your recent files",
+                                fontSize = 13.sp,
+                                color = Color(0xFFB0B0C0),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
+// Helper composable for stat items in the overview card
 @Composable
-fun RecentNoteCard(note: Note) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = note.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                SuggestionChip(
-                    onClick = { },
-                    label = {
-                        Text(
-                            text = note.fileType,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = formatDate(note.createdAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = note.summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            if (note.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row {
-                    note.tags.take(3).forEach { tag ->
-                        AssistChip(
-                            onClick = { },
-                            label = {
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            },
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FeatureItem(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+private fun StatItem(
+    icon: ImageVector?,
+    value: String,
+    label: String,
+    iconTint: Color
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = value,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = Color.Gray
         )
     }
 }
 
-private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+// Enhanced TaskCard with dark theme and website colors
+@Composable
+private fun EnhancedTaskCard(
+    task: DailyTask,
+    onToggleCompleted: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Animate card alpha and elevation based on completion
+    val alpha by animateFloatAsState(
+        targetValue = if (task.isCompleted) 0.6f else 1f,
+        animationSpec = tween(300),
+        label = "alpha"
+    )
+
+    val elevation by animateFloatAsState(
+        targetValue = if (task.isCompleted) 1f else 4f,
+        animationSpec = tween(300),
+        label = "elevation"
+    )
+
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Card(
+            modifier = modifier.alpha(alpha),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF2D1B4E).copy(alpha = 0.7f)
+            ),
+            border = BorderStroke(1.dp, Color(0xFF9333EA).copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Icon container with dark purple background
+                    Card(
+                        modifier = Modifier.size(60.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF3D2B5E)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = task.icon,
+                                contentDescription = null,
+                                tint = Color(0xFF9333EA),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Title / description / xp
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = task.title,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = task.description,
+                            fontSize = 14.sp,
+                            color = Color(0xFFB0B0C0),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // XP Badge with gold theme
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFBBF24).copy(alpha = 0.2f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFBBF24),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "+${task.xpReward} XP",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFFBBF24)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Animated check icon with purple theme
+                    val scale by animateFloatAsState(
+                        targetValue = if (task.isCompleted) 1.1f else 1f,
+                        animationSpec = tween(200),
+                        label = "scale"
+                    )
+
+                    val iconColor by animateColorAsState(
+                        targetValue = if (task.isCompleted)
+                            Color(0xFF9333EA)
+                        else
+                            Color(0xFF9333EA).copy(alpha = 0.5f),
+                        animationSpec = tween(300),
+                        label = "color"
+                    )
+
+                    IconButton(
+                        onClick = { onToggleCompleted(!task.isCompleted) },
+                        modifier = Modifier.scale(scale)
+                    ) {
+                        Icon(
+                            imageVector = if (task.isCompleted)
+                                Icons.Default.CheckCircle
+                            else
+                                Icons.Default.RadioButtonUnchecked,
+                            contentDescription = if (task.isCompleted) "Completed" else "Not completed",
+                            tint = iconColor,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
-@Preview(showBackground = true)
+// Quick Action Button with dark theme and glassmorphism effect
 @Composable
-fun HomeScreenPreview() {
-    StudySageTheme {
-        HomeScreen()
+private fun QuickActionButton(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    label: String,
+    backgroundColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.height(100.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor.copy(alpha = 0.3f)
+        ),
+        border = BorderStroke(1.dp, backgroundColor.copy(alpha = 0.5f)),
+        onClick = onClick,
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF2D1B4E).copy(alpha = 0.6f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = backgroundColor,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = label,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Recent PDF Card composable
+@Composable
+fun RecentPdfCard(
+    pdfName: String,
+    subject: String,
+    progress: Float,
+    pageCount: Int,
+    lastPage: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier
+            .width(220.dp)
+            .height(120.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF3D2564)
+        ),
+        border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side - PDF icon with gradient background
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF9333EA),
+                                Color(0xFF7C3AED)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PictureAsPdf,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Right side - Content
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Top section - Title and subject
+                Column {
+                    Text(
+                        text = pdfName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = subject,
+                        fontSize = 14.sp,
+                        color = Color(0xFFB0B0C0),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Bottom section - Progress and info
+                Column {
+                    // Progress info
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = null,
+                            tint = Color(0xFFB0B0C0),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Page $lastPage of $pageCount",
+                            fontSize = 12.sp,
+                            color = Color(0xFFB0B0C0)
+                        )
+                    }
+
+                    // Progress bar
+                    LinearProgressIndicator(
+                        progress = progress,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = Color(0xFF9333EA),
+                        trackColor = Color(0xFF2D1B4E)
+                    )
+                }
+            }
+        }
     }
 }

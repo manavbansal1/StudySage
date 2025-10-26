@@ -1,13 +1,20 @@
 package com.group_7.studysage.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -56,13 +63,31 @@ fun StudySageNavigation(
                 // Only show bottom navigation if we're not on a detail screen
                 if (!isDetailScreen) {
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp),
+                        containerColor = Color(0xFF2D1B4E).copy(alpha = 0.75f),  // Frosted glass effect
+                        contentColor = Color.White,
+                        tonalElevation = 0.dp
                     ) {
                         screens.forEach { screen ->
                             NavigationBarItem(
-                                icon = { screen.icon?.let { Icon(it, screen.title) } },
-                                label = { Text(screen.title) },
+                                icon = {
+                                    screen.icon?.let {
+                                        Icon(
+                                            it,
+                                            screen.title,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        screen.title,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                },
                                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                                 onClick = {
                                     navController.navigate(screen.route) {
@@ -72,11 +97,11 @@ fun StudySageNavigation(
                                     }
                                 },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    selectedIconColor = Color.White,  // White icon when selected
+                                    selectedTextColor = Color.White,  // White text when selected
+                                    unselectedIconColor = Color(0xFFB0B0C0),  // Gray when unselected
+                                    unselectedTextColor = Color(0xFFB0B0C0),  // Gray when unselected
+                                    indicatorColor = Color(0xFF9333EA).copy(alpha = 0.3f)  // Purple glow background
                                 )
                             )
                         }
@@ -91,7 +116,7 @@ fun StudySageNavigation(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable(Screen.Home.route) {
-                    HomeScreen()
+                    HomeScreen(navController = navController)
                 }
 
                 composable(Screen.Notes.route) {
@@ -107,7 +132,10 @@ fun StudySageNavigation(
                 }
 
                 composable(Screen.Profile.route) {
-                    ProfileScreen(authRepository = authRepository)
+                    ProfileScreen(
+                        authRepository = authRepository,
+                        navController = navController
+                    )
                 }
 
                 // Group Chat Screen with groupId parameter
