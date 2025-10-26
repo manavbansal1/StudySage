@@ -1,16 +1,28 @@
 package com.group_7.studysage.navigation
 
-import com.group_7.studysage.ui.screens.CoursesScreen
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -25,7 +37,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.group_7.studysage.data.repository.AuthRepository
-import com.group_7.studysage.ui.screens.*
+import com.group_7.studysage.ui.screens.CoursesScreen
+import com.group_7.studysage.ui.screens.GroupChatScreen
+import com.group_7.studysage.ui.screens.GroupScreen
+import com.group_7.studysage.ui.screens.HomeScreen
+import com.group_7.studysage.ui.screens.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.ui.viewmodels.AuthViewModel
@@ -60,36 +76,49 @@ fun StudySageNavigation(
         val isDetailScreen = currentDestination?.route?.startsWith("group_chat/") == true
 
         Scaffold(
+            containerColor = Color.Transparent,
             bottomBar = {
                 // Only show bottom navigation if we're not on a detail screen
                 if (!isDetailScreen) {
-                    NavigationBar(
+
+                    // Find the currently selected index
+                    val selectedIndex = screens.indexOfFirst { screen ->
+                        currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    }
+
+                    TabRow(
+                        selectedTabIndex = selectedIndex,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        containerColor = Color(0xFF2D1B4E).copy(alpha = 0.75f),  // Frosted glass effect
+                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                            .height(72.dp)
+                            .clip(RoundedCornerShape(36.dp)),
+                        containerColor = Color(0xFF2D1B4E).copy(alpha = 0.75f),
                         contentColor = Color.White,
-                        tonalElevation = 0.dp
-                    ) {
-                        screens.forEach { screen ->
-                            NavigationBarItem(
-                                icon = {
-                                    screen.icon?.let {
-                                        Icon(
-                                            it,
-                                            screen.title,
-                                            modifier = Modifier.size(26.dp)
+                        divider = {},
+
+                        // --- CHANGES ARE HERE ---
+                        indicator = { tabPositions ->
+                            if (selectedIndex >= 0 && selectedIndex < tabPositions.size) {
+                                Box(
+                                    modifier = Modifier
+                                        .tabIndicatorOffset(tabPositions[selectedIndex])
+                                        .fillMaxHeight()
+                                        // 1. Reduced padding to make pill bigger
+                                        .padding(vertical = 6.dp, horizontal = 4.dp)
+                                        .background(
+                                            color = Color.White.copy(alpha = 0.2f),
+                                            // 2. Adjusted radius to match new padding
+                                            shape = RoundedCornerShape(30.dp)
                                         )
-                                    }
-                                },
-                                label = {
-                                    Text(
-                                        screen.title,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                },
-                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                )
+                            }
+                        }
+                        // --- END OF CHANGES ---
+
+                    ) {
+                        screens.forEachIndexed { index, screen ->
+                            Tab(
+                                selected = (selectedIndex == index),
                                 onClick = {
                                     navController.navigate(screen.route) {
                                         popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -97,13 +126,26 @@ fun StudySageNavigation(
                                         restoreState = true
                                     }
                                 },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,  // White icon when selected
-                                    selectedTextColor = Color.White,  // White text when selected
-                                    unselectedIconColor = Color(0xFFB0B0C0),  // Gray when unselected
-                                    unselectedTextColor = Color(0xFFB0B0C0),  // Gray when unselected
-                                    indicatorColor = Color(0xFF9333EA).copy(alpha = 0.3f)  // Purple glow background
-                                )
+                                icon = {
+                                    screen.icon?.let {
+                                        Icon(
+                                            it,
+                                            screen.title,
+                                            // 3. Made icon smaller
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                },
+                                text = {
+                                    Text(
+                                        screen.title,
+                                        // 4. Made text smaller
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                },
+                                selectedContentColor = Color.White,
+                                unselectedContentColor = Color(0xFFB0B0C0)
                             )
                         }
                     }
@@ -159,6 +201,7 @@ fun StudySageNavigation(
             }
         }
     } else {
+        // Auth screens (Sign In / Sign Up)
         NavHost(
             navController = navController,
             startDestination = Screen.SignIn.route,
