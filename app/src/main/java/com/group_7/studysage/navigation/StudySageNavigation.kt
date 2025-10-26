@@ -45,6 +45,10 @@ import com.group_7.studysage.ui.screens.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.ui.viewmodels.AuthViewModel
+import com.group_7.studysage.ui.theme.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.isSystemInDarkTheme
+
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object SignIn : Screen("sign_in", "Sign In")
@@ -76,7 +80,8 @@ fun StudySageNavigation(
         val isDetailScreen = currentDestination?.route?.startsWith("group_chat/") == true
 
         Scaffold(
-            containerColor = Color.Transparent,
+            // This now correctly gets the new background from your theme
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
                 // Only show bottom navigation if we're not on a detail screen
                 if (!isDetailScreen) {
@@ -86,35 +91,37 @@ fun StudySageNavigation(
                         currentDestination?.hierarchy?.any { it.route == screen.route } == true
                     }
 
+                    // --- APPLY THE NEW THEME ---
+                    // Check if the app is in dark mode to pick the right nav colors
+                    val isDark = isSystemInDarkTheme()
+                    val navContainerColor = if (isDark) DarkNavContainer else LightNavContainer
+                    val navIndicatorColor = if (isDark) DarkNavIndicator else LightNavIndicator
+                    val navSelectedColor = if (isDark) DarkNavSelected else LightNavSelected
+                    val navUnselectedColor = if (isDark) DarkNavUnselected else LightNavUnselected
+
                     TabRow(
                         selectedTabIndex = selectedIndex,
                         modifier = Modifier
                             .padding(horizontal = 24.dp, vertical = 16.dp)
                             .height(72.dp)
                             .clip(RoundedCornerShape(36.dp)),
-                        containerColor = Color(0xFF2D1B4E).copy(alpha = 0.75f),
-                        contentColor = Color.White,
+                        containerColor = navContainerColor, // Use themed color
+                        contentColor = navSelectedColor,  // Use themed color
                         divider = {},
-
-                        // --- CHANGES ARE HERE ---
                         indicator = { tabPositions ->
                             if (selectedIndex >= 0 && selectedIndex < tabPositions.size) {
                                 Box(
                                     modifier = Modifier
                                         .tabIndicatorOffset(tabPositions[selectedIndex])
                                         .fillMaxHeight()
-                                        // 1. Reduced padding to make pill bigger
                                         .padding(vertical = 6.dp, horizontal = 4.dp)
                                         .background(
-                                            color = Color.White.copy(alpha = 0.2f),
-                                            // 2. Adjusted radius to match new padding
+                                            color = navIndicatorColor, // Use themed color
                                             shape = RoundedCornerShape(30.dp)
                                         )
                                 )
                             }
                         }
-                        // --- END OF CHANGES ---
-
                     ) {
                         screens.forEachIndexed { index, screen ->
                             Tab(
@@ -131,7 +138,6 @@ fun StudySageNavigation(
                                         Icon(
                                             it,
                                             screen.title,
-                                            // 3. Made icon smaller
                                             modifier = Modifier.size(22.dp)
                                         )
                                     }
@@ -139,13 +145,12 @@ fun StudySageNavigation(
                                 text = {
                                     Text(
                                         screen.title,
-                                        // 4. Made text smaller
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium
                                     )
                                 },
-                                selectedContentColor = Color.White,
-                                unselectedContentColor = Color(0xFFB0B0C0)
+                                selectedContentColor = navSelectedColor,   // Use themed color
+                                unselectedContentColor = navUnselectedColor // Use themed color
                             )
                         }
                     }
@@ -156,7 +161,7 @@ fun StudySageNavigation(
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier
             ) {
                 composable(Screen.Home.route) {
                     HomeScreen(navController = navController)
