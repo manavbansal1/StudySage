@@ -78,9 +78,6 @@ fun CoursesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by remember { mutableStateOf(false) }
-    // --- REMOVED SnackbarHostState ---
-
-    // --- REMOVED LaunchedEffect for Snackbar ---
 
     if (uiState.selectedCourse != null) {
         CourseDetailScreen(
@@ -90,12 +87,12 @@ fun CoursesScreen(
     } else {
         Scaffold(
             containerColor = Color.Transparent, // Let the theme background show
-            // --- REMOVED snackbarHost ---
         ) { paddingValues ->
 
             // The entire screen is a scrolling grid
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                // --- FIX 1 ---
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = paddingValues, // Apply insets
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -104,7 +101,8 @@ fun CoursesScreen(
                     .padding(horizontal = 16.dp) // Page horizontal padding
             ) {
                 // 1. HEADER
-                item(span = { GridItemSpan(2) }) {
+                // --- FIX 2 ---
+                item(span = { GridItemSpan(this.maxLineSpan) }) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -129,7 +127,8 @@ fun CoursesScreen(
                 }
 
                 // 2. FILTER SECTION
-                item(span = { GridItemSpan(2) }) {
+                // --- FIX 3 ---
+                item(span = { GridItemSpan(this.maxLineSpan) }) {
                     FilterSection(
                         selectedSemester = uiState.selectedSemester,
                         selectedYear = uiState.selectedYear,
@@ -140,7 +139,8 @@ fun CoursesScreen(
                 }
 
                 // 3. COURSES HEADER
-                item(span = { GridItemSpan(2) }) {
+                // --- FIX 4 ---
+                item(span = { GridItemSpan(this.maxLineSpan) }) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -164,7 +164,8 @@ fun CoursesScreen(
 
                 // 4. LOADING / EMPTY / CONTENT
                 if (uiState.isLoading) {
-                    item(span = { GridItemSpan(2) }) {
+                    // --- FIX 5 ---
+                    item(span = { GridItemSpan(this.maxLineSpan) }) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -175,7 +176,8 @@ fun CoursesScreen(
                         }
                     }
                 } else if (uiState.courses.isEmpty()) {
-                    item(span = { GridItemSpan(2) }) {
+                    // --- FIX 6 ---
+                    item(span = { GridItemSpan(this.maxLineSpan) }) {
                         EmptyCoursesState(
                             semester = uiState.selectedSemester,
                             year = uiState.selectedYear,
@@ -193,7 +195,8 @@ fun CoursesScreen(
                 }
 
                 // 6. SPACER FOR NAV BAR
-                item(span = { GridItemSpan(2) }) {
+                // --- FIX 7 ---
+                item(span = { GridItemSpan(this.maxLineSpan) }) {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }
