@@ -9,9 +9,11 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.State
 import com.group_7.studysage.data.repository.NotesRepository
 import com.group_7.studysage.data.repository.Note
+import com.group_7.studysage.data.repository.AuthRepository
 
 class HomeViewModel(
-    private val notesRepository: NotesRepository = NotesRepository()
+    private val notesRepository: NotesRepository = NotesRepository(),
+    private val authRepository: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
@@ -32,8 +34,47 @@ class HomeViewModel(
     private val _testResult = mutableStateOf<String?>(null)
     val testResult: State<String?> = _testResult
 
+    // Fetch user full name from Firebase Firestore
+    private val _userFullName = mutableStateOf("User")
+    val userFullName: State<String> = _userFullName
+
+    private val _userProfile = mutableStateOf<Map<String, Any>?>(null)
+    val userProfile: State<Map<String, Any>?> = _userProfile
+
+    private val _isLoadingProfile = mutableStateOf(true)
+    val isLoadingProfile: State<Boolean> = _isLoadingProfile
+
+    private val _recentlyOpenedPdfs = mutableStateOf<List<Map<String, Any>>>(emptyList())
+    val recentlyOpenedPdfs: State<List<Map<String, Any>>> = _recentlyOpenedPdfs
+
     init {
         loadRecentNotes()
+        loadUserProfile()
+        loadRecentlyOpenedPdfs()
+        initializeSampleData()
+    }
+
+    // Load user profile from Firestore
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            _isLoadingProfile.value = true
+            try {
+                val profile = authRepository.getUserProfile()
+                _userFullName.value = (profile?.get("name") as? String) ?: "User"
+                _userProfile.value = profile  // Store full profile data
+            } catch (e: Exception) {
+                _userFullName.value = "User"
+                _userProfile.value = null
+                _errorMessage.value = "Failed to load profile"
+            } finally {
+                _isLoadingProfile.value = false
+            }
+        }
+    }
+
+    // Public method to refresh user name
+    fun refreshUserProfile() {
+        loadUserProfile()
     }
 
     fun uploadAndProcessNote(context: Context, uri: Uri, fileName: String) {
@@ -53,8 +94,8 @@ class HomeViewModel(
                     return@launch
                 }
 
-                // Check file size (limit to 10MB)
-                val fileSize = context.contentResolver.openInputStream(uri)?.available() ?: 0
+                // Check file size (limit to 10MB). Use `use` so the InputStream is closed after reading.
+                val fileSize = context.contentResolver.openInputStream(uri)?.use { it.available() } ?: 0
                 if (fileSize > 10 * 1024 * 1024) { // 10MB limit
                     _errorMessage.value = "File too large. Please upload files smaller than 10MB."
                     _isLoading.value = false
@@ -107,6 +148,32 @@ class HomeViewModel(
                 _errorMessage.value = "Failed to load recent notes"
             }
         }
+    }
+
+    private fun loadRecentlyOpenedPdfs() {
+        viewModelScope.launch {
+            try {
+                val pdfs = authRepository.getRecentlyOpenedPdfs()
+                _recentlyOpenedPdfs.value = pdfs
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to load recently opened PDFs"
+            }
+        }
+    }
+
+    private fun initializeSampleData() {
+        viewModelScope.launch {
+            // Only initialize sample PDFs if no PDFs exist
+            if (authRepository.getRecentlyOpenedPdfs().isEmpty()) {
+                authRepository.initializeSamplePdfs()
+                loadRecentlyOpenedPdfs()
+            }
+        }
+    }
+
+    fun openPdf(pdfUrl: String) {
+        // TODO: Navigate to PDF viewer
+        // navController.navigate("pdf_viewer/$pdfUrl")
     }
 
     fun refreshNotes() {

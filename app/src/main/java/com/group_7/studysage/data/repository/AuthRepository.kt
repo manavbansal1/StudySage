@@ -30,6 +30,7 @@ class AuthRepository(
                 "level" to 1,
                 "xpPoints" to 0,
                 "streakDays" to 0,
+                "recentlyOpenedPdfs" to listOf<Map<String, Any>>(), // List of recently opened PDFs
                 "quizStats" to mapOf(
                     "totalQuizzes" to 0,
                     "averageScore" to 0.0,
@@ -265,6 +266,161 @@ class AuthRepository(
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    // ==================== PDF MANAGEMENT ====================
+
+    /**
+     * Add a recently opened PDF to user's profile
+     * Maintains a list of last 5 PDFs with most recent first
+     */
+    suspend fun addRecentlyOpenedPdf(
+        pdfName: String,
+        pdfUrl: String,
+        subject: String,
+        pageCount: Int,
+        lastPage: Int = 0
+    ): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+
+            // Get existing PDFs list
+            val recentPdfs = (profile?.get("recentlyOpenedPdfs") as? List<Map<String, Any>>) ?: emptyList()
+
+            // Create new PDF entry
+            val pdfEntry = mapOf(
+                "pdfName" to pdfName,
+                "pdfUrl" to pdfUrl,
+                "subject" to subject,
+                "pageCount" to pageCount,
+                "lastPage" to lastPage,
+                "openedAt" to System.currentTimeMillis(),
+                "progress" to (lastPage.toFloat() / pageCount.toFloat())
+            )
+
+            // Remove if already exists (to update timestamp)
+            val filteredPdfs = recentPdfs.filter { it["pdfUrl"] != pdfUrl }
+
+            // Add new entry at start and keep only last 5
+            val updatedPdfs = listOf(pdfEntry) + filteredPdfs.take(4)
+
+            firestore.collection("users").document(userId)
+                .update("recentlyOpenedPdfs", updatedPdfs)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get recently opened PDFs
+     */
+    suspend fun getRecentlyOpenedPdfs(): List<Map<String, Any>> {
+        return try {
+            val profile = getUserProfile()
+            (profile?.get("recentlyOpenedPdfs") as? List<Map<String, Any>>) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Update PDF progress (last page read)
+     */
+    suspend fun updatePdfProgress(pdfUrl: String, lastPage: Int, pageCount: Int): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+            val recentPdfs = (profile?.get("recentlyOpenedPdfs") as? List<Map<String, Any>>) ?: emptyList()
+
+            val updatedPdfs = recentPdfs.map { pdf ->
+                if (pdf["pdfUrl"] == pdfUrl) {
+                    pdf.toMutableMap().apply {
+                        put("lastPage", lastPage)
+                        put("progress", lastPage.toFloat() / pageCount.toFloat())
+                        put("openedAt", System.currentTimeMillis())
+                    }
+                } else {
+                    pdf
+                }
+            }
+
+            firestore.collection("users").document(userId)
+                .update("recentlyOpenedPdfs", updatedPdfs)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Initialize user profile with sample PDFs (for testing)
+     */
+    suspend fun initializeSamplePdfs(): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+
+            val samplePdfs = listOf(
+                mapOf(
+                    "pdfName" to "Introduction to Biology",
+                    "pdfUrl" to "https://example.com/biology_intro.pdf",
+                    "subject" to "Biology",
+                    "pageCount" to 45,
+                    "lastPage" to 28,
+                    "openedAt" to System.currentTimeMillis() - 3600000, // 1 hour ago
+                    "progress" to 0.62f
+                ),
+                mapOf(
+                    "pdfName" to "Calculus Fundamentals",
+                    "pdfUrl" to "https://example.com/calculus_basics.pdf",
+                    "subject" to "Mathematics",
+                    "pageCount" to 120,
+                    "lastPage" to 45,
+                    "openedAt" to System.currentTimeMillis() - 7200000, // 2 hours ago
+                    "progress" to 0.38f
+                ),
+                mapOf(
+                    "pdfName" to "World History Notes",
+                    "pdfUrl" to "https://example.com/history_notes.pdf",
+                    "subject" to "History",
+                    "pageCount" to 80,
+                    "lastPage" to 80,
+                    "openedAt" to System.currentTimeMillis() - 86400000, // 1 day ago
+                    "progress" to 1.0f
+                ),
+                mapOf(
+                    "pdfName" to "Chemistry Lab Manual",
+                    "pdfUrl" to "https://example.com/chem_lab.pdf",
+                    "subject" to "Chemistry",
+                    "pageCount" to 60,
+                    "lastPage" to 15,
+                    "openedAt" to System.currentTimeMillis() - 172800000, // 2 days ago
+                    "progress" to 0.25f
+                ),
+                mapOf(
+                    "pdfName" to "Physics Problem Sets",
+                    "pdfUrl" to "https://example.com/physics_problems.pdf",
+                    "subject" to "Physics",
+                    "pageCount" to 95,
+                    "lastPage" to 10,
+                    "openedAt" to System.currentTimeMillis() - 259200000, // 3 days ago
+                    "progress" to 0.11f
+                )
+            )
+
+            firestore.collection("users").document(userId)
+                .update("recentlyOpenedPdfs", samplePdfs)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }
