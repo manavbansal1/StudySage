@@ -29,6 +29,7 @@ import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.Semester
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.ui.screens.viewmodels.CourseViewModel
+import androidx.compose.runtime.saveable.rememberSaveable
 
 /**
  * A consistent "glass" card style for the entire app.
@@ -77,7 +78,7 @@ fun CoursesScreen(
     viewModel: CourseViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showAddCourseDialog by remember { mutableStateOf(false) }
+    var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
 
     if (uiState.selectedCourse != null) {
         CourseDetailScreen(
