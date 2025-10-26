@@ -1,6 +1,8 @@
 package com.group_7.studysage.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -55,10 +57,27 @@ fun AddCourseDialog(
         return !titleError && !codeError && !instructorError && !creditsError
     }
 
+    // Define glassy text field colors
+    val glassTextFieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+        unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+        disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+        errorTextColor = MaterialTheme.colorScheme.onErrorContainer,
+        errorLabelColor = MaterialTheme.colorScheme.error,
+        errorSupportingTextColor = MaterialTheme.colorScheme.error
+    )
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+            shadowElevation = 8.dp, // <-- FIXED
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -76,11 +95,11 @@ fun AddCourseDialog(
                 )
 
                 // Course Title (Required)
-                OutlinedTextField(
+                TextField(
                     value = title,
                     onValueChange = {
                         title = it
-                        titleError = false // Clear error when user types
+                        titleError = false
                     },
                     label = { Text("Course Title *") },
                     placeholder = { Text("e.g., Introduction to Computer Science") },
@@ -88,18 +107,20 @@ fun AddCourseDialog(
                     singleLine = true,
                     isError = titleError,
                     supportingText = if (titleError) {
-                        { Text("Course title is required", color = MaterialTheme.colorScheme.error) }
-                    } else null
+                        { Text("Course title is required") } // Color is set by colors property
+                    } else null,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = glassTextFieldColors
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Course Code (Required)
-                OutlinedTextField(
+                TextField(
                     value = code,
                     onValueChange = {
                         code = it.uppercase()
-                        codeError = false // Clear error when user types
+                        codeError = false
                     },
                     label = { Text("Course Code *") },
                     placeholder = { Text("e.g., CS101") },
@@ -107,18 +128,20 @@ fun AddCourseDialog(
                     singleLine = true,
                     isError = codeError,
                     supportingText = if (codeError) {
-                        { Text("Course code is required", color = MaterialTheme.colorScheme.error) }
-                    } else null
+                        { Text("Course code is required") }
+                    } else null,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = glassTextFieldColors
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Instructor (Required)
-                OutlinedTextField(
+                TextField(
                     value = instructor,
                     onValueChange = {
                         instructor = it
-                        instructorError = false // Clear error when user types
+                        instructorError = false
                     },
                     label = { Text("Instructor *") },
                     placeholder = { Text("e.g., Dr. Smith") },
@@ -126,19 +149,21 @@ fun AddCourseDialog(
                     singleLine = true,
                     isError = instructorError,
                     supportingText = if (instructorError) {
-                        { Text("Instructor name is required", color = MaterialTheme.colorScheme.error) }
-                    } else null
+                        { Text("Instructor name is required") }
+                    } else null,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = glassTextFieldColors
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Credits (Required)
-                OutlinedTextField(
+                TextField(
                     value = credits,
                     onValueChange = { newValue ->
                         if (newValue.isEmpty() || (newValue.toIntOrNull() != null && newValue.toInt() >= 0)) {
                             credits = newValue
-                            creditsError = false // Clear error when user types valid input
+                            creditsError = false
                         }
                     },
                     label = { Text("Credits *") },
@@ -148,21 +173,25 @@ fun AddCourseDialog(
                     singleLine = true,
                     isError = creditsError,
                     supportingText = if (creditsError) {
-                        { Text("Valid credit amount is required", color = MaterialTheme.colorScheme.error) }
-                    } else null
+                        { Text("Valid credit amount is required") }
+                    } else null,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = glassTextFieldColors
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Description (Optional)
-                OutlinedTextField(
+                TextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Description (Optional)") },
                     placeholder = { Text("Brief description of the course") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
-                    maxLines = 5
+                    maxLines = 5,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = glassTextFieldColors
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -172,20 +201,24 @@ fun AddCourseDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedTextField(
+                    TextField(
                         value = semester,
                         onValueChange = { },
                         label = { Text("Semester") },
                         enabled = false,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors
                     )
 
-                    OutlinedTextField(
+                    TextField(
                         value = year,
                         onValueChange = { },
                         label = { Text("Year") },
                         enabled = false,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors
                     )
                 }
 
@@ -227,8 +260,11 @@ fun AddCourseDialog(
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        enabled = !isLoading
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp), // Set fixed height
+                        enabled = !isLoading,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
                         Text("Cancel")
                     }
@@ -241,7 +277,9 @@ fun AddCourseDialog(
                             }
                         },
                         enabled = !isLoading,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp), // Set fixed height
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -252,7 +290,7 @@ fun AddCourseDialog(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
-                            Text("Add Course")
+                            Text("Add") // <-- CHANGED
                         }
                     }
                 }
@@ -267,9 +305,17 @@ fun ColorOption(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val border = if (isSelected) {
+        BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface) // Use a visible border
+    } else {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)) // Subtle border
+    }
+
     Box(
         modifier = Modifier
             .size(40.dp)
+            .border(border, CircleShape) // Apply border
+            .padding(4.dp) // Padding inside the border
             .clip(CircleShape)
             .background(Color(android.graphics.Color.parseColor(color)))
             .clickable { onClick() },
@@ -279,7 +325,7 @@ fun ColorOption(
             Icon(
                 Icons.Default.Check,
                 contentDescription = "Selected",
-                tint = Color.White,
+                tint = Color.White, // White should be visible on all these strong colors
                 modifier = Modifier.size(20.dp)
             )
         }
