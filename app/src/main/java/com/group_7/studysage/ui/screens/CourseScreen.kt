@@ -3,8 +3,9 @@ package com.group_7.studysage.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,19 +55,22 @@ fun CoursesScreen(
         )
     } else {
         Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showAddCourseDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Add Course",
-                        tint = MaterialTheme.colorScheme.onPrimary
+            topBar = {
+                TopAppBar(
+                    title = { Text("My Courses") },
+                    actions = {
+                        IconButton(onClick = { showAddCourseDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Course")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                     )
-                }
-            }
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -74,26 +78,39 @@ fun CoursesScreen(
                     .padding(paddingValues)
                     .padding(16.dp)
             ) {
-                // Header
-                Text(
-                    text = "My Courses",
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                // Filters
+                // Filter Section
                 FilterSection(
                     selectedSemester = uiState.selectedSemester,
                     selectedYear = uiState.selectedYear,
                     availableYears = uiState.availableYears,
-                    onSemesterChange = viewModel::setSemesterFilter,
-                    onYearChange = viewModel::setYearFilter
+                    onSemesterChange = { viewModel.setSemesterFilter(it) },
+                    onYearChange = { viewModel.setYearFilter(it) }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Content
+                // Courses Header with count
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Courses",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${uiState.courses.size} courses",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Loading state
                 if (uiState.isLoading) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -108,11 +125,14 @@ fun CoursesScreen(
                         onAddCourse = { showAddCourseDialog = true }
                     )
                 } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    // Courses Grid (2 columns)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(uiState.courses) { course ->
-                            CourseCard(
+                            CourseGridCard(
                                 course = course,
                                 onClick = { viewModel.loadCourseWithNotes(course.id) }
                             )
@@ -147,78 +167,124 @@ fun FilterSection(
     onSemesterChange: (String) -> Unit,
     onYearChange: (String) -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        // Semester Filter
-        var semesterExpanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = semesterExpanded,
-            onExpandedChange = { semesterExpanded = !semesterExpanded },
-            modifier = Modifier.weight(1f)
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            OutlinedTextField(
-                value = selectedSemester,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("Semester") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = semesterExpanded)
-                },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
+            Text(
+                text = "Filter Courses",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            ExposedDropdownMenu(
-                expanded = semesterExpanded,
-                onDismissRequest = { semesterExpanded = false }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Semester.values().forEach { semester ->
-                    DropdownMenuItem(
-                        text = { Text(semester.displayName) },
-                        onClick = {
-                            onSemesterChange(semester.displayName)
-                            semesterExpanded = false
-                        }
+                // Semester Filter
+                var semesterExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = semesterExpanded,
+                    onExpandedChange = { semesterExpanded = !semesterExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedSemester,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Semester") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = semesterExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
                     )
+
+                    ExposedDropdownMenu(
+                        expanded = semesterExpanded,
+                        onDismissRequest = { semesterExpanded = false }
+                    ) {
+                        Semester.values().forEach { semester ->
+                            DropdownMenuItem(
+                                text = { Text(semester.displayName) },
+                                onClick = {
+                                    onSemesterChange(semester.displayName)
+                                    semesterExpanded = false
+                                },
+                                leadingIcon = {
+                                    if (selectedSemester == semester.displayName) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
-            }
-        }
 
-        // Year Filter
-        var yearExpanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = yearExpanded,
-            onExpandedChange = { yearExpanded = !yearExpanded },
-            modifier = Modifier.weight(1f)
-        ) {
-            OutlinedTextField(
-                value = selectedYear,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("Year") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
-                },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-
-            ExposedDropdownMenu(
-                expanded = yearExpanded,
-                onDismissRequest = { yearExpanded = false }
-            ) {
-                availableYears.forEach { year ->
-                    DropdownMenuItem(
-                        text = { Text(year) },
-                        onClick = {
-                            onYearChange(year)
-                            yearExpanded = false
-                        }
+                // Year Filter
+                var yearExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = yearExpanded,
+                    onExpandedChange = { yearExpanded = !yearExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = selectedYear,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Year") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
                     )
+
+                    ExposedDropdownMenu(
+                        expanded = yearExpanded,
+                        onDismissRequest = { yearExpanded = false }
+                    ) {
+                        availableYears.forEach { year ->
+                            DropdownMenuItem(
+                                text = { Text(year) },
+                                onClick = {
+                                    onYearChange(year)
+                                    yearExpanded = false
+                                },
+                                leadingIcon = {
+                                    if (selectedYear == year) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -226,80 +292,163 @@ fun FilterSection(
 }
 
 @Composable
-fun CourseCard(
+fun CourseGridCard(
     course: Course,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .aspectRatio(1f) // Perfect square cards
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Course color indicator
+            // Top Half - Image/Visual Section
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(android.graphics.Color.parseColor(course.color)))
+                    .fillMaxWidth()
+                    .weight(1f) // Takes up half the height
+                    .background(
+                        Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.15f),
+                        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                    )
             ) {
-                Text(
-                    text = course.code.take(2),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = course.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                // Background pattern or gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                colors = listOf(
+                                    Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.3f),
+                                    Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.1f)
+                                ),
+                                radius = 200f
+                            )
+                        )
                 )
 
-                Text(
-                    text = course.code,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (course.instructor.isNotBlank()) {
-                    Text(
-                        text = "Instructor: ${course.instructor}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // Course icon/image placeholder
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Surface(
+                        color = Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.2f),
+                        shape = CircleShape,
+                        modifier = Modifier.size(60.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                Icons.Default.School,
+                                contentDescription = "Course Icon",
+                                tint = Color(android.graphics.Color.parseColor(course.color)),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
                 }
 
+                // Credits badge in top-right corner
                 if (course.credits > 0) {
-                    Text(
-                        text = "${course.credits} credits",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = "${course.credits} CR",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = "View Course",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Bottom Half - Course Information
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f) // Takes up the other half
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Main course info
+                Column {
+                    // Course code
+                    Text(
+                        text = course.code,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(android.graphics.Color.parseColor(course.color)),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Course title
+                    Text(
+                        text = course.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = MaterialTheme.typography.titleSmall.lineHeight
+                    )
+
+                    // Instructor (if available)
+                    if (course.instructor.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Instructor",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = course.instructor,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                // Action indicator at bottom
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Icon(
+                        Icons.Default.ArrowForward,
+                        contentDescription = "View Course",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
     }
 }
