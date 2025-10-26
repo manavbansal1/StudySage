@@ -125,7 +125,7 @@ fun StudySageNavigation(
                                         modifier = Modifier
                                             .tabIndicatorOffset(tabPositions[selectedIndex])
                                             .fillMaxHeight()
-                                            .padding(vertical = 6.dp, horizontal = 7.dp)
+                                            .padding(vertical = 6.dp, horizontal = 5.dp)
                                             .background(
                                                 color = navIndicatorColor, // Use themed color
                                                 shape = RoundedCornerShape(30.dp)
