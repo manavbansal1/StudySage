@@ -1,10 +1,12 @@
 package com.group_7.studysage.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,11 +23,53 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.Semester
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.ui.screens.viewmodels.CourseViewModel
+
+/**
+ * A consistent "glass" card style for the entire app.
+ */
+@Composable
+private fun GlassCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val cardColors = CardDefaults.cardColors(
+        // The base "glass" color
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+    )
+    val border = BorderStroke(
+        1.dp,
+        // A subtle border to catch the light
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    )
+
+    if (onClick != null) {
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(20.dp),
+            colors = cardColors,
+            border = border,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // No shadow
+            onClick = onClick,
+            content = { content() }
+        )
+    } else {
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(20.dp),
+            colors = cardColors,
+            border = border,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // No shadow
+            content = { content() }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,19 +78,9 @@ fun CoursesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    // --- REMOVED SnackbarHostState ---
 
-    // Show messages
-    LaunchedEffect(uiState.message, uiState.error) {
-        uiState.message?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            viewModel.clearMessage()
-        }
-        uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(error)
-            viewModel.clearMessage()
-        }
-    }
+    // --- REMOVED LaunchedEffect for Snackbar ---
 
     if (uiState.selectedCourse != null) {
         CourseDetailScreen(
@@ -55,89 +89,112 @@ fun CoursesScreen(
         )
     } else {
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("My Courses") },
-                    actions = {
-                        IconButton(onClick = { showAddCourseDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Course")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            },
-            snackbarHost = { SnackbarHost(snackbarHostState) }
+            containerColor = Color.Transparent, // Let the theme background show
+            // --- REMOVED snackbarHost ---
         ) { paddingValues ->
-            Column(
+
+            // The entire screen is a scrolling grid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = paddingValues, // Apply insets
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp) // Page horizontal padding
             ) {
-                // Filter Section
-                FilterSection(
-                    selectedSemester = uiState.selectedSemester,
-                    selectedYear = uiState.selectedYear,
-                    availableYears = uiState.availableYears,
-                    onSemesterChange = { viewModel.setSemesterFilter(it) },
-                    onYearChange = { viewModel.setYearFilter(it) }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Courses Header with count
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Courses",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${uiState.courses.size} courses",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Loading state
-                if (uiState.isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                // 1. HEADER
+                item(span = { GridItemSpan(2) }) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CircularProgressIndicator()
-                    }
-                } else if (uiState.courses.isEmpty()) {
-                    EmptyCoursesState(
-                        semester = uiState.selectedSemester,
-                        year = uiState.selectedYear,
-                        onAddCourse = { showAddCourseDialog = true }
-                    )
-                } else {
-                    // Courses Grid (2 columns)
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.courses) { course ->
-                            CourseGridCard(
-                                course = course,
-                                onClick = { viewModel.loadCourseWithNotes(course.id) }
+                        Text(
+                            text = "My Courses",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        IconButton(onClick = { showAddCourseDialog = true }) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Course",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
+                }
+
+                // 2. FILTER SECTION
+                item(span = { GridItemSpan(2) }) {
+                    FilterSection(
+                        selectedSemester = uiState.selectedSemester,
+                        selectedYear = uiState.selectedYear,
+                        availableYears = uiState.availableYears,
+                        onSemesterChange = { viewModel.setSemesterFilter(it) },
+                        onYearChange = { viewModel.setYearFilter(it) }
+                    )
+                }
+
+                // 3. COURSES HEADER
+                item(span = { GridItemSpan(2) }) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp, bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Courses",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${uiState.courses.size} courses",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // 4. LOADING / EMPTY / CONTENT
+                if (uiState.isLoading) {
+                    item(span = { GridItemSpan(2) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else if (uiState.courses.isEmpty()) {
+                    item(span = { GridItemSpan(2) }) {
+                        EmptyCoursesState(
+                            semester = uiState.selectedSemester,
+                            year = uiState.selectedYear,
+                            onAddCourse = { showAddCourseDialog = true }
+                        )
+                    }
+                } else {
+                    // 5. COURSES GRID
+                    items(uiState.courses) { course ->
+                        CourseGridCard(
+                            course = course,
+                            onClick = { viewModel.loadCourseWithNotes(course.id) }
+                        )
+                    }
+                }
+
+                // 6. SPACER FOR NAV BAR
+                item(span = { GridItemSpan(2) }) {
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         }
@@ -156,6 +213,25 @@ fun CoursesScreen(
             }
         )
     }
+
+    // --- NEW: Confirmation Dialog ---
+    // Show error message if it exists
+    uiState.error?.let { errorMessage ->
+        ConfirmationOverlay(
+            message = errorMessage,
+            isError = true,
+            onDismiss = { viewModel.clearMessage() }
+        )
+    }
+
+    // Show success message if it exists
+    uiState.message?.let { successMessage ->
+        ConfirmationOverlay(
+            message = successMessage,
+            isError = false,
+            onDismiss = { viewModel.clearMessage() }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -167,20 +243,15 @@ fun FilterSection(
     onSemesterChange: (String) -> Unit,
     onYearChange: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
+    // Use the GlassCard style
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = "Filter Courses",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
@@ -189,6 +260,19 @@ fun FilterSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Re-styled "glassy" text field
+                val glassTextFieldColors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 // Semester Filter
                 var semesterExpanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
@@ -196,7 +280,7 @@ fun FilterSection(
                     onExpandedChange = { semesterExpanded = !semesterExpanded },
                     modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
+                    TextField(
                         value = selectedSemester,
                         onValueChange = { },
                         readOnly = true,
@@ -207,10 +291,8 @@ fun FilterSection(
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors
                     )
 
                     ExposedDropdownMenu(
@@ -245,7 +327,7 @@ fun FilterSection(
                     onExpandedChange = { yearExpanded = !yearExpanded },
                     modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
+                    TextField(
                         value = selectedYear,
                         onValueChange = { },
                         readOnly = true,
@@ -256,10 +338,8 @@ fun FilterSection(
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
+                        shape = RoundedCornerShape(12.dp),
+                        colors = glassTextFieldColors
                     )
 
                     ExposedDropdownMenu(
@@ -296,52 +376,41 @@ fun CourseGridCard(
     course: Course,
     onClick: () -> Unit
 ) {
-    Card(
+    // Attempt to parse the user's color, fall back to primary if invalid
+    val tintColor = try {
+        Color(android.graphics.Color.parseColor(course.color))
+    } catch (e: Exception) {
+        MaterialTheme.colorScheme.primary
+    }
+
+    GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f) // Perfect square cards
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .aspectRatio(1f), // Perfect square cards
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top Half - Image/Visual Section
+            // Top Half - Visual Section
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f) // Takes up half the height
                     .background(
-                        Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.15f),
-                        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                        // Consistent, theme-aware background
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                     )
             ) {
-                // Background pattern or gradient
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                colors = listOf(
-                                    Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.3f),
-                                    Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.1f)
-                                ),
-                                radius = 200f
-                            )
-                        )
-                )
-
                 // Course icon/image placeholder
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Surface(
-                        color = Color(android.graphics.Color.parseColor(course.color)).copy(alpha = 0.2f),
+                        // Use the user's color with alpha
+                        color = tintColor.copy(alpha = 0.2f),
                         shape = CircleShape,
                         modifier = Modifier.size(60.dp)
                     ) {
@@ -352,7 +421,7 @@ fun CourseGridCard(
                             Icon(
                                 Icons.Default.School,
                                 contentDescription = "Course Icon",
-                                tint = Color(android.graphics.Color.parseColor(course.color)),
+                                tint = tintColor, // Use the user's color
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -362,7 +431,7 @@ fun CourseGridCard(
                 // Credits badge in top-right corner
                 if (course.credits > 0) {
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -371,7 +440,7 @@ fun CourseGridCard(
                         Text(
                             text = "${course.credits} CR",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
@@ -393,7 +462,7 @@ fun CourseGridCard(
                     Text(
                         text = course.code,
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color(android.graphics.Color.parseColor(course.color)),
+                        color = tintColor, // Use the user's color
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -459,47 +528,118 @@ fun EmptyCoursesState(
     year: String,
     onAddCourse: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    // This state can be simpler and inside a GlassCard for consistency
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp)
     ) {
-        Icon(
-            Icons.Default.School,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "No Courses Found",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "No courses for $semester $year. Add your first course to get started!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 32.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = onAddCourse,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Course")
+            Icon(
+                Icons.Default.School,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "No Courses Found",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "No courses for $semester $year. Add your first course to get started!",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onAddCourse,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.height(48.dp) // Ensure consistent height
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add") // <-- CHANGED
+            }
+        }
+    }
+}
+
+// --- NEW COMPOSABLE ---
+@Composable
+fun ConfirmationOverlay(
+    message: String,
+    isError: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        // Re-using the GlassCard from this file
+        GlassCard {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Icon
+                Icon(
+                    imageVector = if (isError) Icons.Default.Warning
+                    else Icons.Default.CheckCircle,
+                    contentDescription = "Status Icon",
+                    tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(56.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = if (isError) "An Error Occurred" else "Success",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Message
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Dismiss Button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("OK")
+                }
+            }
         }
     }
 }
