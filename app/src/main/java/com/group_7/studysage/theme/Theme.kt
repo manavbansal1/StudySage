@@ -7,55 +7,68 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Purple & White Color Palette
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// --- 1. DEFINE YOUR NEW PURPLE PALETTE ---
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// A strong, modern primary purple (Indigo-ish)
+val PurplePrimary = Color(0xFF6366F1)
+// A lighter, softer accent purple
+val PurpleAccent = Color(0xFFA5B4FC)
+// A very light purple, good for backgrounds or secondary elements
+val PurpleSoft = Color(0xFFEEF2FF)
 
-// StudySage Custom Colors
-val PurplePrimary = Color(0xFF8B5CF6)
-val PurplePrimaryDark = Color(0xFF7C3AED)
-val PurplePrimaryLight = Color(0xFFA78BFA)
-val PurpleSecondary = Color(0xFFDDD6FE)
-val PurpleAccent = Color(0xFFC4B5FD)
+// Dark theme colors
+val DarkBackground = Color(0xFF191820) // Very dark, slightly purple
+val DarkSurface = Color(0xFF23212E)   // Dark grey-purple for cards
+val TextOnDark = Color(0xFFF1F0F5)      // Off-white for text
 
-val BackgroundLight = Color(0xFFFEFBFF)
-val BackgroundSurface = Color(0xFFF8F7FF)
-val TextPrimary = Color(0xFF1F1937)
-val TextSecondary = Color(0xFF6B7280)
-val CardBackground = Color(0xFFFFFFFF)
+// Light theme colors
+val LightBackground = Color(0xFFFCFCFF) // Clean, almost white
+val LightSurface = Color(0xFFFFFFFF)    // Pure white for cards
+val TextOnLight = Color(0xFF1F1937)     // Dark purple-black for text
+
+// --- 2. DEFINE YOUR CUSTOM NAVBAR COLORS (matches the theme) ---
+
+// For Dark Mode
+val DarkNavContainer = Color(0xFF2C2A3A).copy(alpha = 0.8f) // Dark purple glass
+val DarkNavIndicator = Color(0xFF6366F1).copy(alpha = 0.4f) // Translucent primary glass
+val DarkNavSelected = Color.White
+val DarkNavUnselected = Color(0xFF9E9BAC)
+
+// For Light Mode
+val LightNavContainer = Color(0xFFFFFFFF).copy(alpha = 0.8f) // Light frosted glass
+val LightNavIndicator = Color(0xFF6366F1).copy(alpha = 0.15f) // Very subtle purple pill
+val LightNavSelected = Color(0xFF6366F1) // Solid primary purple
+val LightNavUnselected = Color(0xFF706D83) // Grey-purple
+
+// --- 3. CREATE THE APP'S COLOR SCHEMES ---
 
 private val DarkColorScheme = darkColorScheme(
     primary = PurplePrimary,
-    secondary = PurpleSecondary,
+    secondary = PurpleAccent,
     tertiary = PurpleAccent,
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
+    background = DarkBackground,
+    surface = DarkSurface,
     onPrimary = Color.White,
-    onSecondary = TextPrimary,
-    onTertiary = TextPrimary,
-    onBackground = Color.White,
-    onSurface = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = TextOnDark,
+    onSurface = TextOnDark,
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PurplePrimary,
-    onPrimary = Color.White,
-    secondary = PurpleSecondary,
-    onSecondary = TextPrimary,
+    secondary = PurpleAccent,
     tertiary = PurpleAccent,
-    onTertiary = TextPrimary,
-    background = BackgroundLight,
-    onBackground = TextPrimary,
-    surface = CardBackground,
-    onSurface = TextPrimary,
-    surfaceVariant = BackgroundSurface,
-    onSurfaceVariant = TextSecondary
+    background = LightBackground,
+    surface = LightSurface,
+    onPrimary = Color.White,
+    onSecondary = TextOnLight,
+    onTertiary = TextOnLight,
+    onBackground = TextOnLight,
+    onSurface = TextOnLight,
 )
+
+// --- 4. CREATE YOUR THEME COMPOSABLE ---
 
 @Composable
 fun StudySageTheme(
@@ -69,7 +82,7 @@ fun StudySageTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = Typography, // Assumes you have Typography.kt
         content = content
     )
 }
