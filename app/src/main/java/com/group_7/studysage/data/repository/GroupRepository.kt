@@ -5,6 +5,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 data class GroupMessage(
     val messageId: String = "",
@@ -115,9 +118,15 @@ class GroupRepository(
     }
 
     /**
-     * Add member to group
+     * Add member to group (now only updates group, doesn't touch user profile)
+     * User profile is updated when they accept the invite
      */
-    suspend fun addMemberToGroup(groupId: String, userId: String, userName: String, userProfilePic: String): Result<Unit> {
+    suspend fun addMemberToGroup(
+        groupId: String,
+        userId: String,
+        userName: String,
+        userProfilePic: String
+    ): Result<Unit> {
         return try {
             val newMember = mapOf(
                 "userId" to userId,
@@ -359,5 +368,60 @@ class GroupRepository(
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    /**
+     * Observe group profile with real-time updates
+     */
+    fun observeGroupProfile(groupId: String): Flow<Map<String, Any>?> = callbackFlow {
+        val listener = firestore.collection("groups")
+            .document(groupId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                trySend(snapshot?.data)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * Observe messages with real-time updates
+     */
+    fun observeMessages(groupId: String, limit: Int = 50): Flow<List<GroupMessage>> = callbackFlow {
+        val listener = firestore.collection("groups")
+            .document(groupId)
+            .collection("messages")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val messages = snapshot?.documents?.mapNotNull { doc ->
+                    try {
+                        GroupMessage(
+                            messageId = doc.getString("messageId") ?: "",
+                            senderId = doc.getString("senderId") ?: "",
+                            senderName = doc.getString("senderName") ?: "",
+                            senderProfilePic = doc.getString("senderProfilePic") ?: "",
+                            message = doc.getString("message") ?: "",
+                            timestamp = doc.getLong("timestamp") ?: 0L,
+                            images = (doc.get("images") as? List<String>) ?: emptyList()
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                } ?: emptyList()
+
+                trySend(messages)
+            }
+
+        awaitClose { listener.remove() }
     }
 }
