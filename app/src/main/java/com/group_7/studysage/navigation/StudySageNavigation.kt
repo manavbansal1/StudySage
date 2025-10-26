@@ -1,6 +1,9 @@
 package com.group_7.studysage.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -10,9 +13,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -20,7 +27,9 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -46,10 +55,9 @@ import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.ui.viewmodels.AuthViewModel
 import com.group_7.studysage.ui.theme.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.isSystemInDarkTheme
 
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object SignIn : Screen("sign_in", "Sign In")
     object SignUp : Screen("sign_up", "Sign Up")
@@ -57,11 +65,13 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Course : Screen("course", "Course", Icons.Filled.Book)
     object Groups : Screen("groups", "Groups", Icons.Filled.Groups)
     object Profile : Screen("profile", "Profile", Icons.Filled.AccountCircle)
+    object Games : Screen("games", "Games", Icons.Filled.Gamepad)
     object GroupChat : Screen("group_chat/{groupId}", "Group Chat") {
         fun createRoute(groupId: String) = "group_chat/$groupId"
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun StudySageNavigation(
     navController: NavHostController,
@@ -72,7 +82,7 @@ fun StudySageNavigation(
     val isUserSignedIn by authViewModel.isSignedIn
 
     if (isUserSignedIn) {
-        val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Profile)
+        val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
 
@@ -99,59 +109,64 @@ fun StudySageNavigation(
                     val navSelectedColor = if (isDark) DarkNavSelected else LightNavSelected
                     val navUnselectedColor = if (isDark) DarkNavUnselected else LightNavUnselected
 
-                    TabRow(
-                        selectedTabIndex = selectedIndex,
-                        modifier = Modifier
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
-                            .height(72.dp)
-                            .clip(RoundedCornerShape(36.dp)),
-                        containerColor = navContainerColor, // Use themed color
-                        contentColor = navSelectedColor,  // Use themed color
-                        divider = {},
-                        indicator = { tabPositions ->
-                            if (selectedIndex >= 0 && selectedIndex < tabPositions.size) {
-                                Box(
-                                    modifier = Modifier
-                                        .tabIndicatorOffset(tabPositions[selectedIndex])
-                                        .fillMaxHeight()
-                                        .padding(vertical = 6.dp, horizontal = 4.dp)
-                                        .background(
-                                            color = navIndicatorColor, // Use themed color
-                                            shape = RoundedCornerShape(30.dp)
+                    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+                        TabRow(
+                            selectedTabIndex = selectedIndex,
+                            modifier = Modifier
+                                .padding(horizontal = 24.dp, vertical = 16.dp)
+                                .height(72.dp)
+                                .clip(RoundedCornerShape(36.dp)),
+                            containerColor = navContainerColor, // Use themed color
+                            contentColor = navSelectedColor,  // Use themed color
+                            divider = {},
+                            indicator = { tabPositions ->
+                                if (selectedIndex >= 0 && selectedIndex < tabPositions.size) {
+                                    Box(
+                                        modifier = Modifier
+                                            .tabIndicatorOffset(tabPositions[selectedIndex])
+                                            .fillMaxHeight()
+                                            .padding(vertical = 6.dp, horizontal = 7.dp)
+                                            .background(
+                                                color = navIndicatorColor, // Use themed color
+                                                shape = RoundedCornerShape(30.dp)
+                                            )
+                                    )
+                                }
+                            }
+                        ) {
+                            screens.forEachIndexed { index, screen ->
+                                val interactionSource = remember { MutableInteractionSource() }
+                                Tab(
+                                    selected = (selectedIndex == index),
+                                    onClick = {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = {
+                                        screen.icon?.let {
+                                            Icon(
+                                                it,
+                                                screen.title,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    },
+                                    text = {
+                                        Text(
+                                            screen.title,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium
                                         )
+                                    },
+                                    selectedContentColor = navSelectedColor,   // Use themed color
+                                    unselectedContentColor = navUnselectedColor, // Use themed color
+                                    interactionSource = interactionSource,
+                                    modifier = Modifier.indication(interactionSource, null)
                                 )
                             }
-                        }
-                    ) {
-                        screens.forEachIndexed { index, screen ->
-                            Tab(
-                                selected = (selectedIndex == index),
-                                onClick = {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = {
-                                    screen.icon?.let {
-                                        Icon(
-                                            it,
-                                            screen.title,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                },
-                                text = {
-                                    Text(
-                                        screen.title,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                },
-                                selectedContentColor = navSelectedColor,   // Use themed color
-                                unselectedContentColor = navUnselectedColor // Use themed color
-                            )
                         }
                     }
                 }
@@ -184,6 +199,10 @@ fun StudySageNavigation(
                         authRepository = authRepository,
                         navController = navController
                     )
+                }
+
+                composable(Screen.Games.route) {
+
                 }
 
                 // Group Chat Screen with groupId parameter

@@ -48,15 +48,7 @@ fun GroupScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF2D1B4E),
-                        Color(0xFF3D2B5E),
-                        Color(0xFF2D1B4E)
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -69,7 +61,8 @@ fun GroupScreen(
             // Header Section
             GroupsHeader(
                 pendingInviteCount = pendingInviteCount,
-                onNotificationClick = { viewModel.toggleInviteOverlay() }
+                onNotificationClick = { viewModel.toggleInviteOverlay() },
+                onAddClick = { showCreateGroupDialog = true }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -87,7 +80,8 @@ fun GroupScreen(
                     } else {
                         GroupsList(
                             groups = state.groups,
-                            onGroupClick = onGroupClick
+                            onGroupClick = onGroupClick,
+                            viewModel = viewModel
                         )
                     }
                 }
@@ -109,8 +103,8 @@ fun GroupScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 90.dp, end = 16.dp),
-            containerColor = Color(0xFF9333EA),
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = RoundedCornerShape(16.dp),
             elevation = FloatingActionButtonDefaults.elevation(
                 defaultElevation = 8.dp,
@@ -155,6 +149,7 @@ fun GroupScreen(
 fun GroupsHeader(
     pendingInviteCount: Int,
     onNotificationClick: () -> Unit,
+    onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -169,47 +164,72 @@ fun GroupsHeader(
                 text = "Study Groups",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Collaborate and learn together",
                 fontSize = 14.sp,
-                color = Color(0xFFB0B0C0)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        // Notification bell with badge
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF3D2564))
+        // Action buttons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onNotificationClick
+            // Add button
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
             ) {
-                BadgedBox(
-                    badge = {
-                        if (pendingInviteCount > 0) {
-                            Badge(
-                                containerColor = Color(0xFFEF4444)
-                            ) {
-                                Text(
-                                    pendingInviteCount.toString(),
-                                    fontSize = 10.sp,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
+                IconButton(
+                    onClick = onAddClick
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = Color.White,
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Group",
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp)
                     )
+                }
+            }
+
+            // Notification bell with badge
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            ) {
+                IconButton(
+                    onClick = onNotificationClick
+                ) {
+                    BadgedBox(
+                        badge = {
+                            if (pendingInviteCount > 0) {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                ) {
+                                    Text(
+                                        pendingInviteCount.toString(),
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onError
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
@@ -220,8 +240,12 @@ fun GroupsHeader(
 fun GroupsList(
     groups: List<GroupItem>,
     onGroupClick: (String) -> Unit,
+    viewModel: GroupViewModel,
     modifier: Modifier = Modifier
 ) {
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val filteredGroups = viewModel.getFilteredGroups()
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -236,28 +260,97 @@ fun GroupsList(
                 text = "Your Groups",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Text(
                 text = "${groups.size} group${if (groups.size != 1) "s" else ""}",
                 fontSize = 13.sp,
-                color = Color(0xFFB0B0C0)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Group cards
-        groups.forEach { group ->
+        // Search bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { viewModel.setSearchQuery(it) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    "Search groups...",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Group cards - use filtered groups
+        filteredGroups.forEach { group ->
             GroupCard(
                 group = group,
                 onClick = { onGroupClick(group.groupId) }
             )
         }
+
+        // Show message if no results found
+        if (filteredGroups.isEmpty() && searchQuery.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SearchOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No groups found",
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupCard(
     group: GroupItem,
@@ -266,15 +359,19 @@ fun GroupCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF3D2564)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         ),
-        border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 2.dp
+        )
     ) {
         Row(
             modifier = Modifier
@@ -282,34 +379,29 @@ fun GroupCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Group Icon/Avatar
+            // Group Avatar
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(60.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF9333EA),
-                                Color(0xFF7C3AED)
-                            )
-                        )
-                    ),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (group.groupPic.isNotEmpty()) {
                     Image(
                         painter = rememberAsyncImagePainter(group.groupPic),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.Groups,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }
@@ -322,50 +414,76 @@ fun GroupCard(
             ) {
                 Text(
                     text = group.groupName,
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // Last Message
                 if (group.lastMessage.isNotEmpty()) {
-                    Text(
-                        text = "${group.lastMessageSender}: ${group.lastMessage}",
-                        fontSize = 13.sp,
-                        color = Color(0xFFB0B0C0),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (group.lastMessageSender.isNotEmpty()) {
+                            Text(
+                                text = "${group.lastMessageSender}: ",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                        Text(
+                            text = group.lastMessage,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                 } else {
                     Text(
                         text = "No messages yet",
-                        fontSize = 13.sp,
-                        color = Color(0xFFB0B0C0).copy(alpha = 0.6f),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         fontStyle = FontStyle.Italic
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Timestamp
-                if (group.lastMessageTime > 0) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = Color(0xFF9333EA),
-                            modifier = Modifier.size(12.dp)
+                // Member Count & Time
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${group.memberCount} members",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+
+                    if (group.lastMessageTime > 0) {
+                        Text(
+                            text = " • ",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = getTimeAgo(group.lastMessageTime),
-                            fontSize = 11.sp,
-                            color = Color(0xFFB0B0C0)
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -375,7 +493,7 @@ fun GroupCard(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Open group",
-                tint = Color(0xFF9333EA),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -393,11 +511,11 @@ fun EmptyGroupsState(
             .height(300.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF3D2564).copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = Color(0xFF6B4BA6).copy(alpha = 0.3f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
         )
     ) {
         Column(
@@ -411,7 +529,7 @@ fun EmptyGroupsState(
                 imageVector = Icons.Default.Groups,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = Color(0xFF9333EA).copy(alpha = 0.6f)
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -420,7 +538,7 @@ fun EmptyGroupsState(
                 text = "No Study Groups Yet",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
@@ -429,7 +547,7 @@ fun EmptyGroupsState(
             Text(
                 text = "Create or join a group to start\ncollaborating with others",
                 fontSize = 14.sp,
-                color = Color(0xFFB0B0C0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 20.sp
             )
@@ -439,7 +557,7 @@ fun EmptyGroupsState(
             Button(
                 onClick = onCreateClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF9333EA)
+                    containerColor = MaterialTheme.colorScheme.primary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.height(48.dp)
@@ -472,14 +590,14 @@ fun GroupsLoadingState(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CircularProgressIndicator(
-                color = Color(0xFF9333EA),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Loading groups...",
                 fontSize = 14.sp,
-                color = Color(0xFFB0B0C0)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -497,9 +615,9 @@ fun ErrorGroupsState(
             .height(200.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF3D2564).copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         ),
-        border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier
@@ -511,21 +629,21 @@ fun ErrorGroupsState(
             Icon(
                 imageVector = Icons.Default.ErrorOutline,
                 contentDescription = null,
-                tint = Color(0xFFEF4444),
+                tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = message,
                 fontSize = 14.sp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF9333EA)
+                    containerColor = MaterialTheme.colorScheme.primary
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -559,8 +677,8 @@ private fun CreateGroupDialog(
                     label = { Text("Group Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9333EA),
-                        focusedLabelColor = Color(0xFF9333EA)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -571,8 +689,8 @@ private fun CreateGroupDialog(
                     label = { Text("Description (optional)") },
                     maxLines = 3,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9333EA),
-                        focusedLabelColor = Color(0xFF9333EA)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -587,7 +705,7 @@ private fun CreateGroupDialog(
                 },
                 enabled = name.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF9333EA)
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text("Create")
@@ -595,12 +713,12 @@ private fun CreateGroupDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color(0xFF9333EA))
+                Text("Cancel", color = MaterialTheme.colorScheme.primary)
             }
         },
-        containerColor = Color(0xFF3D2564),
-        titleContentColor = Color.White,
-        textContentColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface
     )
 }
 
