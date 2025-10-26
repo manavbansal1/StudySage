@@ -9,63 +9,71 @@ import androidx.compose.ui.graphics.Color
 
 // --- 1. DEFINE YOUR NEW PURPLE PALETTE ---
 
-// A strong, modern primary purple (Indigo-ish)
-val PurplePrimary = Color(0xFF6366F1)
-// A lighter, softer accent purple
-val PurpleAccent = Color(0xFFA5B4FC)
-// A very light purple, good for backgrounds or secondary elements
-val PurpleSoft = Color(0xFFEEF2FF)
+// Your primary color, a deep, rich purple
+val PurplePrimary = Color(0xFF652497)
+// A more vibrant purple for secondary actions
+val PurpleSecondary = Color(0xFF9333EA)
+// A contrasting gold for XP and highlights
+val PurpleTertiary = Color(0xFFFBBF24)
+// A soft, light purple for backgrounds in light mode
+val PurpleSoft = Color(0xFFF5F3FF)
 
-// Dark theme colors
-val DarkBackground = Color(0xFF191820) // Very dark, slightly purple
-val DarkSurface = Color(0xFF23212E)   // Dark grey-purple for cards
-val TextOnDark = Color(0xFFF1F0F5)      // Off-white for text
-
-// Light theme colors
-val LightBackground = Color(0xFFFCFCFF) // Clean, almost white
+// --- Light Theme Colors ---
+val LightBackground = Color(0xFFFCFCFF) // Clean white
 val LightSurface = Color(0xFFFFFFFF)    // Pure white for cards
-val TextOnLight = Color(0xFF1F1937)     // Dark purple-black for text
+val TextOnLight = Color(0xFF1B1921)     // Very dark purple-black text
+val TextOnLightMuted = Color(0xFF6B7280) // Readable grey for subtext
+
+// --- Dark Theme Colors ---
+val DarkBackground = Color(0xFF1A1721) // Very dark purple
+val DarkSurface = Color(0xFF2C2A3A)   // Dark purple-grey for cards
+val TextOnDark = Color(0xFFF5F3FF)      // Off-white text
+val TextOnDarkMuted = Color(0xFF9E9BAC)   // Light grey-purple for subtext
 
 // --- 2. DEFINE YOUR CUSTOM NAVBAR COLORS (matches the theme) ---
 
 // For Dark Mode
-val DarkNavContainer = Color(0xFF2C2A3A).copy(alpha = 0.8f) // Dark purple glass
-val DarkNavIndicator = Color(0xFF6366F1).copy(alpha = 0.4f) // Translucent primary glass
+val DarkNavContainer = Color(0xFF2C2A3A).copy(alpha = 0.85f) // Dark purple glass
+val DarkNavIndicator = Color(0xFF9333EA).copy(alpha = 0.4f) // Translucent (brighter) primary glass
 val DarkNavSelected = Color.White
-val DarkNavUnselected = Color(0xFF9E9BAC)
+val DarkNavUnselected = TextOnDarkMuted // Light grey-purple
 
 // For Light Mode
-val LightNavContainer = Color(0xFFFFFFFF).copy(alpha = 0.8f) // Light frosted glass
-val LightNavIndicator = Color(0xFF6366F1).copy(alpha = 0.15f) // Very subtle purple pill
-val LightNavSelected = Color(0xFF6366F1) // Solid primary purple
-val LightNavUnselected = Color(0xFF706D83) // Grey-purple
+val LightNavContainer = Color.White.copy(alpha = 0.85f) // Light frosted glass
+val LightNavIndicator = Color(0xFF652497).copy(alpha = 0.15f) // Very subtle purple pill
+val LightNavSelected = PurplePrimary // Solid dark purple
+val LightNavUnselected = TextOnLightMuted // Solid readable grey
 
 // --- 3. CREATE THE APP'S COLOR SCHEMES ---
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PurplePrimary,
-    secondary = PurpleAccent,
-    tertiary = PurpleAccent,
+    primary = PurpleSecondary, // <-- CHANGED: Use the BRIGHTER purple as primary
+    secondary = PurplePrimary, // <-- CHANGED: Use the DARKER purple as secondary
+    tertiary = PurpleTertiary,
     background = DarkBackground,
-    surface = DarkSurface,
+    surface = DarkSurface, // Card backgrounds
+    surfaceVariant = DarkSurface, // Inner card backgrounds
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
-    onBackground = TextOnDark,
-    onSurface = TextOnDark,
+    onBackground = TextOnDark, // Main text
+    onSurface = TextOnDark,    // Text on cards
+    onSurfaceVariant = TextOnDarkMuted // Muted text
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PurplePrimary,
-    secondary = PurpleAccent,
-    tertiary = PurpleAccent,
+    primary = PurplePrimary, // Keep dark purple as primary in light mode
+    secondary = PurpleSecondary,
+    tertiary = PurpleTertiary,
     background = LightBackground,
-    surface = LightSurface,
+    surface = LightSurface, // Card backgrounds (white)
+    surfaceVariant = PurpleSoft,  // Inner card backgrounds (soft purple)
     onPrimary = Color.White,
-    onSecondary = TextOnLight,
+    onSecondary = Color.White,
     onTertiary = TextOnLight,
-    onBackground = TextOnLight,
-    onSurface = TextOnLight,
+    onBackground = TextOnLight, // Main text (dark)
+    onSurface = TextOnLight,    // Text on cards (dark)
+    onSurfaceVariant = TextOnLightMuted // Muted text (grey)
 )
 
 // --- 4. CREATE YOUR THEME COMPOSABLE ---
