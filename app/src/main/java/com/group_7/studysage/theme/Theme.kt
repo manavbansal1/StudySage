@@ -33,13 +33,13 @@ val TextOnDarkMuted = Color(0xFF9E9BAC)   // Light grey-purple for subtext
 // --- 2. DEFINE YOUR CUSTOM NAVBAR COLORS (matches the theme) ---
 
 // For Dark Mode
-val DarkNavContainer = Color(0xFF2C2A3A).copy(alpha = 0.85f) // Dark purple glass
+val DarkNavContainer = Color(0xFF2C2A3A).copy(alpha = 0.99f) // Dark purple glass
 val DarkNavIndicator = Color(0xFF9333EA).copy(alpha = 0.4f) // Translucent (brighter) primary glass
 val DarkNavSelected = Color.White
 val DarkNavUnselected = TextOnDarkMuted // Light grey-purple
 
 // For Light Mode
-val LightNavContainer = Color.White.copy(alpha = 0.85f) // Light frosted glass
+val LightNavContainer = Color.White.copy(alpha = 0.95f) // Light frosted glass
 val LightNavIndicator = Color(0xFF652497).copy(alpha = 0.15f) // Very subtle purple pill
 val LightNavSelected = PurplePrimary // Solid dark purple
 val LightNavUnselected = TextOnLightMuted // Solid readable grey

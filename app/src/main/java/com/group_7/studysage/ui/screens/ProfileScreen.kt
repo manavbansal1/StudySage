@@ -84,22 +84,14 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF2D1B4E),
-                            Color(0xFF3D2B5E),
-                            Color(0xFF2D1B4E)
-                        )
-                    )
-                )
+                .background(MaterialTheme.colorScheme.background)
         ) {
             if (uiState.isLoading && uiState.userProfile == null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFF9333EA))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else {
                 uiState.userProfile?.let { profile ->
@@ -112,16 +104,16 @@ fun ProfileScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(24.dp)
                         ) {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(24.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFF3D2564)  // Match home task cards
+                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                                 ),
-                                border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -142,7 +134,7 @@ fun ProfileScreen(
                                                 modifier = Modifier
                                                     .size(120.dp)
                                                     .clip(CircleShape)
-                                                    .border(4.dp, Color(0xFF9333EA), CircleShape),
+                                                    .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape),
                                                 contentScale = ContentScale.Crop
                                             )
                                         } else {
@@ -150,8 +142,8 @@ fun ProfileScreen(
                                                 modifier = Modifier
                                                     .size(120.dp)
                                                     .clip(CircleShape)
-                                                    .background(Color.White)
-                                                    .border(4.dp, Color(0xFF9333EA), CircleShape),
+                                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                                    .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
@@ -159,7 +151,7 @@ fun ProfileScreen(
                                                         ?.firstOrNull()
                                                         ?.toString()
                                                         ?.uppercase() ?: "U",
-                                                    color = Color(0xFF9333EA),
+                                                    color = MaterialTheme.colorScheme.primary,
                                                     fontSize = 48.sp,
                                                     fontWeight = FontWeight.Bold
                                                 )
@@ -173,7 +165,7 @@ fun ProfileScreen(
                                         text = profile["name"] as? String ?: "User",
                                         fontSize = 28.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
 
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -181,30 +173,30 @@ fun ProfileScreen(
                                     Text(
                                         text = profile["email"] as? String ?: "",
                                         fontSize = 14.sp,
-                                        color = Color(0xFFB0B0C0)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
 
-                            // Back Button - Darker circle matching home
+                            // Back Button
                             IconButton(
                                 onClick = { navController.navigateUp() },
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
-                                    .offset(x = 24.dp, y = 24.dp)
+                                    .offset(x = 8.dp, y = 24.dp)
                                     .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF2D1B4E).copy(alpha = 0.8f))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
                             ) {
                                 Icon(
                                     Icons.Default.ArrowBack,
                                     contentDescription = "Back",
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
 
-                            // Edit Button - Darker circle matching home
+                            // Edit Button
                             IconButton(
                                 onClick = {
                                     editName = profile["name"] as? String ?: ""
@@ -216,457 +208,242 @@ fun ProfileScreen(
                                     .offset(x = (-24).dp, y = 24.dp)
                                     .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF2D1B4E).copy(alpha = 0.8f))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
                             ) {
                                 Icon(
                                     Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    tint = Color.White,
+                                    contentDescription = "Edit Profile",
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
 
-                        // ABOUT CARD - Match Home Task Cards
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF3D2564)  // Same as home task cards
-                            ),
-                            border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                        ) {
-                            Row(
+                        // BIO SECTION
+                        val bio = profile["bio"] as? String
+                        if (!bio.isNullOrBlank()) {
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(20.dp),
-                                verticalAlignment = Alignment.Top
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
-                                // Icon container - match home page style
-                                Box(
+                                Column(
                                     modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(Color(0xFF2D1B4E)),
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .padding(20.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = Color(0xFF9333EA),
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                Column {
-                                    Text(
-                                        "About",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Color.White
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "About",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        text = profile["bio"] as? String ?: "Hey there! I'm using StudySage ✨",
+                                        bio,
                                         fontSize = 14.sp,
-                                        color = Color(0xFFB0B0C0),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         lineHeight = 20.sp
                                     )
                                 }
                             }
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
 
-                        // STATS ROW - Match Home Quick Actions
+                        // STATS SECTION
+                        Text(
+                            text = "Stats",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            val level = profile["level"] as? Long ?: 1
-                            val xp = profile["xpPoints"] as? Long ?: 0
-                            val streak = profile["streakDays"] as? Long ?: 0
-
                             StatCard(
                                 icon = Icons.Default.Star,
-                                value = level.toString(),
-                                label = "Level",
-                                iconColor = Color(0xFFFBBF24),
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            StatCard(
-                                icon = Icons.Default.FavoriteBorder,
-                                value = xp.toString(),
+                                value = profile["xp"]?.toString() ?: "0",
                                 label = "XP",
-                                iconColor = Color(0xFFEC4899),
+                                iconColor = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.weight(1f)
                             )
-
                             StatCard(
                                 icon = Icons.Default.DateRange,
-                                value = streak.toString(),
-                                label = "Streak",
-                                iconColor = Color(0xFFEF4444),
+                                value = profile["streak"]?.toString() ?: "0",
+                                label = "Day Streak",
+                                iconColor = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                icon = Icons.Default.Groups,
+                                value = profile["groupCount"]?.toString() ?: "0",
+                                label = "Groups",
+                                iconColor = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.weight(1f)
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                        // CUSTOMIZE PROFILE SECTION
-                        Card(
+                        // SETTINGS SECTION
+                        Text(
+                            text = "Settings",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF3D2564)
-                            ),
-                            border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                // Section Header
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color(0xFF9333EA).copy(alpha = 0.2f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = null,
-                                            tint = Color(0xFF9333EA),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        "Customize Profile",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Color.White
-                                    )
+                            SettingsOption(
+                                icon = Icons.Default.Person,
+                                title = "Edit Profile",
+                                subtitle = "Update your name and bio",
+                                onClick = {
+                                    editName = profile["name"] as? String ?: ""
+                                    editBio = profile["bio"] as? String ?: ""
+                                    showEditDialog = true
                                 }
+                            )
 
-                                SettingsOption(
-                                    icon = Icons.Default.CameraAlt,
-                                    title = "Change Profile Picture",
-                                    subtitle = "Update your avatar",
-                                    onClick = { showImageSourceDialog = true }
-                                )
+                            SettingsOption(
+                                icon = Icons.Default.Lock,
+                                title = "Privacy",
+                                subtitle = "Manage your privacy settings",
+                                onClick = { /* TODO: Implement */ }
+                            )
 
-                                Spacer(modifier = Modifier.height(12.dp))
+                            SettingsOption(
+                                icon = Icons.Default.Notifications,
+                                title = "Notifications",
+                                subtitle = "Manage notification preferences",
+                                onClick = { /* TODO: Implement */ }
+                            )
 
-                                SettingsOption(
-                                    icon = Icons.Default.Edit,
-                                    title = "Edit Bio",
-                                    subtitle = "Tell others about yourself",
-                                    onClick = {
-                                        editName = profile["name"] as? String ?: ""
-                                        editBio = profile["bio"] as? String ?: ""
-                                        showEditDialog = true
-                                    }
-                                )
+                            SettingsOption(
+                                icon = Icons.Default.Settings,
+                                title = "App Settings",
+                                subtitle = "Configure app preferences",
+                                onClick = { /* TODO: Implement */ }
+                            )
 
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Tune,
-                                    title = "Study Preferences",
-                                    subtitle = "Set your learning style",
-                                    onClick = { /* TODO: Navigate to preferences */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Star,
-                                    title = "Favorite Subjects",
-                                    subtitle = "Choose subjects you love",
-                                    onClick = { /* TODO: Navigate to subjects */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Schedule,
-                                    title = "Group Study Availability",
-                                    subtitle = "Set when you're available",
-                                    onClick = { /* TODO: Navigate to availability */ }
-                                )
-                            }
+                            SettingsOption(
+                                icon = Icons.Default.ExitToApp,
+                                title = "Sign Out",
+                                subtitle = "Log out from your account",
+                                onClick = { showSignOutDialog = true },
+                                showChevron = false
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(100.dp))
+                    }
+                }
+            }
 
-                        // PRIVACY SECTION
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF3D2564)
-                            ),
-                            border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            // Upload progress overlay
+            if (uiState.isUploadingImage) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                // Section Header
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color(0xFF9333EA).copy(alpha = 0.2f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = null,
-                                            tint = Color(0xFF9333EA),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        "Privacy",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Color.White
-                                    )
-                                }
-
-                                SettingsOption(
-                                    icon = Icons.Default.Shield,
-                                    title = "Privacy Settings",
-                                    subtitle = "Control who sees your profile",
-                                    onClick = { /* TODO: Navigate to privacy settings */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Security,
-                                    title = "Account Security",
-                                    subtitle = "Password and authentication",
-                                    onClick = { /* TODO: Navigate to security */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Storage,
-                                    title = "Data & Storage",
-                                    subtitle = "Manage your data",
-                                    onClick = { /* TODO: Navigate to data storage */ }
-                                )
-                            }
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Uploading image...",
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // HELP & SUPPORT SECTION
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF3D2564)
-                            ),
-                            border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                // Section Header
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color(0xFF9333EA).copy(alpha = 0.2f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Help,
-                                            contentDescription = null,
-                                            tint = Color(0xFF9333EA),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        "Help & Support",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Color.White
-                                    )
-                                }
-
-                                SettingsOption(
-                                    icon = Icons.Default.MenuBook,
-                                    title = "Help Center",
-                                    subtitle = "FAQs and guides",
-                                    onClick = { /* TODO: Navigate to help center */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Email,
-                                    title = "Contact Support",
-                                    subtitle = "Get help from our team",
-                                    onClick = { /* TODO: Open email or support form */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.ReportProblem,
-                                    title = "Report a Problem",
-                                    subtitle = "Let us know about issues",
-                                    onClick = { /* TODO: Navigate to report */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Description,
-                                    title = "Terms & Privacy Policy",
-                                    subtitle = "Read our policies",
-                                    onClick = { /* TODO: Open terms/privacy */ }
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                SettingsOption(
-                                    icon = Icons.Default.Info,
-                                    title = "About StudySage",
-                                    subtitle = "App version and info",
-                                    onClick = { /* TODO: Navigate to about */ },
-                                    showChevron = false,
-                                    endContent = {
-                                        Text(
-                                            text = "v1.0.0",
-                                            fontSize = 13.sp,
-                                            color = Color(0xFFB0B0C0)
-                                        )
-                                    }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // SIGN OUT BUTTON - Match Home Theme
-                        Card(
-                            onClick = { showSignOutDialog = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF3D2564)  // Match other cards
-                            ),
-                            border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.6f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.ExitToApp,
-                                        contentDescription = null,
-                                        tint = Color(0xFFEF4444),
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        "Sign Out",
-                                        color = Color(0xFFEF4444),
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
         }
     }
 
-    // Edit Dialog
+    // Edit Profile Dialog
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Profile") },
+            title = {
+                Text(
+                    "Edit Profile",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
             text = {
                 Column {
                     OutlinedTextField(
                         value = editName,
                         onValueChange = { editName = it },
                         label = { Text("Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = editBio,
                         onValueChange = { editBio = it },
                         label = { Text("Bio") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 4,
-                        minLines = 3
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedButton(
-                        onClick = {
-                            showEditDialog = false
-                            showImageSourceDialog = true
-                        },
+                        maxLines = 3,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        ),
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Change Profile Picture")
-                    }
+                    )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         viewModel.updateProfile(editName, editBio)
                         showEditDialog = false
                     },
-                    enabled = !uiState.isLoading
+                    enabled = !uiState.isLoading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -677,9 +454,12 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
         )
     }
 
@@ -687,9 +467,17 @@ fun ProfileScreen(
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
-            title = { Text("Change Profile Picture") },
+            title = {
+                Text(
+                    "Change Profile Picture",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
             text = {
-                Text("Choose how you want to update your profile picture")
+                Text(
+                    "Choose how you want to update your profile picture",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             },
             confirmButton = {
                 TextButton(
@@ -698,14 +486,17 @@ fun ProfileScreen(
                         imagePickerLauncher.launch("image/*")
                     }
                 ) {
-                    Text("Choose from Gallery")
+                    Text("Choose from Gallery", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showImageSourceDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
         )
     }
 
@@ -713,8 +504,18 @@ fun ProfileScreen(
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
-            title = { Text("Confirm Sign Out") },
-            text = { Text("Are you sure you want to sign out?") },
+            title = {
+                Text(
+                    "Confirm Sign Out",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to sign out?",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -722,14 +523,17 @@ fun ProfileScreen(
                         showSignOutDialog = false
                     }
                 ) {
-                    Text("Yes, Sign Out")
+                    Text("Yes, Sign Out", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSignOutDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -746,10 +550,10 @@ fun StatCard(
         modifier = modifier.height(110.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF3D2564)  // Match home cards
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         ),
-        border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -758,12 +562,12 @@ fun StatCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Icon in dark rounded container
+            // Icon in rounded container
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF2D1B4E)),
+                    .background(iconColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -780,7 +584,7 @@ fun StatCard(
                 text = value,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -788,7 +592,7 @@ fun StatCard(
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = Color(0xFFB0B0C0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -809,7 +613,7 @@ fun SettingsOption(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF2D1B4E).copy(alpha = 0.5f)
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
     ) {
         Row(
             modifier = Modifier
@@ -822,13 +626,13 @@ fun SettingsOption(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF9333EA).copy(alpha = 0.15f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF9333EA),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -843,13 +647,13 @@ fun SettingsOption(
                     text = title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     fontSize = 12.sp,
-                    color = Color(0xFFB0B0C0),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -862,7 +666,7 @@ fun SettingsOption(
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "Navigate",
-                    tint = Color(0xFFB0B0C0),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
