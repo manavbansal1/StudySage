@@ -41,6 +41,12 @@ class GroupChatViewModel(
     private val _inviteStatus = MutableStateFlow<String?>(null)
     val inviteStatus: StateFlow<String?> = _inviteStatus.asStateFlow()
 
+    private val _isUploadingImage = MutableStateFlow(false)
+    val isUploadingImage: StateFlow<Boolean> = _isUploadingImage.asStateFlow()
+
+    private val _uploadError = MutableStateFlow<String?>(null)
+    val uploadError: StateFlow<String?> = _uploadError.asStateFlow()
+
     init {
         _currentUserId.value = authRepository.currentUser?.uid ?: ""
     }
@@ -241,6 +247,84 @@ class GroupChatViewModel(
                 // Handle error
             }
         }
+    }
+
+    /**
+     * Upload group profile picture to Cloudinary
+     */
+    fun uploadGroupProfilePicture(
+        context: android.content.Context,
+        imageUri: android.net.Uri,
+        groupId: String
+    ) {
+        viewModelScope.launch {
+            try {
+                _isUploadingImage.value = true
+                _uploadError.value = null
+
+                // Upload to Cloudinary
+                val imageUrl = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.group_7.studysage.utils.CloudinaryUploader.uploadImage(
+                        context = context,
+                        imageUri = imageUri
+                    )
+                }
+
+                if (imageUrl != null) {
+                    // Update group profile in Firebase
+                    val updateResult = groupRepository.updateGroupProfilePic(groupId, imageUrl)
+
+                    updateResult.onSuccess {
+                        // Update all members' group summaries with new pic
+                        updateAllMembersGroupPicture(groupId, imageUrl)
+                        _isUploadingImage.value = false
+                    }
+
+                    updateResult.onFailure { error ->
+                        _isUploadingImage.value = false
+                        _uploadError.value = error.message
+                    }
+                } else {
+                    _isUploadingImage.value = false
+                    _uploadError.value = "Failed to upload image"
+                }
+            } catch (e: Exception) {
+                _isUploadingImage.value = false
+                _uploadError.value = e.message
+            }
+        }
+    }
+
+    private suspend fun updateAllMembersGroupPicture(groupId: String, newPicUrl: String) {
+        try {
+            val members = groupRepository.getGroupMembers(groupId)
+            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+
+            members.forEach { member ->
+                val userDoc = firestore.collection("users").document(member.userId).get().await()
+                val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
+
+                val updatedGroups = userGroups.map { group ->
+                    if (group["groupId"] == groupId) {
+                        group.toMutableMap().apply {
+                            put("groupPic", newPicUrl)
+                        }
+                    } else {
+                        group
+                    }
+                }
+
+                firestore.collection("users").document(member.userId)
+                    .update("groups", updatedGroups)
+                    .await()
+            }
+        } catch (e: Exception) {
+            // Handle error silently
+        }
+    }
+
+    fun clearUploadError() {
+        _uploadError.value = null
     }
 
     private suspend fun updateAllMembersGroupSummary(groupId: String, message: String, senderName: String) {

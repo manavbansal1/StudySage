@@ -1,17 +1,33 @@
 package com.group_7.studysage.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.ui.viewmodels.GroupViewModel
 import com.group_7.studysage.ui.viewmodels.GroupUiState
 import com.group_7.studysage.ui.viewmodels.GroupItem
@@ -19,7 +35,7 @@ import com.group_7.studysage.ui.viewmodels.GroupItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupScreen(
-    onGroupClick: (String) -> Unit  // ← Matches your navigation parameter
+    onGroupClick: (String) -> Unit
 ) {
     val viewModel: GroupViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -29,100 +45,83 @@ fun GroupScreen(
 
     var showCreateGroupDialog by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Groups") },
-                    actions = {
-                        // Bell icon with badge for invites
-                        BadgedBox(
-                            badge = {
-                                if (pendingInviteCount > 0) {
-                                    Badge {
-                                        Text(pendingInviteCount.toString())
-                                    }
-                                }
-                            }
-                        ) {
-                            IconButton(onClick = { viewModel.toggleInviteOverlay() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Group Invites"
-                                )
-                            }
-                        }
-                    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF2D1B4E),
+                        Color(0xFF3D2B5E),
+                        Color(0xFF2D1B4E)
+                    )
                 )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showCreateGroupDialog = true }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Create Group"
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Header Section
+            GroupsHeader(
+                pendingInviteCount = pendingInviteCount,
+                onNotificationClick = { viewModel.toggleInviteOverlay() }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Groups List
+            when (val state = uiState) {
+                is GroupUiState.Loading -> {
+                    GroupsLoadingState()
+                }
+                is GroupUiState.Success -> {
+                    if (state.groups.isEmpty()) {
+                        EmptyGroupsState(
+                            onCreateClick = { showCreateGroupDialog = true }
+                        )
+                    } else {
+                        GroupsList(
+                            groups = state.groups,
+                            onGroupClick = onGroupClick
+                        )
+                    }
+                }
+                is GroupUiState.Error -> {
+                    ErrorGroupsState(
+                        message = state.message,
+                        onRetry = { viewModel.loadGroups() }
                     )
                 }
             }
-        ) { paddingValues ->
-            when (val state = uiState) {
-                is GroupUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
 
-                is GroupUiState.Success -> {
-                    if (state.groups.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(paddingValues),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No groups yet. Create one!")
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(paddingValues),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(state.groups) { group ->
-                                GroupItemCard(
-                                    group = group,
-                                    onClick = { onGroupClick(group.groupId) }  // ← Uses your parameter
-                                )
-                            }
-                        }
-                    }
-                }
+            // Bottom spacing for nav bar
+            Spacer(modifier = Modifier.height(100.dp))
+        }
 
-                is GroupUiState.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(state.message)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { viewModel.loadGroups() }) {
-                                Text("Retry")
-                            }
-                        }
-                    }
-                }
-            }
+        // Floating Action Button
+        FloatingActionButton(
+            onClick = { showCreateGroupDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 90.dp, end = 16.dp),
+            containerColor = Color(0xFF9333EA),
+            contentColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 8.dp,
+                pressedElevation = 12.dp
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Create Group",
+                modifier = Modifier.size(28.dp)
+            )
         }
 
         // Invite overlay
@@ -138,45 +137,399 @@ fun GroupScreen(
                 onDismiss = { viewModel.toggleInviteOverlay() }
             )
         }
+    }
 
-        // Create group dialog
-        if (showCreateGroupDialog) {
-            CreateGroupDialog(
-                onDismiss = { showCreateGroupDialog = false },
-                onConfirm = { name, description ->
-                    viewModel.createGroup(name, description)
-                    showCreateGroupDialog = false
+    // Create group dialog
+    if (showCreateGroupDialog) {
+        CreateGroupDialog(
+            onDismiss = { showCreateGroupDialog = false },
+            onConfirm = { name, description ->
+                viewModel.createGroup(name, description)
+                showCreateGroupDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun GroupsHeader(
+    pendingInviteCount: Int,
+    onNotificationClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = "Study Groups",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Collaborate and learn together",
+                fontSize = 14.sp,
+                color = Color(0xFFB0B0C0)
+            )
+        }
+
+        // Notification bell with badge
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF3D2564))
+        ) {
+            IconButton(
+                onClick = onNotificationClick
+            ) {
+                BadgedBox(
+                    badge = {
+                        if (pendingInviteCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFEF4444)
+                            ) {
+                                Text(
+                                    pendingInviteCount.toString(),
+                                    fontSize = 10.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Notifications",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupsList(
+    groups: List<GroupItem>,
+    onGroupClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Section header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Your Groups",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Text(
+                text = "${groups.size} group${if (groups.size != 1) "s" else ""}",
+                fontSize = 13.sp,
+                color = Color(0xFFB0B0C0)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Group cards
+        groups.forEach { group ->
+            GroupCard(
+                group = group,
+                onClick = { onGroupClick(group.groupId) }
             )
         }
     }
 }
 
 @Composable
-private fun GroupItemCard(
+fun GroupCard(
     group: GroupItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF3D2564)
+        ),
+        border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Group Icon/Avatar
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF9333EA),
+                                Color(0xFF7C3AED)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (group.groupPic.isNotEmpty()) {
+                    Image(
+                        painter = rememberAsyncImagePainter(group.groupPic),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Group Info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = group.groupName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                if (group.lastMessage.isNotEmpty()) {
+                    Text(
+                        text = "${group.lastMessageSender}: ${group.lastMessage}",
+                        fontSize = 13.sp,
+                        color = Color(0xFFB0B0C0),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = "No messages yet",
+                        fontSize = 13.sp,
+                        color = Color(0xFFB0B0C0).copy(alpha = 0.6f),
+                        fontStyle = FontStyle.Italic
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Timestamp
+                if (group.lastMessageTime > 0) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = null,
+                            tint = Color(0xFF9333EA),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = getTimeAgo(group.lastMessageTime),
+                            fontSize = 11.sp,
+                            color = Color(0xFFB0B0C0)
+                        )
+                    }
+                }
+            }
+
+            // Chevron icon
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Open group",
+                tint = Color(0xFF9333EA),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptyGroupsState(
+    onCreateClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(300.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF3D2564).copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = Color(0xFF6B4BA6).copy(alpha = 0.3f)
+        )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = group.groupName,
-                style = MaterialTheme.typography.titleMedium
+            Icon(
+                imageVector = Icons.Default.Groups,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = Color(0xFF9333EA).copy(alpha = 0.6f)
             )
-            if (group.lastMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${group.lastMessageSender}: ${group.lastMessage}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "No Study Groups Yet",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Create or join a group to start\ncollaborating with others",
+                fontSize = 14.sp,
+                color = Color(0xFFB0B0C0),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onCreateClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF9333EA)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Create Group",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupsLoadingState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(
+                color = Color(0xFF9333EA),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Loading groups...",
+                fontSize = 14.sp,
+                color = Color(0xFFB0B0C0)
+            )
+        }
+    }
+}
+
+@Composable
+fun ErrorGroupsState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF3D2564).copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.ErrorOutline,
+                contentDescription = null,
+                tint = Color(0xFFEF4444),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF9333EA)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Retry")
             }
         }
     }
@@ -192,40 +545,75 @@ private fun CreateGroupDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create Group") },
+        title = {
+            Text(
+                "Create Group",
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column {
-                TextField(
+                OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Group Name") },
-                    singleLine = true
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF9333EA),
+                        focusedLabelColor = Color(0xFF9333EA)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Description (optional)") },
-                    maxLines = 3
+                    maxLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF9333EA),
+                        focusedLabelColor = Color(0xFF9333EA)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     if (name.isNotBlank()) {
                         onConfirm(name, description)
                     }
                 },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF9333EA)
+                )
             ) {
                 Text("Create")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = Color(0xFF9333EA))
             }
-        }
+        },
+        containerColor = Color(0xFF3D2564),
+        titleContentColor = Color.White,
+        textContentColor = Color.White
     )
+}
+
+// Helper function for time formatting
+fun getTimeAgo(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3600_000 -> "${diff / 60_000}m ago"
+        diff < 86400_000 -> "${diff / 3600_000}h ago"
+        diff < 604800_000 -> "${diff / 86400_000}d ago"
+        else -> "${diff / 604800_000}w ago"
+    }
 }
