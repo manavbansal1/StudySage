@@ -38,6 +38,9 @@ class GroupChatViewModel(
     private val _currentUserId = MutableStateFlow("")
     val currentUserId: StateFlow<String> = _currentUserId.asStateFlow()
 
+    private val _inviteStatus = MutableStateFlow<String?>(null)
+    val inviteStatus: StateFlow<String?> = _inviteStatus.asStateFlow()
+
     init {
         _currentUserId.value = authRepository.currentUser?.uid ?: ""
     }
@@ -119,39 +122,43 @@ class GroupChatViewModel(
         }
     }
 
-    fun addMemberByEmail(groupId: String, email: String) {
+    /**
+     * Send invite to user by email instead of adding directly
+     */
+    fun sendInviteByEmail(groupId: String, email: String) {
         viewModelScope.launch {
             try {
-                // Search for user by email
-                val user = authRepository.getUserByEmail(email)
+                _inviteStatus.value = "Sending invite..."
 
-                if (user == null) {
-                    _uiState.value = GroupChatUiState.Error("User not found with email: $email")
-                    loadGroupData(groupId)
+                val currentState = _uiState.value
+                if (currentState !is GroupChatUiState.Success) {
+                    _inviteStatus.value = "Error: Group data not loaded"
                     return@launch
                 }
 
-                val userId = user["uid"] as? String ?: return@launch
-                val userName = user["name"] as? String ?: "Unknown User"
-                val userProfilePic = user["profileImageUrl"] as? String ?: ""
-
-                // Use the complete function that updates both group and user profile
-                val result = groupRepository.addMemberToGroupComplete(groupId, userId, userName, userProfilePic)
+                // Send the invite
+                val result = authRepository.sendGroupInvite(
+                    recipientEmail = email,
+                    groupId = groupId,
+                    groupName = currentState.groupName,
+                    groupPic = currentState.groupPic
+                )
 
                 result.onSuccess {
-                    // Reload group data
-                    loadGroupData(groupId)
+                    _inviteStatus.value = "Invite sent successfully to $email"
                 }
 
                 result.onFailure { error ->
-                    _uiState.value = GroupChatUiState.Error(error.message ?: "Failed to add member")
-                    loadGroupData(groupId)
+                    _inviteStatus.value = "Error: ${error.message}"
                 }
             } catch (e: Exception) {
-                _uiState.value = GroupChatUiState.Error(e.message ?: "An error occurred")
-                loadGroupData(groupId)
+                _inviteStatus.value = "Error: ${e.message}"
             }
         }
+    }
+
+    fun clearInviteStatus() {
+        _inviteStatus.value = null
     }
 
     fun removeMember(groupId: String, userId: String) {
