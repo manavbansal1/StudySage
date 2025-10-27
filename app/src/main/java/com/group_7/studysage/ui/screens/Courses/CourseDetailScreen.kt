@@ -121,7 +121,7 @@ fun CourseDetailScreen(
             FloatingActionButton(
                 onClick = {
                     val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                        Intent.setType = "*/*"
+                        type = "*/*"
                         addCategory(Intent.CATEGORY_OPENABLE)
                         val mimeTypes = arrayOf(
                             "application/pdf",
