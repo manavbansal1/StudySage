@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens.viewmodels
+package com.group_7.studysage.ui.screens.Profile
 
 import android.content.Context
 import android.net.Uri

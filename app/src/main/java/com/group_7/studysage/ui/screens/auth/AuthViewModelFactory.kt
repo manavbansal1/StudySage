@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.viewmodels
+package com.group_7.studysage.ui.screens.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

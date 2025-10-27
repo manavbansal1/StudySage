@@ -16,8 +16,8 @@ import androidx.navigation.compose.rememberNavController
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.navigation.StudySageNavigation
 import com.group_7.studysage.ui.theme.StudySageTheme
-import com.group_7.studysage.ui.viewmodels.AuthViewModel
-import com.group_7.studysage.ui.viewmodels.AuthViewModelFactory
+import com.group_7.studysage.ui.screens.auth.AuthViewModel
+import com.group_7.studysage.ui.screens.auth.AuthViewModelFactory
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {

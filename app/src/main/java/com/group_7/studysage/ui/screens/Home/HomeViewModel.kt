@@ -1,15 +1,15 @@
-package com.group_7.studysage.ui.viewmodels
+package com.group_7.studysage.ui.screens.Home
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.State
-import com.group_7.studysage.data.repository.NotesRepository
-import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.AuthRepository
+import com.group_7.studysage.data.repository.Note
+import com.group_7.studysage.data.repository.NotesRepository
+import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val notesRepository: NotesRepository = NotesRepository(),

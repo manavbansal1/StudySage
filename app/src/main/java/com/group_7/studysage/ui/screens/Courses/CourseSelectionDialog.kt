@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.Courses
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Course
-import com.group_7.studysage.ui.screens.viewmodels.CourseViewModel
 
 @Composable
 fun CourseSelectionDialog(

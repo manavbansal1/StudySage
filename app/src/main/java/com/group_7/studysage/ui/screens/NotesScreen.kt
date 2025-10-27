@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.ui.theme.StudySageTheme
-import com.group_7.studysage.ui.screens.viewmodels.NotesViewModel
+import com.group_7.studysage.ui.screens.Courses.NotesViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 

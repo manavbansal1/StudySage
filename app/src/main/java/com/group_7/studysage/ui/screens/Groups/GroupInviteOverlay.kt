@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.Groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

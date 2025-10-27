@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens.viewmodels
+package com.group_7.studysage.ui.screens.Courses
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,12 +11,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class CourseUiState(
     val courses: List<Course> = emptyList(),
     val allCourses: List<Course> = emptyList(), // Store all courses for filtering
     val selectedSemester: String = Semester.FALL.displayName,
-    val selectedYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString(),
+    val selectedYear: String = Calendar.getInstance().get(Calendar.YEAR).toString(),
     val availableYears: List<String> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -217,7 +218,7 @@ class CourseViewModel(
                 _uiState.update { it.copy(availableYears = years) }
             } catch (e: Exception) {
                 // Use current year as fallback
-                val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString()
+                val currentYear = Calendar.getInstance().get(Calendar.YEAR).toString()
                 _uiState.update { it.copy(availableYears = listOf(currentYear)) }
             }
         }

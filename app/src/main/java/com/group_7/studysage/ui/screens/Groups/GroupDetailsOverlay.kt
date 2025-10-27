@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.Groups
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult

@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens.viewmodels
+package com.group_7.studysage.ui.screens.Courses
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

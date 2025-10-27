@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.Courses
 
 import android.app.Activity
 import android.content.Intent
@@ -26,9 +26,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.CourseWithNotes
 import com.group_7.studysage.data.repository.Note
-import com.group_7.studysage.ui.viewmodels.HomeViewModel
+import com.group_7.studysage.ui.screens.Home.HomeViewModel
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.*
@@ -120,7 +121,7 @@ fun CourseDetailScreen(
             FloatingActionButton(
                 onClick = {
                     val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                        type = "*/*"
+                        Intent.setType = "*/*"
                         addCategory(Intent.CATEGORY_OPENABLE)
                         val mimeTypes = arrayOf(
                             "application/pdf",
@@ -263,7 +264,7 @@ fun CourseDetailScreen(
 }
 
 @Composable
-fun CourseInfoCard(course: com.group_7.studysage.data.repository.Course) {
+fun CourseInfoCard(course: Course) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),

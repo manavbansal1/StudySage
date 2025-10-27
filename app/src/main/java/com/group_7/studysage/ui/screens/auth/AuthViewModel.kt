@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.viewmodels
+package com.group_7.studysage.ui.screens.auth
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
