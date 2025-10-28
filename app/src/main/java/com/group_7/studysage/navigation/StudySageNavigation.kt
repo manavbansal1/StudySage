@@ -50,6 +50,8 @@ import com.group_7.studysage.ui.screens.CoursesScreen
 import com.group_7.studysage.ui.screens.GroupChatScreen
 import com.group_7.studysage.ui.screens.GroupScreen
 import com.group_7.studysage.ui.screens.HomeScreen
+import com.group_7.studysage.ui.screens.NotificationsScreen
+import com.group_7.studysage.ui.screens.PrivacyScreen
 import com.group_7.studysage.ui.screens.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
@@ -82,21 +84,25 @@ fun StudySageNavigation(
     val isUserSignedIn by authViewModel.isSignedIn
 
     if (isUserSignedIn) {
+        // Keep only 4 tabs in bottom nav (NO Profile)
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
 
-        // Check if we're on a detail screen (like GroupChat)
-        val isDetailScreen = currentDestination?.route?.startsWith("group_chat/") == true
+        // Hide bottom nav for GroupChat, Profile, Privacy, and Notifications screens
+        val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
+                                  currentDestination?.route == "profile" ||
+                                  currentDestination?.route == "privacy_settings" ||
+                                  currentDestination?.route == "notification_settings"
 
         Scaffold(
             // This now correctly gets the new background from your theme
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                // Only show bottom navigation if we're not on a detail screen
-                if (!isDetailScreen) {
+                // Show bottom nav everywhere except GroupChat, Profile, Privacy, and Notifications
+                if (!shouldHideBottomNav) {
 
-                    // Find the currently selected index
+                    // Find the currently selected index from the 4-tab list
                     val selectedIndex = screens.indexOfFirst { screen ->
                         currentDestination?.hierarchy?.any { it.route == screen.route } == true
                     }
@@ -111,7 +117,7 @@ fun StudySageNavigation(
 
                     CompositionLocalProvider(LocalRippleConfiguration provides null) {
                         TabRow(
-                            selectedTabIndex = selectedIndex,
+                            selectedTabIndex = selectedIndex.takeIf { it >= 0 } ?: 0,
                             modifier = Modifier
                                 .padding(horizontal = 24.dp, vertical = 16.dp)
                                 .height(72.dp)
@@ -120,6 +126,7 @@ fun StudySageNavigation(
                             contentColor = navSelectedColor,  // Use themed color
                             divider = {},
                             indicator = { tabPositions ->
+                                // Only show indicator if one of the 4 tabs is selected
                                 if (selectedIndex >= 0 && selectedIndex < tabPositions.size) {
                                     Box(
                                         modifier = Modifier
@@ -139,8 +146,11 @@ fun StudySageNavigation(
                                 Tab(
                                     selected = (selectedIndex == index),
                                     onClick = {
+                                        // Always navigate without checking current route
                                         navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -176,7 +186,7 @@ fun StudySageNavigation(
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier
+                modifier = Modifier.padding(innerPadding)  // Add padding for bottom nav
             ) {
                 composable(Screen.Home.route) {
                     HomeScreen(navController = navController)
@@ -199,6 +209,16 @@ fun StudySageNavigation(
                         authRepository = authRepository,
                         navController = navController
                     )
+                }
+
+                // Privacy Settings Screen
+                composable("privacy_settings") {
+                    PrivacyScreen(navController = navController)
+                }
+
+                // Notification Settings Screen
+                composable("notification_settings") {
+                    NotificationsScreen(navController = navController)
                 }
 
                 composable(Screen.Games.route) {

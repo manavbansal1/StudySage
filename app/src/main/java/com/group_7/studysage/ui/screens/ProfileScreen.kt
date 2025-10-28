@@ -50,6 +50,9 @@ fun ProfileScreen(
     var showEditDialog by rememberSaveable { mutableStateOf(false) }
     var showImageSourceDialog by rememberSaveable { mutableStateOf(false) }
     var showSignOutDialog by rememberSaveable { mutableStateOf(false) }
+    var showChangePasswordDialog by rememberSaveable { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) } // ⭐ NEW
+    var showAboutInfoDialog by remember { mutableStateOf(false) }
     var editName by rememberSaveable { mutableStateOf("") }
     var editBio by rememberSaveable { mutableStateOf("") }
 
@@ -241,9 +244,11 @@ fun ProfileScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             Icons.Default.Info,
-                                            contentDescription = null,
+                                            contentDescription = "About this section",
                                             tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .clickable { showAboutInfoDialog = true }
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
@@ -320,36 +325,26 @@ fun ProfileScreen(
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // Change Password Option
                             SettingsOption(
-                                icon = Icons.Default.Person,
-                                title = "Edit Profile",
-                                subtitle = "Update your name and bio",
-                                onClick = {
-                                    editName = profile["name"] as? String ?: ""
-                                    editBio = profile["bio"] as? String ?: ""
-                                    showEditDialog = true
-                                }
+                                icon = Icons.Default.Lock,
+                                title = "Change Password",
+                                subtitle = "Update your account password",
+                                onClick = { showChangePasswordDialog = true }
                             )
 
                             SettingsOption(
-                                icon = Icons.Default.Lock,
+                                icon = Icons.Default.Shield,
                                 title = "Privacy",
                                 subtitle = "Manage your privacy settings",
-                                onClick = { /* TODO: Implement */ }
+                                onClick = { navController.navigate("privacy_settings") }
                             )
 
                             SettingsOption(
                                 icon = Icons.Default.Notifications,
                                 title = "Notifications",
                                 subtitle = "Manage notification preferences",
-                                onClick = { /* TODO: Implement */ }
-                            )
-
-                            SettingsOption(
-                                icon = Icons.Default.Settings,
-                                title = "App Settings",
-                                subtitle = "Configure app preferences",
-                                onClick = { /* TODO: Implement */ }
+                                onClick = { navController.navigate("notification_settings") }
                             )
 
                             SettingsOption(
@@ -411,9 +406,25 @@ fun ProfileScreen(
                 Column {
                     OutlinedTextField(
                         value = editName,
-                        onValueChange = { editName = it },
+                        onValueChange = { newValue ->
+                            if (newValue.length <= 20) {
+                                editName = newValue
+                            }
+                        },
                         label = { Text("Name") },
+                        maxLines = 1,
                         singleLine = true,
+                        supportingText = {
+                            Text(
+                                text = "${editName.length}/20",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (editName.length > 20)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        isError = editName.length > 20,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             focusedLabelColor = MaterialTheme.colorScheme.primary
@@ -440,7 +451,9 @@ fun ProfileScreen(
                         viewModel.updateProfile(editName, editBio)
                         showEditDialog = false
                     },
-                    enabled = !uiState.isLoading,
+                    enabled = editName.isNotBlank() &&
+                              editName.length <= 20 &&
+                              !uiState.isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -536,19 +549,114 @@ fun ProfileScreen(
             textContentColor = MaterialTheme.colorScheme.onSurface
         )
     }
+
+    // Change Password Dialog - ⭐ NEW
+    if (showChangePasswordDialog) {
+        ChangePasswordDialog(
+            isChanging = uiState.isChangingPassword,
+            onDismiss = { showChangePasswordDialog = false },
+            onChangePassword = { currentPassword, newPassword, confirmPassword ->
+                viewModel.changePassword(currentPassword, newPassword, confirmPassword)
+            }
+        )
+
+        // Auto-close dialog on success
+        LaunchedEffect(uiState.message) {
+            if (uiState.message == "Password changed successfully") {
+                showChangePasswordDialog = false
+            }
+        }
+    }
+
+    // About Dialog - ⭐ NEW
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = {
+                Text(
+                    "About StudySage",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "StudySage is a revolutionary app designed to enhance your learning experience. Connect with peers, join study groups, and access a wealth of resources at your fingertips.",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Version 1.0.0",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showAboutDialog = false }
+                ) {
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    }
+
+    // Error handling
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearMessage()
+        }
+    }
+
+    // About Info Dialog - ⭐ NEW
+    if (showAboutInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutInfoDialog = false },
+            title = {
+                Text(
+                    "About This Section",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    "This section displays your bio and profile information. Tap 'Edit Profile' at the top to update your details.",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showAboutInfoDialog = false }
+                ) {
+                    Text("Got it", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
 
 @Composable
-fun StatCard(
+private fun StatCard(
     icon: ImageVector,
     value: String,
     label: String,
-    iconColor: Color,
+    iconColor: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.height(110.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         ),
@@ -557,115 +665,87 @@ fun StatCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Icon in rounded container
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = value,
-                fontSize = 22.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
 @Composable
-fun SettingsOption(
+private fun SettingsOption(
     icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
     showChevron: Boolean = true,
-    endContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-            // Text content
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // End content (chevron or custom)
-            if (endContent != null) {
-                endContent()
-            } else if (showChevron) {
+            if (showChevron) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Navigate",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
