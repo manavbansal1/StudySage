@@ -16,6 +16,7 @@ data class ProfileUiState(
     val userProfile: Map<String, Any>? = null,
     val isLoading: Boolean = false,
     val isUploadingImage: Boolean = false,
+    val isChangingPassword: Boolean = false, // ⭐ NEW
     val message: String? = null,
     val error: String? = null
 )
@@ -45,6 +46,14 @@ class ProfileViewModel(
 
     fun updateProfile(name: String, bio: String) {
         viewModelScope.launch {
+            // Validate name length
+            if (name.length > 20) {
+                _uiState.update {
+                    it.copy(error = "Name must be 20 characters or less")
+                }
+                return@launch
+            }
+
             _uiState.update { it.copy(isLoading = true) }
 
             val updates = mapOf(
@@ -131,5 +140,54 @@ class ProfileViewModel(
 
     fun showError(message: String) {
         _uiState.update { it.copy(error = message) }
+    }
+
+    /**
+     * Change user password with validation
+     */
+    fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
+        viewModelScope.launch {
+            // Validation
+            if (currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank()) {
+                _uiState.update { it.copy(error = "All fields are required") }
+                return@launch
+            }
+
+            if (newPassword.length < 6) {
+                _uiState.update { it.copy(error = "Password must be at least 6 characters") }
+                return@launch
+            }
+
+            if (newPassword != confirmPassword) {
+                _uiState.update { it.copy(error = "Passwords do not match") }
+                return@launch
+            }
+
+            if (currentPassword == newPassword) {
+                _uiState.update { it.copy(error = "New password must be different from current password") }
+                return@launch
+            }
+
+            // Start password change
+            _uiState.update { it.copy(isChangingPassword = true, error = null) }
+
+            val result = authRepository.changePassword(currentPassword, newPassword)
+
+            result.onSuccess {
+                _uiState.update {
+                    it.copy(
+                        isChangingPassword = false,
+                        message = "Password changed successfully"
+                    )
+                }
+            }.onFailure { exception ->
+                _uiState.update {
+                    it.copy(
+                        isChangingPassword = false,
+                        error = exception.message ?: "Failed to change password"
+                    )
+                }
+            }
+        }
     }
 }

@@ -56,8 +56,14 @@ class AuthRepository(
                     "darkMode" to false,
                     "notifications" to true
                 ),
+                "privacy" to mapOf(
+                    "profileVisibility" to "everyone"
+                ),
+                "notifications" to mapOf(
+                    "enabled" to true
+                ),
                 "groups" to listOf<Map<String, Any>>(), // List of group summaries
-                "groupInvites" to listOf<Map<String, Any>>() // ⚠️ NEW - List of pending invites
+                "groupInvites" to listOf<Map<String, Any>>() // List of pending invites
             )
 
             firestore.collection("users").document(user.uid).set(userProfile).await()
@@ -158,6 +164,33 @@ class AuthRepository(
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Change user password with re-authentication for security
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
+        return try {
+            val user = currentUser ?: return Result.failure(Exception("No user logged in"))
+            val email = user.email ?: return Result.failure(Exception("No email found"))
+
+            // Re-authenticate user for security
+            val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
+            user.reauthenticate(credential).await()
+
+            // Update password
+            user.updatePassword(newPassword).await()
+
+            Result.success(Unit)
+        } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+            Result.failure(Exception("Current password is incorrect"))
+        } catch (e: com.google.firebase.auth.FirebaseAuthWeakPasswordException) {
+            Result.failure(Exception("New password is too weak. Please use at least 6 characters"))
+        } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+            Result.failure(Exception("Please sign out and sign in again before changing password"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Failed to change password: ${e.message}"))
         }
     }
 
@@ -461,6 +494,58 @@ class AuthRepository(
         }
     }
 
+
+    // ==================== PRIVACY SETTINGS ====================
+
+    suspend fun updateProfileVisibility(visibility: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
+            firestore.collection("users")
+                .document(userId)
+                .update("privacy.profileVisibility", visibility)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getProfileVisibility(): String {
+        return try {
+            val userId = currentUser?.uid ?: return "everyone"
+            val doc = firestore.collection("users").document(userId).get().await()
+            val privacy = doc.get("privacy") as? Map<*, *>
+            (privacy?.get("profileVisibility") as? String) ?: "everyone"
+        } catch (e: Exception) {
+            "everyone"
+        }
+    }
+
+    // ==================== NOTIFICATION SETTINGS ====================
+
+    suspend fun updateNotificationsEnabled(enabled: Boolean): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
+            firestore.collection("users")
+                .document(userId)
+                .update("notifications.enabled", enabled)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getNotificationsEnabled(): Boolean {
+        return try {
+            val userId = currentUser?.uid ?: return true
+            val doc = firestore.collection("users").document(userId).get().await()
+            val notifications = doc.get("notifications") as? Map<*, *>
+            (notifications?.get("enabled") as? Boolean) ?: true
+        } catch (e: Exception) {
+            true
+        }
+    }
 
     // ==================== PDF MANAGEMENT ====================
 
