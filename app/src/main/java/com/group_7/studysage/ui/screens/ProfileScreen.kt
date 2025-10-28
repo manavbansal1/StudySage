@@ -52,7 +52,7 @@ fun ProfileScreen(
     var showSignOutDialog by rememberSaveable { mutableStateOf(false) }
     var showChangePasswordDialog by rememberSaveable { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) } // ⭐ NEW
-    var showAboutInfoDialog by remember { mutableStateOf(false) } // ⭐ NEW - For info icon click
+    var showAboutInfoDialog by remember { mutableStateOf(false) }
     var editName by rememberSaveable { mutableStateOf("") }
     var editBio by rememberSaveable { mutableStateOf("") }
 
