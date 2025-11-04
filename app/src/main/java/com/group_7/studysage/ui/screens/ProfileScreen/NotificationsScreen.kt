@@ -1,62 +1,53 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.ProfileScreen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.group_7.studysage.ui.screens.viewmodels.PrivacyViewModel
 
 @Composable
-fun PrivacyScreen(
+fun NotificationsScreen(
     navController: NavController,
-    viewModel: PrivacyViewModel = viewModel()
+    viewModel: NotificationsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Show toast messages at the bottom
+    // Snackbar messages
     LaunchedEffect(uiState.message, uiState.error) {
         uiState.message?.let { message ->
             snackbarHostState.showSnackbar(message)
             viewModel.clearMessage()
         }
         uiState.error?.let { error ->
-            snackbarHostState.showSnackbar(
-                message = error,
-                duration = SnackbarDuration.Long
-            )
+            snackbarHostState.showSnackbar(error, duration = SnackbarDuration.Long)
             viewModel.clearMessage()
         }
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) } ,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0)
-
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Styled Header Card (matching ProfileScreen)
+            // Styled Header Card (matching PrivacyScreen)
             item {
                 Card(
                     modifier = Modifier
@@ -87,18 +78,17 @@ fun PrivacyScreen(
 
                         // Title (center)
                         Text(
-                            text = "Privacy Settings",
+                            text = "Notification Settings",
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.align(Alignment.Center)
-
                         )
                     }
                 }
             }
 
-            // Profile Visibility Section
+            // Notifications Settings Section
             item {
                 Card(
                     modifier = Modifier
@@ -124,8 +114,8 @@ fun PrivacyScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = "Privacy",
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Notifications",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(30.dp)
                                 )
@@ -133,12 +123,12 @@ fun PrivacyScreen(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    text = "Who Can See Your Profile",
+                                    text = "Push Notifications",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Control your profile visibility",
+                                    text = "Manage your notification preferences",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 5.dp)
@@ -146,38 +136,48 @@ fun PrivacyScreen(
                             }
                         }
 
-                        Divider(
+                        HorizontalDivider(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                             modifier = Modifier.padding(top = 20.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(0.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Radio options
-                        PrivacyOption(
-                            selected = uiState.profileVisibility == "everyone",
-                            title = "Everyone",
-                            subtitle = "Anyone in the app can view",
-                            onClick = { viewModel.updateProfileVisibility("everyone") }
-                        )
+                        // Master Toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Enable Notifications",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "When disabled, you won't receive any push notifications",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
 
-                        Spacer(modifier = Modifier.height(0.dp))
+                            Spacer(modifier = Modifier.width(16.dp))
 
-                        PrivacyOption(
-                            selected = uiState.profileVisibility == "groups",
-                            title = "Groups Only",
-                            subtitle = "Only people in your groups",
-                            onClick = { viewModel.updateProfileVisibility("groups") }
-                        )
-
-                        Spacer(modifier = Modifier.height(0.dp))
-
-                        PrivacyOption(
-                            selected = uiState.profileVisibility == "private",
-                            title = "Nobody",
-                            subtitle = "Profile hidden from searches",
-                            onClick = { viewModel.updateProfileVisibility("private") }
-                        )
+                            Switch(
+                                checked = uiState.notificationsEnabled,
+                                onCheckedChange = { enabled ->
+                                    viewModel.updateNotificationsEnabled(enabled)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -200,52 +200,6 @@ fun PrivacyScreen(
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }
-        }
-    }
-}
-
-@Composable
-private fun PrivacyOption(
-    selected: Boolean,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .background(
-                if (selected)
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                else
-                    Color.Transparent
-            )
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary,
-                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

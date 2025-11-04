@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens.viewmodels
+package com.group_7.studysage.ui.screens.ProfileScreen
 
 import android.content.Context
 import android.net.Uri
@@ -135,10 +135,6 @@ class ProfileViewModel(
         }
     }
 
-    fun signOut() {
-        authRepository.signOut()
-        _uiState.update { ProfileUiState() }
-    }
 
     fun clearMessage() {
         _uiState.update { it.copy(message = null, error = null) }

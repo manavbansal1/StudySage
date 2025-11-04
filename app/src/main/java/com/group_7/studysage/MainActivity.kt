@@ -12,12 +12,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.rememberNavController
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.navigation.StudySageNavigation
 import com.group_7.studysage.ui.theme.StudySageTheme
-import com.group_7.studysage.ui.viewmodels.AuthViewModel
-import com.group_7.studysage.ui.viewmodels.AuthViewModelFactory
+import com.group_7.studysage.ui.screens.auth.AuthViewModel
+import com.group_7.studysage.ui.screens.auth.AuthViewModelFactory
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +39,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun StudySageApp() {
-    val navController = rememberNavController()
     val authRepository = remember { AuthRepository() }
 
     val authViewModel: AuthViewModel = viewModel(
@@ -48,9 +46,7 @@ fun StudySageApp() {
     )
 
     StudySageNavigation(
-        navController = navController,
         authViewModel = authViewModel,
-        authRepository = authRepository,
-        modifier = Modifier.padding(top = 26.dp)
+        modifier = Modifier.padding(top = 12.dp)
     )
 }

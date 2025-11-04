@@ -1,12 +1,12 @@
-package com.group_7.studysage.ui.screens.viewmodels
+package com.group_7.studysage.ui.screens.CourseScreen
 
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.Note
-import com.group_7.studysage.utils.FileDownloader
 import com.group_7.studysage.data.repository.NotesRepository
+import com.group_7.studysage.utils.FileDownloader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
