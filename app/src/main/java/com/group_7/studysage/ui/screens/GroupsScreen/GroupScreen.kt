@@ -93,27 +93,6 @@ fun GroupScreen(
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // Floating Action Button
-        FloatingActionButton(
-            onClick = { showCreateGroupDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 90.dp, end = 16.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = RoundedCornerShape(16.dp),
-            elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = 8.dp,
-                pressedElevation = 12.dp
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Create Group",
-                modifier = Modifier.size(28.dp)
-            )
-        }
-
         // Invite overlay
         if (showInviteOverlay) {
             GroupInviteOverlay(
@@ -149,16 +128,14 @@ fun GroupsHeader(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
             Text(
                 text = "Study Groups",
-                fontSize = 32.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -176,56 +153,44 @@ fun GroupsHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Add button
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            IconButton(
+                onClick = onAddClick,
+                modifier = Modifier.size(44.dp)
             ) {
-                IconButton(
-                    onClick = onAddClick
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add Group",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Group",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp)
+                )
             }
 
             // Notification bell with badge
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            IconButton(
+                onClick = onNotificationClick,
+                modifier = Modifier.size(44.dp)
             ) {
-                IconButton(
-                    onClick = onNotificationClick
-                ) {
-                    BadgedBox(
-                        badge = {
-                            if (pendingInviteCount > 0) {
-                                Badge(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                ) {
-                                    Text(
-                                        pendingInviteCount.toString(),
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onError
-                                    )
-                                }
+                BadgedBox(
+                    badge = {
+                        if (pendingInviteCount > 0) {
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ) {
+                                Text(
+                                    pendingInviteCount.toString(),
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onError
+                                )
                             }
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
-                        )
                     }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Notifications",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
@@ -244,7 +209,7 @@ fun GroupsList(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Section header
         Row(
@@ -254,8 +219,8 @@ fun GroupsList(
         ) {
             Text(
                 text = "Your Groups",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
@@ -265,8 +230,6 @@ fun GroupsList(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         // Search bar
         OutlinedTextField(
@@ -306,8 +269,6 @@ fun GroupsList(
             shape = RoundedCornerShape(16.dp),
             singleLine = true
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         // Group cards - use filtered groups
         filteredGroups.forEach { group ->
@@ -378,7 +339,7 @@ fun GroupCard(
             // Group Avatar
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
@@ -388,7 +349,7 @@ fun GroupCard(
                         painter = rememberAsyncImagePainter(group.groupPic),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(56.dp)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -397,7 +358,7 @@ fun GroupCard(
                         imageVector = Icons.Default.Groups,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
@@ -410,8 +371,8 @@ fun GroupCard(
             ) {
                 Text(
                     text = group.groupName,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -427,7 +388,7 @@ fun GroupCard(
                         if (group.lastMessageSender.isNotEmpty()) {
                             Text(
                                 text = "${group.lastMessageSender}: ",
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
@@ -435,7 +396,7 @@ fun GroupCard(
                         }
                         Text(
                             text = group.lastMessage,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -445,13 +406,13 @@ fun GroupCard(
                 } else {
                     Text(
                         text = "No messages yet",
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         fontStyle = FontStyle.Italic
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Member Count & Time
                 Row(
@@ -461,7 +422,7 @@ fun GroupCard(
                         imageVector = Icons.Default.People,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -489,8 +450,8 @@ fun GroupCard(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Open group",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }

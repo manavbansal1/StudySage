@@ -260,7 +260,7 @@ fun HomeScreen(
                         // Letter avatar (fixed background)
                         Box(
                             modifier = Modifier
-                                .size(80.dp)
+                                .size(64.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant) // Use soft purple
                                 .border(4.dp, MaterialTheme.colorScheme.primary, CircleShape),
