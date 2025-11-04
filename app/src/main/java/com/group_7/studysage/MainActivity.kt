@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.rememberNavController
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.navigation.StudySageNavigation
 import com.group_7.studysage.ui.theme.StudySageTheme
@@ -40,7 +39,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun StudySageApp() {
-    val navController = rememberNavController()
     val authRepository = remember { AuthRepository() }
 
     val authViewModel: AuthViewModel = viewModel(
@@ -48,9 +46,7 @@ fun StudySageApp() {
     )
 
     StudySageNavigation(
-        navController = navController,
         authViewModel = authViewModel,
-        authRepository = authRepository,
-        modifier = Modifier.padding(top = 0.dp)
+        modifier = Modifier.padding(top = 12.dp)
     )
 }

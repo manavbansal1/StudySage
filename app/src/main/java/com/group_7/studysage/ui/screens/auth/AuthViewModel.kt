@@ -8,7 +8,7 @@ import com.group_7.studysage.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
-    private val authRepository: AuthRepository
+    val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)

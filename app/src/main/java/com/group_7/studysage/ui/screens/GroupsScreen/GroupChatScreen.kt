@@ -49,7 +49,7 @@ fun GroupChatScreen(
     val inviteStatus by viewModel.inviteStatus.collectAsState()
 
     var showInviteDialog by remember { mutableStateOf(false) }
-    var showGroupDetails by remember { mutableStateOf(false) } // ⭐ NEW
+    var showGroupDetails by remember { mutableStateOf(false) }
 
     LaunchedEffect(groupId) {
         viewModel.loadGroupData(groupId)
@@ -59,26 +59,16 @@ fun GroupChatScreen(
     // Show invite status as snackbar
     LaunchedEffect(inviteStatus) {
         if (inviteStatus != null) {
-            // You can show a snackbar here
-            // After showing, clear the status
             delay(3000)
             viewModel.clearInviteStatus()
         }
     }
 
-    // Main container with gradient background - fills entire screen
+    // Main container with theme background - fills entire screen
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF2D1B4E),
-                        Color(0xFF3D2B5E),
-                        Color(0xFF2D1B4E)
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
         when (val state = uiState) {
             is GroupChatUiState.Loading -> {
@@ -94,7 +84,7 @@ fun GroupChatScreen(
                         memberCount = state.memberCount,
                         isAdmin = state.isAdmin,
                         onBackClick = onNavigateBack,
-                        onGroupClick = { showGroupDetails = true }, // ⭐ NEW - Click to show details
+                        onGroupClick = { showGroupDetails = true },
                         onInviteClick = { showInviteDialog = true }
                     )
 
@@ -120,7 +110,7 @@ fun GroupChatScreen(
                     )
                 }
 
-                // Group Details Overlay - ⭐ UPDATED
+                // Group Details Overlay
                 if (showGroupDetails) {
                     GroupDetailsOverlay(
                         groupId = groupId,
@@ -171,14 +161,15 @@ fun GroupChatScreen(
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Surface(
-                    color = Color(0xFF3D2564),
+                    color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(12.dp),
-                    shadowElevation = 8.dp
+                    shadowElevation = 8.dp,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 ) {
                     Text(
                         text = status,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 14.sp
                     )
                 }
@@ -195,14 +186,6 @@ fun GroupChatScreen(
                 }
             )
         }
-
-        // Group details overlay
-        if (showGroupDetails) {
-            GroupDetailsOverlay(
-                groupId = groupId,
-                onDismiss = { showGroupDetails = false }
-            )
-        }
     }
 }
 
@@ -212,142 +195,91 @@ private fun GroupChatHeader(
     memberCount: Int,
     isAdmin: Boolean,
     onBackClick: () -> Unit,
-    onGroupClick: () -> Unit, // ⭐ NEW
+    onGroupClick: () -> Unit,
     onInviteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Surface that extends to top of screen with status bar padding
     Surface(
-        modifier = modifier
-            .fillMaxWidth(),
-        color = Color(0xFF3D2564),
-        shadowElevation = 8.dp
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(74.dp)
-                .padding(horizontal = 16.dp),
+                .height(64.dp)
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back Button
             IconButton(
                 onClick = onBackClick,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF2D1B4E),
-                                Color(0xFF1D0B3E)
-                            )
-                        )
-                    )
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Group Avatar
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .clickable { onGroupClick() }
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Group,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Group Avatar with gradient border - ⭐ CLICKABLE
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .clickable { onGroupClick() } // ⭐ NEW
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color(0xFF9333EA),
-                                Color(0xFF7C3AED),
-                                Color(0xFFC084FC)
-                            )
-                        )
-                    )
-                    .padding(2.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(Color(0xFF2D1B4E)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Group,
-                        contentDescription = null,
-                        tint = Color(0xFF9333EA),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Group Info - ⭐ CLICKABLE
+            // Group Info
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onGroupClick() }, // ⭐ NEW
+                    .clickable { onGroupClick() },
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = groupName,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    letterSpacing = 0.3.sp
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF9333EA))
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "$memberCount members",
-                        fontSize = 12.sp,
-                        color = Color(0xFFB0B0C0),
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text(
+                    text = "$memberCount members",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Normal
+                )
             }
 
             // Invite Button (only for admins)
             if (isAdmin) {
                 IconButton(
                     onClick = onInviteClick,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF9333EA),
-                                    Color(0xFF7C3AED)
-                                )
-                            )
-                        )
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.PersonAdd,
                         contentDescription = "Invite Member",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -409,7 +341,7 @@ private fun MessageBubble(
                 text = message.senderName,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF9333EA),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
             )
         }
@@ -423,10 +355,10 @@ private fun MessageBubble(
                 bottomEnd = 20.dp
             ),
             color = if (isCurrentUser)
-                Color(0xFF9333EA)
+                MaterialTheme.colorScheme.primary
             else
-                Color(0xFF3D2564),
-            shadowElevation = 4.dp,
+                MaterialTheme.colorScheme.surfaceVariant,
+            shadowElevation = 2.dp,
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(
@@ -436,7 +368,10 @@ private fun MessageBubble(
                 Text(
                     text = message.message,
                     fontSize = 15.sp,
-                    color = Color.White,
+                    color = if (isCurrentUser)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurface,
                     lineHeight = 20.sp
                 )
 
@@ -446,7 +381,10 @@ private fun MessageBubble(
                 Text(
                     text = formatTimestamp(message.timestamp),
                     fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = if (isCurrentUser)
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.End)
                 )
             }
@@ -462,10 +400,9 @@ private fun MessageInputSection(
     var messageText by remember { mutableStateOf("") }
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth(),
-        color = Color(0xFF3D2564),
-        shadowElevation = 12.dp
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp
     ) {
         Row(
             modifier = Modifier
@@ -479,8 +416,8 @@ private fun MessageInputSection(
                     .weight(1f)
                     .heightIn(min = 48.dp, max = 120.dp),
                 shape = RoundedCornerShape(24.dp),
-                color = Color(0xFF2D1B4E),
-                border = BorderStroke(1.dp, Color(0xFF6B4BA6).copy(alpha = 0.3f))
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
             ) {
                 BasicTextField(
                     value = messageText,
@@ -490,11 +427,11 @@ private fun MessageInputSection(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     textStyle = TextStyle(
                         fontSize = 15.sp,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 20.sp
                     ),
                     maxLines = 5,
-                    cursorBrush = SolidColor(Color(0xFF9333EA)),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     decorationBox = { innerTextField ->
                         Box(
                             modifier = Modifier.fillMaxWidth(),
@@ -504,7 +441,7 @@ private fun MessageInputSection(
                                 Text(
                                     text = "Type a message...",
                                     fontSize = 15.sp,
-                                    color = Color(0xFFB0B0C0).copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
                             }
                             innerTextField()
@@ -528,26 +465,19 @@ private fun MessageInputSection(
                     .clip(CircleShape)
                     .background(
                         if (messageText.isNotBlank())
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF9333EA),
-                                    Color(0xFF7C3AED)
-                                )
-                            )
+                            MaterialTheme.colorScheme.primary
                         else
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF2D1B4E),
-                                    Color(0xFF2D1B4E)
-                                )
-                            )
+                            MaterialTheme.colorScheme.surfaceVariant
                     ),
                 enabled = messageText.isNotBlank()
             ) {
                 Icon(
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send",
-                    tint = if (messageText.isNotBlank()) Color.White else Color(0xFF6B4BA6),
+                    tint = if (messageText.isNotBlank())
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -565,7 +495,7 @@ private fun ChatLoadingState(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CircularProgressIndicator(
-                color = Color(0xFF9333EA),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp),
                 strokeWidth = 4.dp
             )
@@ -573,7 +503,7 @@ private fun ChatLoadingState(modifier: Modifier = Modifier) {
             Text(
                 text = "Loading messages...",
                 fontSize = 14.sp,
-                color = Color(0xFFB0B0C0)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -596,7 +526,7 @@ private fun EmptyChatState(
                 imageVector = Icons.Default.Chat,
                 contentDescription = null,
                 modifier = Modifier.size(72.dp),
-                tint = Color(0xFF9333EA).copy(alpha = 0.4f)
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -605,7 +535,7 @@ private fun EmptyChatState(
                 text = "No messages yet",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -613,7 +543,7 @@ private fun EmptyChatState(
             Text(
                 text = "Start the conversation in $groupName",
                 fontSize = 14.sp,
-                color = Color(0xFFB0B0C0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
@@ -639,7 +569,7 @@ private fun ErrorState(
                 imageVector = Icons.Default.Error,
                 contentDescription = null,
                 modifier = Modifier.size(72.dp),
-                tint = Color(0xFFFF6B6B)
+                tint = MaterialTheme.colorScheme.error
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -648,7 +578,7 @@ private fun ErrorState(
                 text = "Error",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -656,7 +586,7 @@ private fun ErrorState(
             Text(
                 text = message,
                 fontSize = 14.sp,
-                color = Color(0xFFB0B0C0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
@@ -665,11 +595,8 @@ private fun ErrorState(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Button(
+                OutlinedButton(
                     onClick = onBackClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3D2564)
-                    ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Go Back")
@@ -678,7 +605,7 @@ private fun ErrorState(
                 Button(
                     onClick = onRetry,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF9333EA)
+                        containerColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -699,7 +626,12 @@ private fun InviteMemberDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Invite Member") },
+        title = {
+            Text(
+                "Invite Member",
+                fontWeight = FontWeight.SemiBold
+            )
+        },
         text = {
             Column {
                 Text(
@@ -721,7 +653,8 @@ private fun InviteMemberDialog(
                         if (!isValidEmail) {
                             Text("Please enter a valid email address")
                         }
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
@@ -752,18 +685,18 @@ private fun GroupDetailsOverlay(
     groupId: String,
     onDismiss: () -> Unit
 ) {
-    // TODO: Implement group details overlay
-    // This is a placeholder implementation
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
+            .clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            modifier = Modifier.padding(32.dp),
-            color = Color(0xFF3D2564),
+            modifier = Modifier
+                .padding(32.dp)
+                .clickable(enabled = false) { },
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp),
             shadowElevation = 12.dp
         ) {
@@ -773,30 +706,29 @@ private fun GroupDetailsOverlay(
             ) {
                 Text(
                     text = "Group Details",
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // TODO: Add actual group details here
                 Text(
                     text = "Group ID: $groupId",
                     fontSize = 14.sp,
-                    color = Color(0xFFB0B0C0)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Close button
                 TextButton(
                     onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End) // ⭐ FIX: Changed from Alignment.end to Alignment.End
+                    modifier = Modifier.align(Alignment.End)
                 ) {
                     Text(
                         text = "Close",
-                        color = Color(0xFF9333EA)
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

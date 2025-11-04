@@ -135,10 +135,6 @@ class ProfileViewModel(
         }
     }
 
-    fun signOut() {
-        authRepository.signOut()
-        _uiState.update { ProfileUiState() }
-    }
 
     fun clearMessage() {
         _uiState.update { it.copy(message = null, error = null) }
