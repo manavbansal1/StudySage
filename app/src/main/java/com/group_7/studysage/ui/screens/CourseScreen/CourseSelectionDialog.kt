@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.CourseScreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Course
-import com.group_7.studysage.ui.screens.viewmodels.CourseViewModel
 
 @Composable
 fun CourseSelectionDialog(
@@ -197,7 +197,7 @@ fun CourseSelectionItem(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color(android.graphics.Color.parseColor(course.color)))
+                        .background(Color(course.color.toColorInt()))
                 ) {
                     Text(
                         text = course.code.take(2),

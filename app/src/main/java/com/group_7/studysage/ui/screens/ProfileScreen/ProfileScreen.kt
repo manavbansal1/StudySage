@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.ProfileScreen
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,20 +21,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.data.repository.AuthRepository
-import com.group_7.studysage.ui.screens.viewmodels.ProfileViewModel
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -651,7 +647,7 @@ private fun StatCard(
     icon: ImageVector,
     value: String,
     label: String,
-    iconColor: androidx.compose.ui.graphics.Color,
+    iconColor: Color,
     modifier: Modifier = Modifier
 ) {
     Card(

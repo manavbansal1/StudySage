@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.CourseScreen
 
 import android.app.Activity
 import android.content.Intent
@@ -20,16 +20,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.CourseWithNotes
 import com.group_7.studysage.data.repository.Note
-import com.group_7.studysage.ui.screens.viewmodels.NotesViewModel
-import com.group_7.studysage.ui.viewmodels.HomeViewModel
+import com.group_7.studysage.ui.screens.CourseScreen.NotesViewModel
+import com.group_7.studysage.ui.screens.HomeScreen.HomeViewModel
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -278,7 +280,7 @@ fun CourseDetailScreen(
 }
 
 @Composable
-fun CourseInfoCard(course: com.group_7.studysage.data.repository.Course) {
+fun CourseInfoCard(course: Course) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -296,7 +298,7 @@ fun CourseInfoCard(course: com.group_7.studysage.data.repository.Course) {
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(Color(android.graphics.Color.parseColor(course.color)))
+                    .background(Color(course.color.toColorInt()))
             ) {
                 Text(
                     text = course.code.take(3),

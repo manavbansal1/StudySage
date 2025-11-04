@@ -19,11 +19,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,16 +43,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.group_7.studysage.data.repository.AuthRepository
-import com.group_7.studysage.ui.screens.CoursesScreen
-import com.group_7.studysage.ui.screens.GroupChatScreen
-import com.group_7.studysage.ui.screens.GroupScreen
-import com.group_7.studysage.ui.screens.HomeScreen
-import com.group_7.studysage.ui.screens.NotificationsScreen
-import com.group_7.studysage.ui.screens.PrivacyScreen
-import com.group_7.studysage.ui.screens.ProfileScreen
+import com.group_7.studysage.ui.screens.CourseScreen.CoursesScreen
+import com.group_7.studysage.ui.screens.GroupsScreen.GroupChatScreen
+import com.group_7.studysage.ui.screens.GroupsScreen.GroupScreen
+import com.group_7.studysage.ui.screens.HomeScreen.HomeScreen
+import com.group_7.studysage.ui.screens.ProfileScreen.NotificationsScreen
+import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
+import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
-import com.group_7.studysage.ui.viewmodels.AuthViewModel
+import com.group_7.studysage.ui.screens.auth.AuthViewModel
 import com.group_7.studysage.ui.theme.*
 
 

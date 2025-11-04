@@ -1,5 +1,6 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.GroupsScreen
 
+import android.util.Patterns
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.ui.viewmodels.GroupChatViewModel
 import com.group_7.studysage.ui.viewmodels.GroupChatUiState
 import com.group_7.studysage.data.repository.GroupMessage
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,7 +61,7 @@ fun GroupChatScreen(
         if (inviteStatus != null) {
             // You can show a snackbar here
             // After showing, clear the status
-            kotlinx.coroutines.delay(3000)
+            delay(3000)
             viewModel.clearInviteStatus()
         }
     }
@@ -726,7 +728,7 @@ private fun InviteMemberDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                    if (email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                         onConfirm(email)
                     } else {
                         isValidEmail = false
