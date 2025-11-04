@@ -59,6 +59,10 @@ import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.ui.screens.auth.AuthViewModel
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import com.group_7.studysage.ui.theme.*
 
 
@@ -112,7 +116,7 @@ private fun GlassCard(
     }
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun StudySageNavigation(
     authViewModel: AuthViewModel,
@@ -126,6 +130,11 @@ fun StudySageNavigation(
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
+
+        val selectedIndex = screens.indexOfFirst { screen ->
+            currentDestination?.hierarchy?.any { it.route == screen.route } == true
+        }
+
 
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
@@ -220,15 +229,93 @@ fun StudySageNavigation(
                 startDestination = Screen.Home.route,
                 modifier = Modifier
             ) {
-                composable(Screen.Home.route) {
+                composable(
+                    Screen.Home.route,
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
                     HomeScreen(navController = navController)
                 }
 
-                composable(Screen.Course.route) {
+                composable(
+                    Screen.Course.route,
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
                     CoursesScreen()
                 }
 
-                composable(Screen.Groups.route) {
+                composable(
+                    Screen.Groups.route,
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
                     GroupScreen(
                         onGroupClick = { groupId ->
                             navController.navigate(Screen.GroupChat.createRoute(groupId))
@@ -236,22 +323,126 @@ fun StudySageNavigation(
                     )
                 }
 
-                composable(Screen.Profile.route) {
+                composable(
+                    Screen.Profile.route,
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
                     ProfileScreen(
                         authViewModel = authViewModel,
                         navController = navController
                     )
                 }
 
-                composable("privacy_settings") {
+                composable(
+                    "privacy_settings",
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
                     PrivacyScreen(navController = navController)
                 }
 
-                composable("notification_settings") {
+                composable(
+                    "notification_settings",
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
                     NotificationsScreen(navController = navController)
                 }
 
-                composable(Screen.Games.route) {
+                composable(
+                    Screen.Games.route,
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) {
 
                 }
 
@@ -261,7 +452,31 @@ fun StudySageNavigation(
                         navArgument("groupId") {
                             type = NavType.StringType
                         }
-                    )
+                    ),
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
                 ) { backStackEntry ->
                     val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
                     GroupChatScreen(
