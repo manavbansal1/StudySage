@@ -28,21 +28,34 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.CourseWithNotes
 import com.group_7.studysage.data.repository.Note
+import com.group_7.studysage.ui.screens.viewmodels.NotesViewModel
 import com.group_7.studysage.ui.viewmodels.HomeViewModel
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CourseDetailScreen(
     courseWithNotes: CourseWithNotes,
     onBack: () -> Unit,
-    homeViewModel: HomeViewModel = viewModel()
+    homeViewModel: HomeViewModel = viewModel(),
+    notesViewModel: NotesViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val course = courseWithNotes.course
-    val notes = courseWithNotes.notes
+
+    val notesMap = homeViewModel.getNotesForCourseFromLibrary(course.id)
+    val notes = notesMap.map { noteMap ->
+        Note(
+            id = noteMap["noteId"] as? String ?: "",
+            title = noteMap["fileName"] as? String ?: "",
+            fileUrl = noteMap["fileUrl"] as? String ?: "",
+            courseId = noteMap["courseId"] as? String ?: "",
+            originalFileName = noteMap["fileName"] as? String ?: ""
+        )
+    }
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
@@ -204,7 +217,9 @@ fun CourseDetailScreen(
             } else {
                 val notesList = notes.toList()
                 itemsIndexed(notesList, key = { _: Int, note: Note -> note.id }) { _: Int, note: Note ->
-                    CourseNoteCard(note = note)
+                    CourseNoteCard(note = note, onClick = {
+                        notesViewModel.downloadNote(context, note)
+                    })
                 }
             }
 
@@ -348,9 +363,10 @@ fun CourseInfoCard(course: com.group_7.studysage.data.repository.Course) {
 }
 
 @Composable
-fun CourseNoteCard(note: Note) {
+fun CourseNoteCard(note: Note, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(

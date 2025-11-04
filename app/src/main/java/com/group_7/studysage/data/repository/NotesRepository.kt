@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.group_7.studysage.BuildConfig
+import com.group_7.studysage.utils.CloudinaryUploader
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -35,7 +36,10 @@ data class Note(
     val courseId: String = "" // New field for course association
 )
 
-class NotesRepository {
+class NotesRepository(
+    private val cloudinaryUploader: CloudinaryUploader = CloudinaryUploader,
+    private val authRepository: AuthRepository = AuthRepository()
+) {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -105,6 +109,15 @@ class NotesRepository {
                 }
             }
 
+            onProgress("Uploading file to Cloudinary...")
+            val cloudinaryFileUrl = cloudinaryUploader.uploadFile(
+                context = context,
+                fileUri = uri,
+                fileType = getFileType(fileName),
+                folder = "studysage/notes/${userId}", // Organize by user ID
+                resourceType = if (getFileType(fileName).contains("Image")) "image" else "raw"
+            ) ?: throw Exception("Failed to upload file to Cloudinary.")
+
             onProgress("Generating AI summary...")
 
             val summary = generateAISummary(fileContent as String)
@@ -125,7 +138,7 @@ class NotesRepository {
                 keyPoints = keyPoints,
                 tags = tags,
                 userId = userId,
-                fileUrl = "",
+                fileUrl = cloudinaryFileUrl,
                 fileType = getFileType(fileName),
                 courseId = courseId ?: "" // Associate with course if provided
             )
@@ -135,6 +148,15 @@ class NotesRepository {
                 .document(noteId)
                 .set(note)
                 .await()
+
+            // Add note to user's library
+            authRepository.addNoteToUserLibrary(
+                noteId = note.id,
+                fileName = note.originalFileName,
+                fileUrl = note.fileUrl,
+                subject = note.tags.firstOrNull() ?: "General",
+                courseId = note.courseId
+            )
 
             Log.d("NotesRepository", "Note saved successfully with ID: $noteId")
             onProgress("Note processed successfully!")

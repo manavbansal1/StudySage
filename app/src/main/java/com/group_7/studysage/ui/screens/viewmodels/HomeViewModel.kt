@@ -160,7 +160,7 @@ class HomeViewModel(
     private fun loadRecentlyOpenedPdfs() {
         viewModelScope.launch {
             try {
-                val pdfs = authRepository.getRecentlyOpenedPdfs()
+                val pdfs = authRepository.getUserLibrary()
                 _recentlyOpenedPdfs.value = pdfs
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load recently opened PDFs"
@@ -171,11 +171,15 @@ class HomeViewModel(
     private fun initializeSampleData() {
         viewModelScope.launch {
             // Only initialize sample PDFs if no PDFs exist
-            if (authRepository.getRecentlyOpenedPdfs().isEmpty()) {
-                authRepository.initializeSamplePdfs()
+            if (authRepository.getUserLibrary().isEmpty()) {
+                authRepository.initializeSampleUserLibrary()
                 loadRecentlyOpenedPdfs()
             }
         }
+    }
+
+    fun getNotesForCourseFromLibrary(courseId: String): List<Map<String, Any>> {
+        return recentlyOpenedPdfs.value.filter { it["courseId"] == courseId }
     }
 
     fun openPdf(pdfUrl: String) {

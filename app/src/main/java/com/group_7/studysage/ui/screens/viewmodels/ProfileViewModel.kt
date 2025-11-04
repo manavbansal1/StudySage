@@ -88,7 +88,13 @@ class ProfileViewModel(
 
             try {
                 // Upload to Cloudinary
-                val imageUrl = CloudinaryUploader.uploadImage(context, imageUri)
+                val imageUrl = CloudinaryUploader.uploadFile(
+                    context = context,
+                    fileUri = imageUri,
+                    fileType = "image",
+                    folder = "studysage/profiles",
+                    resourceType = "image"
+                )
 
                 if (imageUrl != null) {
                     // Update Firebase with the new image URL

@@ -263,12 +263,13 @@ class GroupChatViewModel(
                 _uploadError.value = null
 
                 // Upload to Cloudinary
-                val imageUrl = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    com.group_7.studysage.utils.CloudinaryUploader.uploadImage(
-                        context = context,
-                        imageUri = imageUri
-                    )
-                }
+                val imageUrl = com.group_7.studysage.utils.CloudinaryUploader.uploadFile(
+                    context = context,
+                    fileUri = imageUri,
+                    fileType = "image",
+                    folder = "studysage/groups/$groupId",
+                    resourceType = "image"
+                )
 
                 if (imageUrl != null) {
                     // Update group profile in Firebase
