@@ -3,6 +3,7 @@ package com.group_7.studysage.utils
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Environment
 import android.util.Log
 import android.widget.Toast
@@ -13,7 +14,7 @@ object FileDownloader {
         try {
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-            val request = DownloadManager.Request(Uri.parse(url))
+            val request = DownloadManager.Request(url.toUri())
                 .setTitle(fileName)
                 .setDescription("Downloading...")
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)

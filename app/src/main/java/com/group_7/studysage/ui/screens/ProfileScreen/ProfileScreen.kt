@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.ProfileScreen
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,28 +21,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.data.repository.AuthRepository
-import com.group_7.studysage.ui.screens.viewmodels.ProfileViewModel
+import com.group_7.studysage.ui.screens.auth.AuthViewModel
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    authRepository: AuthRepository,
+    authViewModel: AuthViewModel,
     navController: NavController,
-    viewModel: ProfileViewModel = viewModel { ProfileViewModel(authRepository) }
+    viewModel: ProfileViewModel = viewModel { ProfileViewModel(authViewModel.authRepository) }
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -222,13 +219,13 @@ fun ProfileScreen(
                             }
                         }
 
-                        // BIO SECTION
+                        // BIO SECTION - UPDATED PADDING TO MATCH PROFILE CARD
                         val bio = profile["bio"] as? String
                         if (!bio.isNullOrBlank()) {
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
+                                    .padding(horizontal = 24.dp),
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
@@ -352,7 +349,8 @@ fun ProfileScreen(
                                 title = "Sign Out",
                                 subtitle = "Log out from your account",
                                 onClick = { showSignOutDialog = true },
-                                showChevron = false
+                                showChevron = false,
+                                isDestructive = true
                             )
                         }
 
@@ -452,8 +450,8 @@ fun ProfileScreen(
                         showEditDialog = false
                     },
                     enabled = editName.isNotBlank() &&
-                              editName.length <= 20 &&
-                              !uiState.isLoading,
+                            editName.length <= 20 &&
+                            !uiState.isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -532,8 +530,10 @@ fun ProfileScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.signOut()
                         showSignOutDialog = false
+                        authViewModel.signOut()
+                        // The AuthViewModel's signOut() will update isSignedIn state
+                        // which will automatically trigger navigation to sign in screen
                     }
                 ) {
                     Text("Yes, Sign Out", color = MaterialTheme.colorScheme.error)
@@ -651,7 +651,7 @@ private fun StatCard(
     icon: ImageVector,
     value: String,
     label: String,
-    iconColor: androidx.compose.ui.graphics.Color,
+    iconColor: Color,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -699,6 +699,7 @@ private fun SettingsOption(
     subtitle: String,
     onClick: () -> Unit,
     showChevron: Boolean = true,
+    isDestructive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -707,9 +708,18 @@ private fun SettingsOption(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+            containerColor = if (isDestructive)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isDestructive)
+                MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+            else
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -721,7 +731,10 @@ private fun SettingsOption(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (isDestructive)
+                    MaterialTheme.colorScheme.error
+                else
+                    MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
 
@@ -732,13 +745,19 @@ private fun SettingsOption(
                     text = title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isDestructive)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isDestructive)
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

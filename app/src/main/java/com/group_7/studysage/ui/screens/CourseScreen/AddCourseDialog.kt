@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens
+package com.group_7.studysage.ui.screens.CourseScreen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
@@ -317,7 +317,7 @@ fun ColorOption(
             .border(border, CircleShape) // Apply border
             .padding(4.dp) // Padding inside the border
             .clip(CircleShape)
-            .background(Color(android.graphics.Color.parseColor(color)))
+            .background(Color(color.toColorInt()))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
