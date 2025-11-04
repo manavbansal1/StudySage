@@ -131,6 +131,20 @@ class AuthRepository(
         }
     }
 
+    suspend fun updateUserAuthProfile(name: String, photoUrl: String): Result<Unit> {
+        return try {
+            val user = currentUser ?: return Result.failure(Exception("No user logged in"))
+            val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                .setDisplayName(name)
+                .setPhotoUri(android.net.Uri.parse(photoUrl))
+                .build()
+            user.updateProfile(profileUpdates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateStreak(streakDays: Int): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))

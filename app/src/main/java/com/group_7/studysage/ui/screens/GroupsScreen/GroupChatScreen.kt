@@ -207,8 +207,8 @@ private fun GroupChatHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 12.dp),
+                .height(90.dp)
+                .padding(top = 20.dp, start = 12.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back Button

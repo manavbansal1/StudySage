@@ -47,6 +47,6 @@ fun StudySageApp() {
 
     StudySageNavigation(
         authViewModel = authViewModel,
-        modifier = Modifier.padding(top = 12.dp)
+        modifier = Modifier
     )
 }

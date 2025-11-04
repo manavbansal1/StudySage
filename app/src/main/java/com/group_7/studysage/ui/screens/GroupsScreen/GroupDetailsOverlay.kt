@@ -83,18 +83,11 @@ fun GroupDetailsOverlay(
             dismissOnClickOutside = true
         )
     ) {
-        Box(
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF2D1B4E),
-                            Color(0xFF3D2B5E),
-                            Color(0xFF2D1B4E)
-                        )
-                    )
-                )
+                .fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            color = MaterialTheme.colorScheme.background
         ) {
             Column(
                 modifier = Modifier
@@ -113,7 +106,7 @@ fun GroupDetailsOverlay(
                         text = "Group Details",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onBackground
                     )
 
                     IconButton(
@@ -121,12 +114,12 @@ fun GroupDetailsOverlay(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF3D2564))
+                            .background(MaterialTheme.colorScheme.surface)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -160,7 +153,7 @@ fun GroupDetailsOverlay(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.2f)
+                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -171,12 +164,12 @@ fun GroupDetailsOverlay(
                                     Icon(
                                         Icons.Default.Error,
                                         contentDescription = null,
-                                        tint = Color(0xFFEF4444)
+                                        tint = MaterialTheme.colorScheme.error
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = error,
-                                        color = Color(0xFFEF4444),
+                                        color = MaterialTheme.colorScheme.error,
                                         fontSize = 14.sp
                                     )
                                 }
@@ -190,7 +183,7 @@ fun GroupDetailsOverlay(
                             text = "Members ($memberCount)",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     }
@@ -222,8 +215,8 @@ fun GroupDetailsOverlay(
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
-                                    contentColor = Color(0xFFEF4444)
+                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                                    contentColor = MaterialTheme.colorScheme.error
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -246,8 +239,8 @@ fun GroupDetailsOverlay(
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFEF4444).copy(alpha = 0.2f),
-                                    contentColor = Color(0xFFEF4444)
+                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                                    contentColor = MaterialTheme.colorScheme.error
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -290,9 +283,9 @@ fun GroupDetailsOverlay(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF3D2564),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFB0B0C0)
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 
@@ -301,7 +294,7 @@ fun GroupDetailsOverlay(
         AlertDialog(
             onDismissRequest = { showLeaveConfirmation = false },
             icon = {
-                Icon(Icons.Default.ExitToApp, null, tint = Color(0xFFEF4444))
+                Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.error)
             },
             title = { Text("Leave Group?") },
             text = { Text("Are you sure you want to leave $groupName?") },
@@ -313,7 +306,7 @@ fun GroupDetailsOverlay(
                         onDismiss()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFEF4444)
+                        containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
                     Text("Leave")
@@ -324,9 +317,9 @@ fun GroupDetailsOverlay(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF3D2564),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFB0B0C0)
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 
@@ -335,7 +328,7 @@ fun GroupDetailsOverlay(
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
             icon = {
-                Icon(Icons.Default.Delete, null, tint = Color(0xFFEF4444))
+                Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
             },
             title = { Text("Delete Group?") },
             text = {
@@ -349,7 +342,7 @@ fun GroupDetailsOverlay(
                         onDismiss()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFEF4444)
+                        containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
                     Text("Delete")
@@ -360,9 +353,9 @@ fun GroupDetailsOverlay(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF3D2564),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFB0B0C0)
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -389,17 +382,17 @@ private fun GroupProfileSection(
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF9333EA),
-                            Color(0xFF7C3AED)
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary
                         )
                     )
                 )
-                .border(4.dp, Color(0xFF6B4BA6), CircleShape),
+                .border(4.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (isUploading) {
                 CircularProgressIndicator(
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(40.dp)
                 )
             } else if (groupPic.isNotEmpty()) {
@@ -421,7 +414,7 @@ private fun GroupProfileSection(
                         Icon(
                             Icons.Default.CameraAlt,
                             contentDescription = "Change picture",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -430,7 +423,7 @@ private fun GroupProfileSection(
                 Icon(
                     Icons.Default.Group,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(48.dp)
                 )
 
@@ -441,13 +434,13 @@ private fun GroupProfileSection(
                             .padding(8.dp)
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF9333EA)),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.CameraAlt,
                             contentDescription = "Add picture",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -461,7 +454,7 @@ private fun GroupProfileSection(
             text = groupName,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
@@ -470,19 +463,19 @@ private fun GroupProfileSection(
         Text(
             text = "$memberCount members",
             fontSize = 14.sp,
-            color = Color(0xFFB0B0C0)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         if (isAdmin) {
             Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = Color(0xFF9333EA).copy(alpha = 0.2f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
             ) {
                 Text(
                     text = "Admin",
                     fontSize = 12.sp,
-                    color = Color(0xFF9333EA),
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
@@ -510,7 +503,7 @@ private fun MemberItem(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF3D2564)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
@@ -525,7 +518,7 @@ private fun MemberItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF9333EA)),
+                    .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
                 if (memberPic.isNotEmpty()) {
@@ -538,7 +531,7 @@ private fun MemberItem(
                 } else {
                     Text(
                         text = memberName.firstOrNull()?.uppercase() ?: "?",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -554,7 +547,7 @@ private fun MemberItem(
                         text = if (isCurrentUser) "$memberName (You)" else memberName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -563,12 +556,12 @@ private fun MemberItem(
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFF9333EA).copy(alpha = 0.3f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                         ) {
                             Text(
                                 text = "Admin",
                                 fontSize = 10.sp,
-                                color = Color(0xFF9333EA),
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
@@ -585,7 +578,7 @@ private fun MemberItem(
                     Icon(
                         Icons.Default.MoreVert,
                         contentDescription = "Options",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -598,7 +591,7 @@ private fun MemberItem(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                HorizontalDivider(color = Color(0xFF6B4BA6).copy(alpha = 0.3f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -613,12 +606,12 @@ private fun MemberItem(
                         Icon(
                             Icons.Default.AdminPanelSettings,
                             contentDescription = null,
-                            tint = Color(0xFF9333EA)
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             "Make Admin",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Start
                         )
@@ -635,12 +628,12 @@ private fun MemberItem(
                     Icon(
                         Icons.Default.PersonRemove,
                         contentDescription = null,
-                        tint = Color(0xFFEF4444)
+                        tint = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "Remove from Group",
-                        color = Color(0xFFEF4444),
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Start
                     )
@@ -649,4 +642,3 @@ private fun MemberItem(
         }
     }
 }
-
