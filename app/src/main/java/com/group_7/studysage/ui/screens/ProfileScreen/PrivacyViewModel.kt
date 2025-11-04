@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens.viewmodels
+package com.group_7.studysage.ui.screens.ProfileScreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
