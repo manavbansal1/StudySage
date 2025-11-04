@@ -1,5 +1,8 @@
 package com.group_7.studysage.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -19,20 +23,64 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.ui.screens.viewmodels.NotesViewModel
+import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
-    viewModel: NotesViewModel = viewModel()
+    viewModel: NotesViewModel = viewModel(),
+    courseId: String? = null
 ) {
     val notes by viewModel.notes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val selectedNote by viewModel.selectedNote.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // State for upload progress dialog
+    var showUploadProgressDialog by remember { mutableStateOf(false) }
+    var uploadProgressMessage by remember { mutableStateOf("") }
+
+    // Activity result launcher for file picking
+    val pickFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val fileInfo = FileUtils.getFileInfo(context, it)
+            if (fileInfo != null && FileUtils.isSupportedFileType(fileInfo.name)) {
+                showUploadProgressDialog = true
+                viewModel.uploadNote(
+                    context = context,
+                    uri = it,
+                    fileName = fileInfo.name,
+                    courseId = courseId,
+                    onUploadProgress = { progress ->
+                        uploadProgressMessage = progress
+                    },
+                    onUploadComplete = {
+                        showUploadProgressDialog = false
+                    }
+                )
+            } else {
+                viewModel.setErrorMessage("Unsupported file type. Please upload a PDF, TXT, or Word document.")
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
-        viewModel.loadNotes()
+        viewModel.loadNotes(courseId)
+    }
+
+    // Show Snackbar for errors
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
     }
 
     if (selectedNote != null) {
@@ -41,54 +89,74 @@ fun NotesScreen(
             onBack = { viewModel.clearSelectedNote() }
         )
     } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "My Notes",
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                IconButton(onClick = { viewModel.loadNotes() }) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            floatingActionButton = {
+                FloatingActionButton(onClick = { pickFileLauncher.launch("application/pdf") }) {
+                    Icon(Icons.Default.Add, contentDescription = "Upload Note")
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CircularProgressIndicator()
-                }
-            } else if (notes.isEmpty()) {
-                EmptyNotesState()
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(notes) { note ->
-                        NoteCard(
-                            note = note,
-                            onClick = { viewModel.selectNote(note) }
+                    Text(
+                        text = "My Notes",
+                        style = MaterialTheme.typography.displayMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    IconButton(onClick = { viewModel.loadNotes(courseId) }) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (notes.isEmpty()) {
+                    EmptyNotesState()
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(notes) { note ->
+                            NoteCard(
+                                note = note,
+                                onClick = { viewModel.selectNote(note) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Upload Progress Dialog
+            if (showUploadProgressDialog) {
+                AlertDialog(
+                    onDismissRequest = { /* Cannot dismiss during upload */ },
+                    title = { Text("Uploading Note") },
+                    text = { Text(uploadProgressMessage) },
+                    confirmButton = { /* No button needed */ }
+                )
             }
         }
     }
@@ -383,7 +451,7 @@ fun NoteDetailView(
 
                     Row {
                         note.tags.forEach { tag ->
-                            SuggestionChip(
+                            AssistChip(
                                 onClick = { },
                                 label = {
                                     Text(
@@ -444,6 +512,6 @@ private fun formatDate(timestamp: Long): String {
 @Composable
 fun NotesScreenPreview() {
     StudySageTheme {
-        NotesScreen()
+        NotesScreen(courseId = "sampleCourseId")
     }
 }

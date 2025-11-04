@@ -21,7 +21,8 @@ object CloudinaryUploader {
     // Cloudinary credentials from BuildConfig To Connect with the Data Base
     private const val CLOUD_NAME = BuildConfig.CLOUDINARY_CLOUD_NAME
     private const val UPLOAD_PRESET = BuildConfig.CLOUDINARY_UPLOAD_PRESET
-    private const val CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload"
+    private const val CLOUDINARY_IMAGE_UPLOAD_URL = "https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload"
+    private const val CLOUDINARY_RAW_UPLOAD_URL = "https://api.cloudinary.com/v1_1/$CLOUD_NAME/raw/upload"
 
     //Setting Time Outs For api calls
     private val client = OkHttpClient.Builder()
@@ -30,26 +31,42 @@ object CloudinaryUploader {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    suspend fun uploadImage(context: Context, imageUri: Uri): String? = withContext(Dispatchers.IO) {
+    suspend fun uploadFile(
+        context: Context,
+        fileUri: Uri,
+        fileType: String, // e.g., "image", "raw"
+        folder: String, // e.g., "studysage/notes"
+        resourceType: String // e.g., "image", "raw"
+    ): String? = withContext(Dispatchers.IO) {
         try {
             // Convert URI to File
-            val file = uriToFile(context, imageUri) ?: return@withContext null
+            val file = uriToFile(context, fileUri) ?: return@withContext null
 
-            // Requesting For Image
+            val mimeType = context.contentResolver.getType(fileUri) ?: "application/octet-stream"
+
+            // Determine the correct Cloudinary URL based on fileType
+            val uploadUrl = when (resourceType) {
+                "image" -> CLOUDINARY_IMAGE_UPLOAD_URL
+                "raw" -> CLOUDINARY_RAW_UPLOAD_URL
+                else -> CLOUDINARY_IMAGE_UPLOAD_URL // Default to image upload
+            }
+
+            // Requesting For File
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart(
                     "file",
                     file.name,
-                    file.asRequestBody("image/*".toMediaTypeOrNull())
+                    file.asRequestBody(mimeType.toMediaTypeOrNull())
                 )
                 .addFormDataPart("upload_preset", UPLOAD_PRESET)
-                .addFormDataPart("folder", "studysage/profiles") // Optional: organize in folders
+                .addFormDataPart("folder", folder) // Dynamic folder
+                .addFormDataPart("resource_type", resourceType) // Specify resource type
                 .build()
 
             // Create request
             val request = Request.Builder()
-                .url(CLOUDINARY_URL)
+                .url(uploadUrl)
                 .post(requestBody)
                 .build()
 
@@ -61,11 +78,13 @@ object CloudinaryUploader {
                 responseBody?.let {
                     val jsonObject = JSONObject(it)
                     val secureUrl = jsonObject.getString("secure_url")
+                    val withAttachment = secureUrl.replace("/upload/", "/upload/fl_attachment/")
+                    val downloadUrl = withAttachment.replace(Regex("/v[0-9]+/"), "/")
 
                     // Clean up temporary file
                     file.delete()
 
-                    return@withContext secureUrl
+                    return@withContext downloadUrl
                 }
             } else {
                 // Log error
