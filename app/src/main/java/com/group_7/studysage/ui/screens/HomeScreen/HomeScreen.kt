@@ -77,7 +77,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.group_7.studysage.ui.screens.HomeScreen.HomeViewModel
+import com.group_7.studysage.viewmodels.HomeViewModel
 
 // Data class as specified
 data class DailyTask(

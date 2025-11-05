@@ -23,7 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.ui.theme.StudySageTheme
-import com.group_7.studysage.ui.screens.auth.AuthViewModel
+import com.group_7.studysage.viewmodels.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

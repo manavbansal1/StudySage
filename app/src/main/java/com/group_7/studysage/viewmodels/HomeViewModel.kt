@@ -1,4 +1,4 @@
-package com.group_7.studysage.ui.screens.HomeScreen
+package com.group_7.studysage.viewmodels
 
 import android.content.Context
 import android.net.Uri

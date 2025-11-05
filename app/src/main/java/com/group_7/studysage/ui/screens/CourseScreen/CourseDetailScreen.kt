@@ -30,8 +30,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.CourseWithNotes
 import com.group_7.studysage.data.repository.Note
-import com.group_7.studysage.ui.screens.CourseScreen.NotesViewModel
-import com.group_7.studysage.ui.screens.HomeScreen.HomeViewModel
+import com.group_7.studysage.viewmodels.NotesViewModel
+import com.group_7.studysage.viewmodels.HomeViewModel
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.Date

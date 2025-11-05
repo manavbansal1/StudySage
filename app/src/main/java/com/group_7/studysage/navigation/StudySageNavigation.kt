@@ -28,11 +28,9 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,13 +39,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
-import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.ui.screens.CourseScreen.CoursesScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupChatScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupScreen
@@ -57,7 +53,7 @@ import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
-import com.group_7.studysage.ui.screens.auth.AuthViewModel
+import com.group_7.studysage.viewmodels.AuthViewModel
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
