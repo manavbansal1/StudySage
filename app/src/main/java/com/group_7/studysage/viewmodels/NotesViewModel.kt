@@ -28,6 +28,9 @@ class NotesViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _isNoteDetailsLoading = MutableStateFlow(false)
+    val isNoteDetailsLoading: StateFlow<Boolean> = _isNoteDetailsLoading.asStateFlow()
+
     init {
         // Initial load is handled by LaunchedEffect in the UI, which can provide courseId
     }
@@ -58,6 +61,27 @@ class NotesViewModel(
 
     fun clearSelectedNote() {
         _selectedNote.value = null
+    }
+
+    fun loadNoteById(noteId: String) {
+        if (noteId.isBlank()) return
+
+        viewModelScope.launch {
+            _isNoteDetailsLoading.value = true
+            try {
+                val note = notesRepository.getNoteById(noteId)
+                if (note != null) {
+                    _selectedNote.value = note
+                    _errorMessage.value = null
+                } else {
+                    _errorMessage.value = "Note details not available."
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to load note: ${e.message}"
+            } finally {
+                _isNoteDetailsLoading.value = false
+            }
+        }
     }
 
     fun deleteNote(noteId: String) {

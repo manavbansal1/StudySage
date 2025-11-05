@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -48,8 +49,9 @@ fun CourseDetailScreen(
     val context = LocalContext.current
     val course = courseWithNotes.course
 
+    val courseNotes = courseWithNotes.notes
     val notesMap = homeViewModel.getNotesForCourseFromLibrary(course.id)
-    val notes = notesMap.map { noteMap ->
+    val libraryNotes = notesMap.map { noteMap ->
         Note(
             id = noteMap["noteId"] as? String ?: "",
             title = noteMap["fileName"] as? String ?: "",
@@ -58,15 +60,72 @@ fun CourseDetailScreen(
             originalFileName = noteMap["fileName"] as? String ?: ""
         )
     }
+    val notes = if (courseNotes.isNotEmpty()) courseNotes else libraryNotes
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
+    var selectedNote by remember { mutableStateOf<Note?>(null) }
+    var showNoteOptions by remember { mutableStateOf(false) }
+    var showSummaryScreen by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
     val uploadStatus by homeViewModel.uploadStatus
     val errorMessage by homeViewModel.errorMessage
+    val selectedNoteState by notesViewModel.selectedNote.collectAsState()
+    val isSummaryLoading by notesViewModel.isNoteDetailsLoading.collectAsState()
+
+    if (showSummaryScreen) {
+        val summaryNote = selectedNoteState
+
+        if (summaryNote != null) {
+            LaunchedEffect(summaryNote.id, summaryNote.summary) {
+                if (summaryNote.summary.isBlank() && summaryNote.id.isNotBlank()) {
+                    notesViewModel.loadNoteById(summaryNote.id)
+                }
+            }
+
+            NoteSummaryScreen(
+                note = summaryNote,
+                isLoading = isSummaryLoading,
+                onBack = {
+                    showSummaryScreen = false
+                    notesViewModel.clearSelectedNote()
+                },
+                onDownload = { notesViewModel.downloadNote(context, summaryNote) }
+            )
+        } else {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("AI Summary") },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                showSummaryScreen = false
+                                notesViewModel.clearSelectedNote()
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        }
+                    )
+                }
+            ) { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+        return
+    }
 
     // File picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -220,13 +279,102 @@ fun CourseDetailScreen(
                 val notesList = notes.toList()
                 itemsIndexed(notesList, key = { _: Int, note: Note -> note.id }) { _: Int, note: Note ->
                     CourseNoteCard(note = note, onClick = {
-                        notesViewModel.downloadNote(context, note)
+                        selectedNote = note
+                        showNoteOptions = true
                     })
                 }
             }
 
             item {
                 Spacer(modifier = Modifier.height(80.dp)) // Space for FAB
+            }
+        }
+    }
+
+    if (showNoteOptions && selectedNote != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val note = selectedNote!!
+        ModalBottomSheet(
+            onDismissRequest = {
+                showNoteOptions = false
+                selectedNote = null
+            },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = if (note.title.isNotBlank()) note.title else note.originalFileName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .padding(vertical = 12.dp)
+                )
+
+                Divider()
+
+                ListItem(
+                    headlineContent = { Text("Download original note") },
+                    supportingContent = {
+                        Text(
+                            text = note.originalFileName.ifBlank { "Download the uploaded file" },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        notesViewModel.downloadNote(context, note)
+                        showNoteOptions = false
+                        selectedNote = null
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("View AI summary") },
+                    supportingContent = {
+                        Text(
+                            text = if (note.summary.isNotBlank()) {
+                                "Read the generated summary for this note"
+                            } else {
+                                "Summary will appear here when available"
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showNoteOptions = false
+                        selectedNote = null
+                        if (note.id.isBlank()) {
+                            Toast.makeText(
+                                context,
+                                "Note details not available yet for this document.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            notesViewModel.selectNote(note)
+                            showSummaryScreen = true
+                            if (note.summary.isBlank()) {
+                                notesViewModel.loadNoteById(note.id)
+                            }
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
@@ -526,6 +674,208 @@ fun EmptyNotesCard() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoteSummaryScreen(
+    note: Note,
+    isLoading: Boolean = false,
+    onBack: () -> Unit,
+    onDownload: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = note.title.ifBlank { "AI Summary" },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = onDownload,
+                        enabled = note.fileUrl.isNotBlank()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = "Download note"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (isLoading) {
+                item {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            item {
+                Column {
+                    Text(
+                        text = note.title.ifBlank { note.originalFileName.ifBlank { "Course note" } },
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatDate(note.createdAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (note.tags.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Tags: ${note.tags.joinToString(", ")}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Summary",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        when {
+                            note.summary.isNotBlank() -> {
+                            Text(
+                                text = note.summary,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            }
+                            isLoading -> {
+                                Text(
+                                    text = "Fetching the latest AI summary...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            else -> {
+                            Text(
+                                text = "Summary not available yet. Please check back soon.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (note.keyPoints.isNotEmpty()) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Key Points",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            note.keyPoints.forEach { point ->
+                                Text(
+                                    text = "• $point",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Original Document",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "File name: ${note.originalFileName.ifBlank { "Not available" }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (note.fileType.isNotBlank()) {
+                            Text(
+                                text = "File type: ${note.fileType}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "Updated: ${formatDate(note.updatedAt)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (note.fileUrl.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            FilledTonalButton(onClick = onDownload) {
+                                Icon(
+                                    imageVector = Icons.Default.FileDownload,
+                                    contentDescription = null
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download original")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
