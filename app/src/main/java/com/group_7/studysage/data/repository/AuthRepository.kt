@@ -1,31 +1,38 @@
 package com.group_7.studysage.data.repository
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.tasks.await
 
-// ==================== DATA CLASS FOR INVITES ====================
-data class GroupInvite(
-    val inviteId: String = "",
-    val groupId: String = "",
-    val groupName: String = "",
-    val groupPic: String = "",
-    val invitedBy: String = "",
-    val invitedByName: String = "",
-    val timestamp: Long = 0L,
-    val status: String = "pending" // pending, accepted, rejected
-)
-
+/**
+ * @Class AuthRepository is used to handle all authentication and user profile related operations
+ * using Firebase Authentication and Firestore as the database.
+ * It has 2 main function parameters -> firebaseAuth and firestore which are instances of FirebaseAuth and FirebaseFirestore respectively.
+ * It also has a property currentUser which returns the currently logged in FirebaseUser.
+ * This helps us to perform various operations based on the current user.
+ *
+ */
 class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
+    companion object {
+        private const val TAG = "AuthRepository"
+    }
+
     val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
 
+    /**
+     * Sign up a new user with email, password, and name
+     * Initializes user profile in Firestore with default values
+     * It returns a Result wrapping the FirebaseUser on success or an Exception on failure.
+     *
+     */
     suspend fun signUp(email: String, password: String, name: String): Result<FirebaseUser> {
         return try {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
@@ -70,10 +77,16 @@ class AuthRepository(
 
             Result.success(user)
         } catch (e: Exception) {
+            Log.e(TAG, "Sign up failed for email=$email: ${e.message}", e)
             Result.failure(e)
         }
     }
 
+    /**
+     * Sign in an existing user with email and password
+     * Updates lastLogin field in Firestore on successful login
+     * It returns a Result wrapping the FirebaseUser on success or an Exception on failure.
+     */
     suspend fun signIn(email: String, password: String): Result<FirebaseUser> {
         return try {
             val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
@@ -87,38 +100,62 @@ class AuthRepository(
 
             Result.success(result.user!!)
         } catch (e: Exception) {
+            Log.e(TAG, "Sign in failed for email=$email: ${e.message}", e)
             Result.failure(e)
         }
     }
 
+    /**
+     * Sign out the current user
+     */
     fun signOut() {
         firebaseAuth.signOut()
     }
 
+    /**
+     * Check if a user is currently signed in
+     */
     fun isUserSignedIn(): Boolean {
-        return currentUser != null
+        val signedIn = currentUser != null
+        return signedIn
     }
 
+    /**
+     * Get user profile data from Firestore
+     * Returns a Map of user profile fields or null if not found
+     *
+     */
     suspend fun getUserProfile(): Map<String, Any>? {
         return try {
             val userId = currentUser?.uid ?: return null
             val document = firestore.collection("users").document(userId).get().await()
             document.data
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user profile: ${e.message}", e)
             null
         }
     }
 
+    /**
+     * Update user profile fields in Firestore
+     * Accepts a Map of fields to update
+     */
     suspend fun updateUserProfile(updates: Map<String, Any>): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             firestore.collection("users").document(userId).update(updates).await()
+            Log.d(TAG, "User profile updated for uid=$userId")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update user profile: ${e.message}", e)
             Result.failure(e)
         }
     }
 
+    /**
+     * Update user profile image URL in Firestore
+     * It uses cloudinary to get the image URL after upload
+     */
     suspend fun updateProfileImage(imageUrl: String): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
@@ -127,92 +164,51 @@ class AuthRepository(
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun updateUserAuthProfile(name: String, photoUrl: String): Result<Unit> {
-        return try {
-            val user = currentUser ?: return Result.failure(Exception("No user logged in"))
-            val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                .setDisplayName(name)
-                .setPhotoUri(android.net.Uri.parse(photoUrl))
-                .build()
-            user.updateProfile(profileUpdates).await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun updateStreak(streakDays: Int): Result<Unit> {
-        return try {
-            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
-            firestore.collection("users").document(userId)
-                .update("streakDays", streakDays)
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun addXP(points: Int): Result<Unit> {
-        return try {
-            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
-            val profile = getUserProfile()
-            val currentXP = (profile?.get("xpPoints") as? Long)?.toInt() ?: 0
-            val newXP = currentXP + points
-
-            // Simple level calculation: every 100 XP = 1 level
-            val newLevel = (newXP / 100) + 1
-
-            firestore.collection("users").document(userId)
-                .update(
-                    mapOf(
-                        "xpPoints" to newXP,
-                        "level" to newLevel
-                    )
-                )
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update profile image: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
      * Change user password with re-authentication for security
+     * Returns Result<Unit> indicating success or failure with appropriate error messages
+     * It uses the current password to re-authenticate before allowing password change
+     * Uses firebase exceptions to handle specific error cases
      */
     suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
         return try {
             val user = currentUser ?: return Result.failure(Exception("No user logged in"))
             val email = user.email ?: return Result.failure(Exception("No email found"))
 
-            // Re-authenticate user for security
             val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
             user.reauthenticate(credential).await()
 
-            // Update password
             user.updatePassword(newPassword).await()
 
+            Log.d(TAG, "Password updated successfully for uid=${user.uid}")
             Result.success(Unit)
         } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+            Log.e(TAG, "Password change failed: invalid current password", e)
             Result.failure(Exception("Current password is incorrect"))
         } catch (e: com.google.firebase.auth.FirebaseAuthWeakPasswordException) {
+            Log.e(TAG, "Password change failed: weak new password", e)
             Result.failure(Exception("New password is too weak. Please use at least 6 characters"))
         } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+            Log.e(TAG, "Password change failed: recent login required", e)
             Result.failure(Exception("Please sign out and sign in again before changing password"))
         } catch (e: Exception) {
+            Log.e(TAG, "Password change failed: ${e.message}", e)
             Result.failure(Exception("Failed to change password: ${e.message}"))
         }
     }
 
-    // ==================== GROUP MANAGEMENT ====================
 
     /**
      * Add a group summary to user's profile
      * Each user stores a lightweight summary of their groups for quick access
+     * This includes groupId, groupName, groupPic, lastMessage, lastMessageTime, lastMessageSender, joinedAt
+     * This is called when a user joins a new group
+     * It returns Result<Unit> indicating success or failure
      */
     suspend fun addGroupToUserProfile(groupId: String, groupName: String, groupPic: String): Result<Unit> {
         return try {
@@ -234,12 +230,14 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to add group $groupId to profile: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
      * Update the most recent message in user's group summary
+     * Used so that the user always sees the current last message in their group list
      */
     suspend fun updateGroupLastMessage(
         groupId: String,
@@ -270,12 +268,14 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update last message for group=$groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
      * Remove a group from user's profile
+     * Used when a user leaves a group
      */
     suspend fun removeGroupFromUserProfile(groupId: String): Result<Unit> {
         return try {
@@ -291,24 +291,30 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to remove group $groupId from profile: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
      * Get all groups for current user
+     * Returns a list of group summaries
      */
     suspend fun getUserGroups(): List<Map<String, Any>> {
         return try {
             val profile = getUserProfile()
             (profile?.get("groups") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user groups: ${e.message}", e)
             emptyList()
         }
     }
 
     /**
      * Search for user by email
+     * Returns user profile data as Map or null if not found
+     * Used for sending group invites to the user
+     * if no user is found with the given email, it returns null
      */
     suspend fun getUserByEmail(email: String): Map<String, Any>? {
         return try {
@@ -321,17 +327,25 @@ class AuthRepository(
             if (querySnapshot.documents.isNotEmpty()) {
                 querySnapshot.documents.first().data
             } else {
+                Log.d(TAG, "No user found for email=$email")
                 null
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user by email=$email: ${e.message}", e)
             null
         }
     }
 
-    // ==================== GROUP INVITE MANAGEMENT (NEW) ====================
 
     /**
      * Send a group invite to a user
+     * Uses recipient's email to find their user profile @func getUserByEmail
+     * Checks if the user is already a member of the group or has a pending invite
+     * If not, creates a new invite and adds it to the recipient's profile
+     * Returns Result<Unit> indicating success or failure with appropriate error messages
+     * The invite contains inviteId, groupId, groupName, groupPic, invitedBy, invitedByName, timestamp, status
+     * Status is initially set to "pending"
+     *
      */
     suspend fun sendGroupInvite(
         recipientEmail: String,
@@ -344,7 +358,6 @@ class AuthRepository(
             val currentUserProfile = getUserProfile()
             val currentUserName = currentUserProfile?.get("name") as? String ?: "Unknown"
 
-            // Find recipient user
             val recipient = getUserByEmail(recipientEmail)
                 ?: return Result.failure(Exception("User not found with email: $recipientEmail"))
 
@@ -367,7 +380,7 @@ class AuthRepository(
                 return Result.failure(Exception("Invite already sent to this user"))
             }
 
-            // Create invite
+            // Create new invite using a unique ID
             val inviteId = firestore.collection("users").document().id
             val invite = mapOf(
                 "inviteId" to inviteId,
@@ -387,12 +400,16 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to send group invite to $recipientEmail: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
      * Get all pending invites for current user
+     * Returns a list of GroupInvite data class instances
+     * GroupInvite contains inviteId, groupId, groupName, groupPic, invitedBy, invitedByName, timestamp, status
+     * Filters invites to only include those with status "pending"
      */
     suspend fun getPendingInvites(): List<GroupInvite> {
         return try {
@@ -413,23 +430,13 @@ class AuthRepository(
                         status = invite["status"] as? String ?: "pending"
                     )
                 } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse invite data: ${e.message}", e)
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch pending invites: ${e.message}", e)
             emptyList()
-        }
-    }
-
-    /**
-     * Get count of pending invites
-     */
-    suspend fun getPendingInviteCount(): Int {
-        return try {
-            val invites = getPendingInvites()
-            invites.size
-        } catch (e: Exception) {
-            0
         }
     }
 
@@ -460,12 +467,14 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to accept invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
      * Reject a group invite
+     * Used if a user does not want to join the group andf wants to remove the invite
      */
     suspend fun rejectGroupInvite(inviteId: String): Result<Unit> {
         return try {
@@ -483,12 +492,14 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to reject invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
-     * Delete an invite (for cleanup)
+     * Delete an invite
+     * Used for cleanup so that accepted/rejected invites do not clutter the user's profile
      */
     suspend fun deleteInvite(inviteId: String): Result<Unit> {
         return try {
@@ -504,13 +515,17 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
 
 
-    // ==================== PRIVACY SETTINGS ====================
-
+    /**
+     * Used to update profile visibility setting
+     * Possible values: "everyone", "friends", "only me"
+     * Returns Result<Unit> indicating success or failure
+     */
     suspend fun updateProfileVisibility(visibility: String): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
@@ -520,10 +535,16 @@ class AuthRepository(
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update profile visibility: ${e.message}", e)
             Result.failure(e)
         }
     }
 
+    /**
+     * Get profile visibility setting
+     * Returns the visibility setting as a String
+     * Defaults to "everyone" if not set or on error
+     */
     suspend fun getProfileVisibility(): String {
         return try {
             val userId = currentUser?.uid ?: return "everyone"
@@ -531,12 +552,16 @@ class AuthRepository(
             val privacy = doc.get("privacy") as? Map<*, *>
             (privacy?.get("profileVisibility") as? String) ?: "everyone"
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch profile visibility: ${e.message}", e)
             "everyone"
         }
     }
 
-    // ==================== NOTIFICATION SETTINGS ====================
 
+    /**
+     * Update notifications enabled/disabled setting
+     * Returns Result<Unit> indicating success or failure
+     */
     suspend fun updateNotificationsEnabled(enabled: Boolean): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
@@ -546,10 +571,16 @@ class AuthRepository(
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update notifications preference: ${e.message}", e)
             Result.failure(e)
         }
     }
 
+    /**
+     * Get notifications enabled/disabled setting
+     * Returns true if enabled, false if disabled
+     * Defaults to true if not set or on error
+     */
     suspend fun getNotificationsEnabled(): Boolean {
         return try {
             val userId = currentUser?.uid ?: return true
@@ -557,11 +588,10 @@ class AuthRepository(
             val notifications = doc.get("notifications") as? Map<*, *>
             (notifications?.get("enabled") as? Boolean) ?: true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch notifications preference: ${e.message}", e)
             true
         }
     }
-
-    // ==================== PDF MANAGEMENT ====================
 
     /**
      * Add a recently opened PDF to user's profile
@@ -600,6 +630,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to add note $noteId to library: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -612,38 +643,8 @@ class AuthRepository(
             val profile = getUserProfile()
             (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user library: ${e.message}", e)
             emptyList()
-        }
-    }
-
-    /**
-     * Update PDF progress (last page read)
-     */
-    suspend fun updateNoteProgress(noteId: String, lastPage: Int, pageCount: Int): Result<Unit> {
-        return try {
-            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
-            val profile = getUserProfile()
-            val userLibrary = (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
-
-            val updatedLibrary = userLibrary.map { note ->
-                if (note["noteId"] == noteId) {
-                    note.toMutableMap().apply {
-                        put("lastPage", lastPage)
-                        put("progress", lastPage.toFloat() / pageCount.toFloat())
-                        put("openedAt", System.currentTimeMillis())
-                    }
-                } else {
-                    note
-                }
-            }
-
-            firestore.collection("users").document(userId)
-                .update("userLibrary", updatedLibrary)
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
@@ -679,6 +680,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize sample library: ${e.message}", e)
             Result.failure(e)
         }
     }

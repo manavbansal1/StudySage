@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.group_7.studysage.viewmodels.PrivacyViewModel
 
 @Composable
 fun PrivacyScreen(
