@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.group_7.studysage.data.repository.AuthRepository
-import com.group_7.studysage.ui.screens.auth.AuthViewModel
+import com.group_7.studysage.viewmodels.AuthViewModel
 import androidx.navigation.NavController
+import com.group_7.studysage.viewmodels.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

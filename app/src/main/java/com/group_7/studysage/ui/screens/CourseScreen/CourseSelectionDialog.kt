@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Course
+import com.group_7.studysage.viewmodels.CourseViewModel
 
 @Composable
 fun CourseSelectionDialog(

@@ -9,6 +9,27 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+/**
+ * @GroupInvite data class to represent a group invitation
+ * Includes details about the invite such as who invited, group info, timestamp, and status
+ * Status can be "pending", "accepted", or "rejected"
+ */
+data class GroupInvite(
+    val inviteId: String = "",
+    val groupId: String = "",
+    val groupName: String = "",
+    val groupPic: String = "",
+    val invitedBy: String = "",
+    val invitedByName: String = "",
+    val timestamp: Long = 0L,
+    val status: String = "pending"
+)
+
+/**
+ * @GroupMessage data class to represent a message in a group
+ * Includes sender details, message content, timestamp, and optional images
+ * Images are represented as a list of URLs
+ */
 data class GroupMessage(
     val messageId: String = "",
     val senderId: String = "",
@@ -16,7 +37,7 @@ data class GroupMessage(
     val senderProfilePic: String = "",
     val message: String = "",
     val timestamp: Long = 0L,
-    val images: List<String> = emptyList() // List of image URLs
+    val images: List<String> = emptyList()
 )
 
 data class GroupMember(
