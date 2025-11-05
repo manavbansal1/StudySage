@@ -2,6 +2,13 @@ package com.group_7.studysage.data.repository
 
 import java.util.List
 
+/**
+ * Data class representing a Course entity.
+ * It includes details such as title, code, semester, year, instructor, description, color, credits,
+ * timestamps for creation and updates, associated user ID, and archival status.
+ * It also includes an enum for semesters and a composite data class for courses with their associated notes.
+ *
+ */
 data class Course(
     val id: String = "",
     val title: String = "",

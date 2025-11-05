@@ -29,6 +29,7 @@ import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.Semester
 import com.group_7.studysage.ui.theme.StudySageTheme
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.group_7.studysage.viewmodels.CourseViewModel
 
 /**
  * A consistent "glass" card style for the entire app.
