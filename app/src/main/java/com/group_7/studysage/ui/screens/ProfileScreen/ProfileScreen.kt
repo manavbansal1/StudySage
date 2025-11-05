@@ -104,7 +104,7 @@ fun ProfileScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(24.dp)
+                                                                .padding(top = 26.dp, start = 24.dp, end = 24.dp, bottom = 24.dp)
                         ) {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
