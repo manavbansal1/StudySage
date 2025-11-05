@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Course
@@ -90,7 +91,6 @@ fun CoursesScreen(
 
             // The entire screen is a scrolling grid
             LazyVerticalGrid(
-                // --- FIX 1 ---
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = paddingValues, // Apply insets
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -100,33 +100,14 @@ fun CoursesScreen(
                     .padding(horizontal = 16.dp) // Page horizontal padding
             ) {
                 // 1. HEADER
-                // --- FIX 2 ---
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "My Courses",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        IconButton(onClick = { showAddCourseDialog = true }) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add Course",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                    CoursesHeader(
+                        onAddClick = { showAddCourseDialog = true },
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
 
                 // 2. FILTER SECTION
-                // --- FIX 3 ---
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
                     FilterSection(
                         selectedSemester = uiState.selectedSemester,
@@ -138,12 +119,11 @@ fun CoursesScreen(
                 }
 
                 // 3. COURSES HEADER
-                // --- FIX 4 ---
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 24.dp, bottom = 16.dp),
+                            .padding(top = 20.dp, bottom = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -163,7 +143,6 @@ fun CoursesScreen(
 
                 // 4. LOADING / EMPTY / CONTENT
                 if (uiState.isLoading) {
-                    // --- FIX 5 ---
                     item(span = { GridItemSpan(this.maxLineSpan) }) {
                         Box(
                             modifier = Modifier
@@ -175,7 +154,6 @@ fun CoursesScreen(
                         }
                     }
                 } else if (uiState.courses.isEmpty()) {
-                    // --- FIX 6 ---
                     item(span = { GridItemSpan(this.maxLineSpan) }) {
                         EmptyCoursesState(
                             semester = uiState.selectedSemester,
@@ -194,7 +172,6 @@ fun CoursesScreen(
                 }
 
                 // 6. SPACER FOR NAV BAR
-                // --- FIX 7 ---
                 item(span = { GridItemSpan(this.maxLineSpan) }) {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
@@ -233,6 +210,46 @@ fun CoursesScreen(
             isError = false,
             onDismiss = { viewModel.clearMessage() }
         )
+    }
+}
+
+@Composable
+fun CoursesHeader(
+    onAddClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Track and organize your classes",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "My Courses",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            // Add button
+            IconButton(
+                onClick = onAddClick,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Course",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
     }
 }
 

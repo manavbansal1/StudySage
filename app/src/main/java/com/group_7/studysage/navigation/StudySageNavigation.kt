@@ -1,5 +1,4 @@
 package com.group_7.studysage.navigation
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.indication
@@ -64,8 +63,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import com.group_7.studysage.ui.theme.*
-
-
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object SignIn : Screen("sign_in", "Sign In")
@@ -79,7 +76,6 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
         fun createRoute(groupId: String) = "group_chat/$groupId"
     }
 }
-
 @Composable
 private fun GlassCard(
     modifier: Modifier = Modifier,
@@ -93,7 +89,6 @@ private fun GlassCard(
         1.dp,
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     )
-
     if (onClick != null) {
         Card(
             modifier = modifier,
@@ -115,7 +110,6 @@ private fun GlassCard(
         )
     }
 }
-
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun StudySageNavigation(
@@ -123,24 +117,19 @@ fun StudySageNavigation(
     modifier: Modifier = Modifier
 ) {
     val isUserSignedIn by authViewModel.isSignedIn
-
     if (isUserSignedIn) {
         // Create a fresh NavController for authenticated users
         val navController = androidx.navigation.compose.rememberNavController()
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
-
         val selectedIndex = screens.indexOfFirst { screen ->
             currentDestination?.hierarchy?.any { it.route == screen.route } == true
         }
-
-
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
                 currentDestination?.route == "notification_settings"
-
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -148,12 +137,10 @@ fun StudySageNavigation(
                     val selectedIndex = screens.indexOfFirst { screen ->
                         currentDestination?.hierarchy?.any { it.route == screen.route } == true
                     }
-
                     val isDark = isSystemInDarkTheme()
                     val navIndicatorColor = if (isDark) DarkNavIndicator else LightNavIndicator
                     val navSelectedColor = if (isDark) DarkNavSelected else LightNavSelected
                     val navUnselectedColor = if (isDark) DarkNavUnselected else LightNavUnselected
-
                     GlassCard(
                         modifier = Modifier
                             .padding(horizontal = 16.dp, vertical = 16.dp)
@@ -186,13 +173,15 @@ fun StudySageNavigation(
                                     Tab(
                                         selected = (selectedIndex == index),
                                         onClick = {
-                                            // Always refresh tab contents by not saving/restoring state
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.findStartDestination().id) {
-                                                    inclusive = false
+                                            // Only navigate if not already on this tab
+                                            if (selectedIndex != index) {
+                                                navController.navigate(screen.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        inclusive = false
+                                                    }
+                                                    launchSingleTop = false
+                                                    // Don't save or restore state to force refresh
                                                 }
-                                                launchSingleTop = false
-                                                // Don't save or restore state to force refresh
                                             }
                                         },
                                         icon = {
@@ -258,7 +247,6 @@ fun StudySageNavigation(
                 ) {
                     HomeScreen(navController = navController)
                 }
-
                 composable(
                     Screen.Course.route,
                     enterTransition = {
@@ -288,7 +276,6 @@ fun StudySageNavigation(
                 ) {
                     CoursesScreen()
                 }
-
                 composable(
                     Screen.Groups.route,
                     enterTransition = {
@@ -322,7 +309,6 @@ fun StudySageNavigation(
                         }
                     )
                 }
-
                 composable(
                     Screen.Profile.route,
                     enterTransition = {
@@ -355,67 +341,13 @@ fun StudySageNavigation(
                         navController = navController
                     )
                 }
-
-                composable(
-                    "privacy_settings",
-                    enterTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) 1 else -1
-                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    exitTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) -1 else 1
-                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    popEnterTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) -1 else 1
-                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    popExitTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) 1 else -1
-                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    }
-                ) {
+                // Sub-pages without transitions
+                composable("privacy_settings") {
                     PrivacyScreen(navController = navController)
                 }
-
-                composable(
-                    "notification_settings",
-                    enterTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) 1 else -1
-                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    exitTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) -1 else 1
-                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    popEnterTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) -1 else 1
-                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    popExitTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) 1 else -1
-                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    }
-                ) {
+                composable("notification_settings") {
                     NotificationsScreen(navController = navController)
                 }
-
                 composable(
                     Screen.Games.route,
                     enterTransition = {
@@ -443,40 +375,15 @@ fun StudySageNavigation(
                         slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
                     }
                 ) {
-
                 }
-
+                // GroupChat without transitions
                 composable(
                     route = Screen.GroupChat.route,
                     arguments = listOf(
                         navArgument("groupId") {
                             type = NavType.StringType
                         }
-                    ),
-                    enterTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) 1 else -1
-                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    exitTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) -1 else 1
-                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    popEnterTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) -1 else 1
-                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    },
-                    popExitTransition = {
-                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
-                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
-                        val direction = if (targetIndex > initialIndex) 1 else -1
-                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
-                    }
+                    )
                 ) { backStackEntry ->
                     val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
                     GroupChatScreen(
@@ -491,7 +398,6 @@ fun StudySageNavigation(
     } else {
         // Create a fresh NavController for unauthenticated users
         val navController = androidx.navigation.compose.rememberNavController()
-
         NavHost(
             navController = navController,
             startDestination = Screen.SignIn.route,
