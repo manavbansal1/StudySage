@@ -1,5 +1,6 @@
 package com.group_7.studysage.data.repository
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
@@ -18,6 +19,10 @@ class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+
+    companion object {
+        private const val TAG = "AuthRepository"
+    }
 
     val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
@@ -72,6 +77,7 @@ class AuthRepository(
 
             Result.success(user)
         } catch (e: Exception) {
+            Log.e(TAG, "Sign up failed for email=$email: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -94,6 +100,7 @@ class AuthRepository(
 
             Result.success(result.user!!)
         } catch (e: Exception) {
+            Log.e(TAG, "Sign in failed for email=$email: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -109,7 +116,8 @@ class AuthRepository(
      * Check if a user is currently signed in
      */
     fun isUserSignedIn(): Boolean {
-        return currentUser != null
+        val signedIn = currentUser != null
+        return signedIn
     }
 
     /**
@@ -123,6 +131,7 @@ class AuthRepository(
             val document = firestore.collection("users").document(userId).get().await()
             document.data
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user profile: ${e.message}", e)
             null
         }
     }
@@ -135,8 +144,10 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             firestore.collection("users").document(userId).update(updates).await()
+            Log.d(TAG, "User profile updated for uid=$userId")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update user profile: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -153,6 +164,7 @@ class AuthRepository(
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update profile image: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -173,14 +185,19 @@ class AuthRepository(
 
             user.updatePassword(newPassword).await()
 
+            Log.d(TAG, "Password updated successfully for uid=${user.uid}")
             Result.success(Unit)
         } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+            Log.e(TAG, "Password change failed: invalid current password", e)
             Result.failure(Exception("Current password is incorrect"))
         } catch (e: com.google.firebase.auth.FirebaseAuthWeakPasswordException) {
+            Log.e(TAG, "Password change failed: weak new password", e)
             Result.failure(Exception("New password is too weak. Please use at least 6 characters"))
         } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+            Log.e(TAG, "Password change failed: recent login required", e)
             Result.failure(Exception("Please sign out and sign in again before changing password"))
         } catch (e: Exception) {
+            Log.e(TAG, "Password change failed: ${e.message}", e)
             Result.failure(Exception("Failed to change password: ${e.message}"))
         }
     }
@@ -213,6 +230,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to add group $groupId to profile: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -250,6 +268,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update last message for group=$groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -272,6 +291,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to remove group $groupId from profile: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -285,6 +305,7 @@ class AuthRepository(
             val profile = getUserProfile()
             (profile?.get("groups") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user groups: ${e.message}", e)
             emptyList()
         }
     }
@@ -306,9 +327,11 @@ class AuthRepository(
             if (querySnapshot.documents.isNotEmpty()) {
                 querySnapshot.documents.first().data
             } else {
+                Log.d(TAG, "No user found for email=$email")
                 null
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user by email=$email: ${e.message}", e)
             null
         }
     }
@@ -377,6 +400,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to send group invite to $recipientEmail: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -406,10 +430,12 @@ class AuthRepository(
                         status = invite["status"] as? String ?: "pending"
                     )
                 } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse invite data: ${e.message}", e)
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch pending invites: ${e.message}", e)
             emptyList()
         }
     }
@@ -441,6 +467,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to accept invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -465,6 +492,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to reject invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -487,6 +515,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -506,6 +535,7 @@ class AuthRepository(
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update profile visibility: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -522,6 +552,7 @@ class AuthRepository(
             val privacy = doc.get("privacy") as? Map<*, *>
             (privacy?.get("profileVisibility") as? String) ?: "everyone"
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch profile visibility: ${e.message}", e)
             "everyone"
         }
     }
@@ -540,6 +571,7 @@ class AuthRepository(
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update notifications preference: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -556,6 +588,7 @@ class AuthRepository(
             val notifications = doc.get("notifications") as? Map<*, *>
             (notifications?.get("enabled") as? Boolean) ?: true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch notifications preference: ${e.message}", e)
             true
         }
     }
@@ -597,6 +630,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to add note $noteId to library: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -609,6 +643,7 @@ class AuthRepository(
             val profile = getUserProfile()
             (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user library: ${e.message}", e)
             emptyList()
         }
     }
@@ -645,6 +680,7 @@ class AuthRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize sample library: ${e.message}", e)
             Result.failure(e)
         }
     }

@@ -41,6 +41,10 @@ class NotesRepository(
     private val authRepository: AuthRepository = AuthRepository()
 ) {
 
+    companion object {
+        private const val TAG = "NotesRepository"
+    }
+
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
@@ -78,7 +82,6 @@ class NotesRepository(
 
         return try {
             val userId = auth.currentUser?.uid ?: throw Exception("User is not authenticated.")
-            Log.d("NotesRepository", "Starting processing for user: $userId, file: $fileName")
             onProgress("Reading file...")
 
             val inputStream: InputStream = context.contentResolver.openInputStream(uri)
@@ -86,7 +89,6 @@ class NotesRepository(
 
             // Read file content
             val fileBytes = inputStream.readBytes()
-            Log.d("NotesRepository", "File size: ${fileBytes.size} bytes")
 
             val fileContent = when {
                 fileName.endsWith(".txt", ignoreCase = true) -> {
@@ -158,12 +160,12 @@ class NotesRepository(
                 courseId = note.courseId
             )
 
-            Log.d("NotesRepository", "Note saved successfully with ID: $noteId")
+            Log.d(TAG, "Note saved successfully with ID: $noteId")
             onProgress("Note processed successfully!")
             Result.success(note)
 
         } catch (exception: Exception) {
-            Log.e("NotesRepository", "uploadNotesAndProcess error: ${exception.message}", exception)
+            Log.e(TAG, "uploadNotesAndProcess error: ${exception.message}", exception)
 
             val errorMessage = when {
                 exception.message?.contains("Permission denied") == true ->
@@ -197,12 +199,12 @@ class NotesRepository(
                 try {
                     document.toObject(Note::class.java)?.copy(id = document.id)
                 } catch (e: Exception) {
-                    Log.e("NotesRepository", "Error parsing note: ${e.message}")
+                    Log.e(TAG, "Error parsing note: ${e.message}")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Error fetching notes for course: ${e.message}")
+            Log.e(TAG, "Error fetching notes for course: ${e.message}")
             emptyList()
         }
     }
@@ -229,12 +231,12 @@ class NotesRepository(
                 try {
                     document.toObject(Note::class.java)?.copy(id = document.id)
                 } catch (e: Exception) {
-                    Log.e("NotesRepository", "Error parsing note: ${e.message}")
+                    Log.e(TAG, "Error parsing note: ${e.message}")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Error fetching user notes: ${e.message}")
+            Log.e(TAG, "Error fetching user notes: ${e.message}")
             emptyList()
         }
     }
@@ -277,12 +279,10 @@ class NotesRepository(
                 .trim()
 
             if (cleanedText.isBlank()) {
-                Log.w("NotesRepository", "No readable text extracted from PDF: $fileName")
                 throw Exception("No readable text could be extracted. The PDF may be scanned or image-based.")
             }
 
             val limitedText = if (cleanedText.length > 200_000) {
-                Log.w("NotesRepository", "PDF text too long, truncating for processing.")
                 cleanedText.take(200_000)
             } else {
                 cleanedText
@@ -291,7 +291,7 @@ class NotesRepository(
             onProgress("PDF text extraction complete.")
             limitedText
         } catch (e: Exception) {
-            Log.e("NotesRepository", "PDF processing failed: ${e.message}", e)
+            Log.e(TAG, "PDF processing failed: ${e.message}", e)
             throw Exception("Failed to extract PDF text: ${e.message ?: "Please try a different file."}")
         }
     }
@@ -312,7 +312,7 @@ class NotesRepository(
             }
 
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Document processing failed: ${e.message}")
+            Log.e(TAG, "Document processing failed: ${e.message}")
             throw Exception("Word documents error.")
         }
     }
@@ -330,7 +330,7 @@ class NotesRepository(
             }
 
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Generic file processing failed: ${e.message}")
+            Log.e(TAG, "Generic file processing failed: ${e.message}")
             throw Exception("This file format is not supported. Please use text files (.txt), markdown (.md), or images with text.")
         }
     }
@@ -340,7 +340,7 @@ class NotesRepository(
             val document = firestore.collection("notes").document(noteId).get().await()
             document.toObject(Note::class.java)?.copy(id = document.id)
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Error fetching note: ${e.message}")
+            Log.e(TAG, "Error fetching note: ${e.message}")
             null
         }
     }
@@ -358,19 +358,17 @@ class NotesRepository(
                 $limitedContent
             """.trimIndent()
 
-            Log.d("NotesRepository", "Generating summary with primary model...")
-
             try {
                 val response = generativeModel.generateContent(prompt)
                 response.text ?: throw Exception("Empty response from primary model")
             } catch (e: Exception) {
-                Log.w("NotesRepository", "Primary model failed for summary, trying fallback: ${e.message}")
+                Log.w(TAG, "Primary model failed for summary, trying fallback: ${e.message}")
                 val fallbackResponse = fallbackModel.generateContent(prompt)
                 fallbackResponse.text ?: throw Exception("Empty response from fallback model")
             }
 
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Summary generation failed: ${e.message}")
+            Log.e(TAG, "Summary generation failed: ${e.message}")
             generateBasicSummary(content)
         }
     }
@@ -396,7 +394,7 @@ class NotesRepository(
                     ?.filter { it.isNotEmpty() }
                     ?.take(7) ?: throw Exception("Could not parse key points")
             } catch (e: Exception) {
-                Log.w("NotesRepository", "Primary model failed for key points, trying fallback")
+                Log.w(TAG, "Primary model failed for key points, trying fallback")
                 val fallbackResponse = fallbackModel.generateContent(prompt)
                 fallbackResponse.text?.split("\n")
                     ?.filter { it.trim().isNotEmpty() && (it.contains("•") || it.contains("-") || it.contains("*") || it.matches(Regex("^\\d+\\..*"))) }
@@ -406,7 +404,7 @@ class NotesRepository(
             }
 
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Key points extraction failed: ${e.message}")
+            Log.e(TAG, "Key points extraction failed: ${e.message}")
             generateBasicKeyPoints(content)
         }
     }
@@ -431,7 +429,7 @@ class NotesRepository(
                     ?.filter { it.isNotEmpty() && it.length > 2 }
                     ?.take(5) ?: throw Exception("Could not generate tags")
             } catch (e: Exception) {
-                Log.w("NotesRepository", "Primary model failed for tags, trying fallback")
+                Log.w(TAG, "Primary model failed for tags, trying fallback")
                 val fallbackResponse = fallbackModel.generateContent(prompt)
                 fallbackResponse.text?.split(",")
                     ?.map { it.trim() }
@@ -440,7 +438,7 @@ class NotesRepository(
             }
 
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Tag generation failed: ${e.message}")
+            Log.e(TAG, "Tag generation failed: ${e.message}")
             generateBasicTags(content)
         }
     }
@@ -468,7 +466,7 @@ class NotesRepository(
                     throw Exception("Generated title too short or empty")
                 }
             } catch (e: Exception) {
-                Log.w("NotesRepository", "Primary model failed for title, trying fallback")
+                Log.w(TAG, "Primary model failed for title, trying fallback")
                 val fallbackResponse = fallbackModel.generateContent(prompt)
                 val fallbackTitle = fallbackResponse.text?.trim()?.take(60)
 
@@ -480,7 +478,7 @@ class NotesRepository(
             }
 
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Title generation failed: ${e.message}")
+            Log.e(TAG, "Title generation failed: ${e.message}")
             generateBasicTitle(content, originalFileName)
         }
     }
@@ -564,9 +562,10 @@ class NotesRepository(
         return try {
             val userId = auth.currentUser?.uid ?: throw Exception("User is not authenticated.")
             firestore.collection("notes").document(noteId).delete().await()
+            Log.d(TAG, "Note $noteId deleted for user $userId")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e("NotesRepository", "Error deleting note: ${e.message}")
+            Log.e(TAG, "Error deleting note: ${e.message}")
             Result.failure(e)
         }
     }

@@ -1,5 +1,6 @@
 package com.group_7.studysage.data.repository
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -53,6 +54,10 @@ class GroupRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
+    companion object {
+        private const val TAG = "GroupRepository"
+    }
+
     /**
      * Create a new group
      */
@@ -96,6 +101,7 @@ class GroupRepository(
 
             Result.success(groupId)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to create group: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -108,6 +114,7 @@ class GroupRepository(
             val document = firestore.collection("groups").document(groupId).get().await()
             document.data
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch group profile: ${e.message}", e)
             null
         }
     }
@@ -118,8 +125,10 @@ class GroupRepository(
     suspend fun updateGroupProfile(groupId: String, updates: Map<String, Any>): Result<Unit> {
         return try {
             firestore.collection("groups").document(groupId).update(updates).await()
+            Log.d(TAG, "Group profile updated id=$groupId")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update group profile: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -132,8 +141,10 @@ class GroupRepository(
             firestore.collection("groups").document(groupId)
                 .update("profilePic", imageUrl)
                 .await()
+            Log.d(TAG, "Group profile picture updated for id=$groupId")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to update group profile picture: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -168,6 +179,7 @@ class GroupRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to add member $userId to group $groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -193,6 +205,7 @@ class GroupRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to remove member $userId from group $groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -219,6 +232,7 @@ class GroupRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to promote member $userId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -271,6 +285,7 @@ class GroupRepository(
 
             Result.success(messageId)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to send message to group $groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -300,10 +315,12 @@ class GroupRepository(
                         images = (doc.get("images") as? List<String>) ?: emptyList()
                     )
                 } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse message: ${e.message}", e)
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch messages for group $groupId: ${e.message}", e)
             emptyList()
         }
     }
@@ -322,6 +339,7 @@ class GroupRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete message $messageId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -345,6 +363,7 @@ class GroupRepository(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete group $groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -361,6 +380,7 @@ class GroupRepository(
                 it["userId"] == userId && it["role"] == "admin"
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to determine admin status: ${e.message}", e)
             false
         }
     }
@@ -383,10 +403,12 @@ class GroupRepository(
                         joinedAt = (member["joinedAt"] as? Long) ?: 0L
                     )
                 } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse group member: ${e.message}", e)
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch group members: ${e.message}", e)
             emptyList()
         }
     }
@@ -399,6 +421,7 @@ class GroupRepository(
             .document(groupId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    Log.e(TAG, "Group profile listener error: ${error.message}", error)
                     close(error)
                     return@addSnapshotListener
                 }
@@ -420,6 +443,7 @@ class GroupRepository(
             .limit(limit.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    Log.e(TAG, "Group messages listener error: ${error.message}", error)
                     close(error)
                     return@addSnapshotListener
                 }
