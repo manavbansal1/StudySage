@@ -65,7 +65,7 @@ fun SignInScreen(
 
         // Header
         Text(
-            text = "Welcome Back",
+            text = "Sign In",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -73,7 +73,7 @@ fun SignInScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "email-> dhoni7@gmail.com\npassword-> dhoni7",
+            text = "Please Enter Your Email and Password \nto Sign In",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
