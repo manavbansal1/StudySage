@@ -62,7 +62,7 @@ fun SignUpScreen(
 
         // Header
         Text(
-            text = "go to sign in",
+            text = "Create Account",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.primary
         )
