@@ -47,6 +47,7 @@ import androidx.navigation.navArgument
 import com.group_7.studysage.ui.screens.CourseScreen.CoursesScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupChatScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupScreen
+import com.group_7.studysage.ui.screens.GameScreen.GameScreen
 import com.group_7.studysage.ui.screens.HomeScreen.HomeScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.NotificationsScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
@@ -371,6 +372,7 @@ fun StudySageNavigation(
                         slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
                     }
                 ) {
+                    GameScreen(navController = navController)
                 }
                 // GroupChat without transitions
                 composable(
