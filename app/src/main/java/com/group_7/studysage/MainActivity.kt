@@ -17,10 +17,16 @@ import com.group_7.studysage.viewmodels.AuthViewModel
 import com.group_7.studysage.viewmodels.AuthViewModelFactory
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
+import com.group_7.studysage.utils.PermissionHandler
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Initialize & request all permissions at startup
+        PermissionHandler.init(this)
+        PermissionHandler.requestAllPermissions(this)
 
         setContent {
             StudySageTheme {
@@ -34,6 +40,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private fun PermissionHandler.init(activity: MainActivity) {}
+
 
 @Composable
 fun StudySageApp() {
