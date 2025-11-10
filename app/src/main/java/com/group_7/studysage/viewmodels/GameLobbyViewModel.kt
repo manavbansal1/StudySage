@@ -1,345 +1,104 @@
-package com.group_7.studysage.viewmodels
-
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.group_7.studysage.data.models.*
-import com.group_7.studysage.data.repository.GameRepository
-import com.group_7.studysage.data.websocket.ConnectionState
-import kotlinx.coroutines.flow.*
+import com.group_7.studysage.data.api.GameApiService
+import com.group_7.studysage.data.models.GameSessionData
+import com.group_7.studysage.data.models.GameSettings
+import com.group_7.studysage.data.models.GameType
+import com.group_7.studysage.data.models.LobbyUiState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for Game Lobby Screen
- * Manages:
- * - Fetching active game sessions
- * - Creating new game sessions
- * - Joining/leaving sessions
- * - Real-time lobby updates via WebSocket
- */
 class GameLobbyViewModel(
-    private val gameRepository: GameRepository = GameRepository()
+    private val gameApiService: GameApiService,
+    private val authViewModel: AuthViewModel
 ) : ViewModel() {
 
-    // UI State
-    private val _uiState = MutableStateFlow(LobbyUiState())
-    val uiState: StateFlow<LobbyUiState> = _uiState.asStateFlow()
+    private val _lobbyUiState = MutableStateFlow(LobbyUiState())
+    val lobbyUiState: StateFlow<LobbyUiState> = _lobbyUiState.asStateFlow()
 
-    // Current group ID
-    private var currentGroupId: String = ""
-
-    // Current user info
-    private var currentUserId: String = ""
-    private var currentUserName: String = ""
-
-    init {
-        observeWebSocketUpdates()
-    }
-
-    /**
-     * Set current user information
-     */
-    fun setUserInfo(userId: String, userName: String) {
-        currentUserId = userId
-        currentUserName = userName
-    }
-
-    /**
-     * Set current group and load sessions
-     */
-    fun setGroup(groupId: String) {
-        currentGroupId = groupId
-        loadActiveSessions()
-    }
-
-    /**
-     * Load active game sessions for the group
-     */
-    fun loadActiveSessions() {
+    fun loadActiveSessions(groupId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-
-            try {
-                val response = gameRepository.getActiveGameSessions(currentGroupId)
-
-                if (response.success && response.data != null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            activeSessions = response.data,
-                            error = null
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            activeSessions = emptyList(),
-                            error = response.message
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Failed to load sessions"
-                    )
-                }
+            _lobbyUiState.value = _lobbyUiState.value.copy(isLoading = true)
+            val response = gameApiService.getActiveGameSessions(groupId)
+            if (response.success && response.data != null) {
+                _lobbyUiState.value = _lobbyUiState.value.copy(
+                    isLoading = false,
+                    activeSessions = response.data
+                )
+            } else {
+                _lobbyUiState.value = _lobbyUiState.value.copy(
+                    isLoading = false,
+                    error = response.message
+                )
             }
         }
     }
 
-    /**
-     * Create a new game session
-     */
-    fun createGameSession(
-        documentId: String?,
-        documentName: String?,
+    fun createGame(
+        groupId: String,
         gameType: GameType,
-        settings: GameSettings
+        settings: GameSettings,
+        documentId: String? = null,
+        documentName: String? = null,
+        onGameCreated: (String) -> Unit
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isCreating = true, error = null) }
+            _lobbyUiState.value = _lobbyUiState.value.copy(isCreating = true)
+            val currentUser = authViewModel.currentUser.value
+            if (currentUser == null) {
+                _lobbyUiState.value = _lobbyUiState.value.copy(isCreating = false, error = "User not logged in")
+                return@launch
+            }
 
-            try {
-                val response = gameRepository.createGameSession(
-                    groupId = currentGroupId,
-                    documentId = documentId,
-                    documentName = documentName,
-                    hostId = currentUserId,
-                    hostName = currentUserName,
-                    gameType = gameType,
-                    settings = settings
+            val response = gameApiService.createGameSession(
+                groupId = groupId,
+                documentId = documentId,
+                documentName = documentName,
+                hostId = currentUser.uid,
+                hostName = currentUser.displayName ?: "Unknown",
+                gameType = gameType,
+                settings = settings
+            )
+
+            if (response.success && response.data != null) {
+                onGameCreated(response.data.gameSessionId)
+            } else {
+                _lobbyUiState.value = _lobbyUiState.value.copy(
+                    isCreating = false,
+                    error = response.message
                 )
-
-                if (response.success && response.data != null) {
-                    val sessionId = response.data.gameSessionId
-
-                    // Join the session immediately
-                    joinSession(sessionId, isHost = true)
-
-                    _uiState.update {
-                        it.copy(
-                            isCreating = false,
-                            error = null
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            isCreating = false,
-                            error = response.message ?: "Failed to create session"
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isCreating = false,
-                        error = e.message ?: "Failed to create session"
-                    )
-                }
             }
         }
     }
 
-    /**
-     * Join an existing game session
-     */
-    fun joinSession(sessionId: String, isHost: Boolean = false) {
+    fun joinGame(groupId: String, sessionId: String, onJoined: () -> Unit) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isJoining = true, error = null) }
+            _lobbyUiState.value = _lobbyUiState.value.copy(isJoining = true)
+            val currentUser = authViewModel.currentUser.value
+            if (currentUser == null) {
+                _lobbyUiState.value = _lobbyUiState.value.copy(isJoining = false, error = "User not logged in")
+                return@launch
+            }
 
-            try {
-                val response = gameRepository.joinGameSession(
-                    groupId = currentGroupId,
-                    sessionId = sessionId,
-                    userId = currentUserId,
-                    userName = currentUserName
+            val response = gameApiService.joinGameSession(
+                groupId = groupId,
+                sessionId = sessionId,
+                userId = currentUser.uid,
+                userName = currentUser.displayName ?: "Unknown"
+            )
+
+            if (response.success && response.data != null) {
+                _lobbyUiState.value = _lobbyUiState.value.copy(isJoining = false, currentSession = response.data)
+                onJoined()
+            } else {
+                _lobbyUiState.value = _lobbyUiState.value.copy(
+                    isJoining = false,
+                    error = response.message
                 )
-
-                if (response.success && response.data != null) {
-                    _uiState.update {
-                        it.copy(
-                            isJoining = false,
-                            currentSession = response.data,
-                            error = null
-                        )
-                    }
-
-                    // Connect to WebSocket for real-time updates
-                    connectToSession(sessionId)
-
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            isJoining = false,
-                            error = response.message ?: "Failed to join session"
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isJoining = false,
-                        error = e.message ?: "Failed to join session"
-                    )
-                }
             }
         }
-    }
-
-    /**
-     * Leave current game session
-     */
-    fun leaveSession() {
-        val sessionId = _uiState.value.currentSession?.id ?: return
-
-        viewModelScope.launch {
-            try {
-                gameRepository.leaveGameSession(
-                    groupId = currentGroupId,
-                    sessionId = sessionId,
-                    userId = currentUserId
-                )
-
-                // Disconnect WebSocket
-                gameRepository.disconnectFromGame()
-
-                _uiState.update {
-                    it.copy(currentSession = null)
-                }
-
-                // Reload sessions list
-                loadActiveSessions()
-
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = e.message ?: "Failed to leave session")
-                }
-            }
-        }
-    }
-
-    /**
-     * Connect to game session WebSocket
-     */
-    private fun connectToSession(sessionId: String) {
-        gameRepository.connectToGameSession(
-            groupId = currentGroupId,
-            sessionId = sessionId,
-            userId = currentUserId,
-            userName = currentUserName
-        )
-    }
-
-    /**
-     * Send player ready status
-     */
-    fun setPlayerReady(isReady: Boolean) {
-        gameRepository.sendPlayerReady(isReady)
-    }
-
-    /**
-     * Start the game (host only)
-     */
-    fun startGame() {
-        val sessionId = _uiState.value.currentSession?.id ?: return
-
-        viewModelScope.launch {
-            try {
-                // Send via REST API
-                gameRepository.startGame(
-                    groupId = currentGroupId,
-                    sessionId = sessionId,
-                    hostId = currentUserId
-                )
-
-                // Also send via WebSocket for immediate response
-                gameRepository.sendGameStarting()
-
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = e.message ?: "Failed to start game")
-                }
-            }
-        }
-    }
-
-    /**
-     * Observe WebSocket updates
-     */
-    private fun observeWebSocketUpdates() {
-        // Room updates
-        viewModelScope.launch {
-            gameRepository.roomUpdate.collect { roomData ->
-                roomData?.let {
-                    _uiState.update { state ->
-                        state.copy(currentSession = it)
-                    }
-                }
-            }
-        }
-
-        // Player joined
-        viewModelScope.launch {
-            gameRepository.playerJoined.collect { data ->
-                data?.let {
-                    println("Player joined: ${it.player.name}, Total: ${it.totalPlayers}")
-                }
-            }
-        }
-
-        // Player left
-        viewModelScope.launch {
-            gameRepository.playerLeft.collect { playerId ->
-                playerId?.let {
-                    println("Player left: $it")
-                }
-            }
-        }
-
-        // Connection state
-        viewModelScope.launch {
-            gameRepository.connectionState.collect { state ->
-                when (state) {
-                    is ConnectionState.Connected -> {
-                        println("✅ Connected to game session")
-                    }
-                    is ConnectionState.Disconnected -> {
-                        println("❌ Disconnected from game session")
-                    }
-                    is ConnectionState.Error -> {
-                        _uiState.update {
-                            it.copy(error = state.message)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-        }
-
-        // Errors
-        viewModelScope.launch {
-            gameRepository.errorMessage.collect { error ->
-                error?.let {
-                    _uiState.update { state ->
-                        state.copy(error = it.message)
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Clear error message
-     */
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        gameRepository.cleanup()
     }
 }

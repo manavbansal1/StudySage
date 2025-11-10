@@ -45,9 +45,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.group_7.studysage.ui.screens.CourseScreen.CoursesScreen
+import com.group_7.studysage.ui.screens.GameLobbyScreen
+import com.group_7.studysage.ui.screens.GamePlayScreen
+import com.group_7.studysage.ui.screens.GameScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupChatScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupScreen
-import com.group_7.studysage.ui.screens.GameScreen.GameScreen
 import com.group_7.studysage.ui.screens.HomeScreen.HomeScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.NotificationsScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
@@ -59,6 +61,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
+import com.group_7.studysage.data.models.GameType
 import com.group_7.studysage.ui.theme.*
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
@@ -72,9 +75,12 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object GroupChat : Screen("group_chat/{groupId}", "Group Chat") {
         fun createRoute(groupId: String) = "group_chat/$groupId"
     }
-    object GameLobby : Screen("game_lobby/{groupId}", "Game Lobby")
-    object GamePlay : Screen("game_play/{groupId}/{sessionId}/{gameType}", "Play")
-    object GameResults : Screen("game_results/{groupId}/{sessionId}", "Results")
+    object GameLobby : Screen("game_lobby/{gameType}", "Game Lobby") {
+        fun createRoute(gameType: GameType) = "game_lobby/$gameType"
+    }
+    object GamePlay : Screen("game_play/{sessionId}", "Play") {
+        fun createRoute(sessionId: String) = "game_play/$sessionId"
+    }
 }
 @Composable
 private fun GlassCard(
@@ -129,7 +135,9 @@ fun StudySageNavigation(
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
-                currentDestination?.route == "notification_settings"
+                currentDestination?.route == "notification_settings" ||
+                currentDestination?.route?.startsWith("game_") == true
+
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -376,6 +384,30 @@ fun StudySageNavigation(
                     }
                 ) {
                     GameScreen(navController = navController)
+                }
+                composable(
+                    route = Screen.GameLobby.route,
+                    arguments = listOf(navArgument("gameType") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val gameType = enumValueOf<GameType>(backStackEntry.arguments?.getString("gameType")!!)
+                    GameLobbyScreen(
+                        navController = navController,
+                        gameType = gameType,
+                        authViewModel = authViewModel,
+                        groupId = "1" // Hardcoded for now
+                    )
+                }
+                composable(
+                    route = Screen.GamePlay.route,
+                    arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val sessionId = backStackEntry.arguments?.getString("sessionId")!!
+                    GamePlayScreen(
+                        navController = navController,
+                        sessionId = sessionId,
+                        authViewModel = authViewModel,
+                        groupId = "1" // Hardcoded for now
+                    )
                 }
                 // GroupChat without transitions
                 composable(
