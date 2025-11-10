@@ -65,6 +65,7 @@ fun CourseDetailScreen(
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
+    var userPreferences by remember { mutableStateOf("") }
     var selectedNote by remember { mutableStateOf<Note?>(null) }
     var showNoteOptions by remember { mutableStateOf(false) }
     var showSummaryScreen by remember { mutableStateOf(false) }
@@ -386,6 +387,7 @@ fun CourseDetailScreen(
                 showUploadDialog = false
                 pendingFileUri = null
                 pendingFileName = ""
+                userPreferences = ""
             },
             title = { Text("Add Note to Course") },
             text = {
@@ -396,17 +398,45 @@ fun CourseDetailScreen(
                         "This note will be added to ${course.title} (${course.code})",
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // User Preferences TextField
+                    OutlinedTextField(
+                        value = userPreferences,
+                        onValueChange = { userPreferences = it },
+                        label = { Text("Summary Preferences (Optional)") },
+                        placeholder = { Text("e.g., focus on key formulas, brief bullet points") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Provide preferences for AI summary generation",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         pendingFileUri?.let { uri ->
-                            homeViewModel.uploadAndProcessNote(context, uri, pendingFileName, course.id)
+                            homeViewModel.uploadAndProcessNote(
+                                context, 
+                                uri, 
+                                pendingFileName, 
+                                course.id,
+                                userPreferences
+                            )
                         }
                         showUploadDialog = false
                         pendingFileUri = null
                         pendingFileName = ""
+                        userPreferences = ""
                     }
                 ) {
                     Text("Upload")
@@ -418,6 +448,7 @@ fun CourseDetailScreen(
                         showUploadDialog = false
                         pendingFileUri = null
                         pendingFileName = ""
+                        userPreferences = ""
                     }
                 ) {
                     Text("Cancel")
@@ -777,11 +808,11 @@ fun NoteSummaryScreen(
                         )
                         when {
                             note.summary.isNotBlank() -> {
-                            Text(
-                                text = note.summary,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                Text(
+                                    text = note.summary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             isLoading -> {
                                 Text(
@@ -791,11 +822,11 @@ fun NoteSummaryScreen(
                                 )
                             }
                             else -> {
-                            Text(
-                                text = "Summary not available yet. Please check back soon.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                Text(
+                                    text = "Summary not available yet. Please check back soon.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

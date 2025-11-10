@@ -77,6 +77,7 @@ class NotesRepository(
         uri: Uri,
         fileName: String,
         courseId: String? = null, // Optional course association
+        userPreferences: String = "", // User preferences for AI summary
         onProgress: (String) -> Unit
     ): Result<Note> {
 
@@ -122,7 +123,7 @@ class NotesRepository(
 
             onProgress("Generating AI summary...")
 
-            val summary = generateAISummary(fileContent as String)
+            val summary = generateAISummary(fileContent as String, false, userPreferences)
             val keyPoints = extractKeyPoints(fileContent)
             val tags = generateTags(fileContent)
             val title = generateTitle(fileContent, fileName)
@@ -345,7 +346,7 @@ class NotesRepository(
         }
     }
 
-    suspend fun generateAISummary(content: String): String {
+    suspend fun generateAISummary(content: String, wantsNewSummary: Boolean, userPreferences: String): String {
         return try {
             val limitedContent = if (content.length > 8000) {
                 content.take(8000) + "..."
@@ -354,6 +355,8 @@ class NotesRepository(
             val prompt = """
                 Please provide a concise summary of the following document content in 2-3 paragraphs. 
                 Focus on the main concepts, key information, and important details that would be helpful for studying:
+                Also incorporate the following preferences into the summary: $userPreferences. if it is empty then just ignore it.
+                is a new summary: $wantsNewSummary, if the user has requested a new summary, please ensure it is fresh and not repetitive.
                 
                 $limitedContent
             """.trimIndent()
@@ -568,5 +571,15 @@ class NotesRepository(
             Log.e(TAG, "Error deleting note: ${e.message}")
             Result.failure(e)
         }
+    }
+
+    suspend fun updateNoteSummary(noteId: String, content: String, userPreferences: String): String {
+        val summary = generateAISummary(content, true, userPreferences)
+        firestore.collection("notes").document(noteId).update("summary", summary).await()
+        return summary
+    }
+
+    suspend fun getNewSummary( content: String, userPreferences: String): String {
+        return generateAISummary(content, true, userPreferences)
     }
 }
