@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -19,7 +20,6 @@ class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
-
     companion object {
         private const val TAG = "AuthRepository"
     }
@@ -37,7 +37,6 @@ class AuthRepository(
         return try {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user!!
-
             val userProfile = mapOf(
                 "uid" to user.uid,
                 "name" to name,
@@ -72,9 +71,7 @@ class AuthRepository(
                 "groups" to listOf<Map<String, Any>>(), // List of group summaries
                 "groupInvites" to listOf<Map<String, Any>>() // List of pending invites
             )
-
             firestore.collection("users").document(user.uid).set(userProfile).await()
-
             Result.success(user)
         } catch (e: Exception) {
             Log.e(TAG, "Sign up failed for email=$email: ${e.message}", e)
@@ -90,14 +87,12 @@ class AuthRepository(
     suspend fun signIn(email: String, password: String): Result<FirebaseUser> {
         return try {
             val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
-
             // Update lastLogin field
             result.user?.uid?.let { uid ->
                 firestore.collection("users").document(uid)
                     .update("lastLogin", System.currentTimeMillis())
                     .await()
             }
-
             Result.success(result.user!!)
         } catch (e: Exception) {
             Log.e(TAG, "Sign in failed for email=$email: ${e.message}", e)
@@ -179,12 +174,9 @@ class AuthRepository(
         return try {
             val user = currentUser ?: return Result.failure(Exception("No user logged in"))
             val email = user.email ?: return Result.failure(Exception("No email found"))
-
             val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
             user.reauthenticate(credential).await()
-
             user.updatePassword(newPassword).await()
-
             Log.d(TAG, "Password updated successfully for uid=${user.uid}")
             Result.success(Unit)
         } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
@@ -202,7 +194,6 @@ class AuthRepository(
         }
     }
 
-
     /**
      * Add a group summary to user's profile
      * Each user stores a lightweight summary of their groups for quick access
@@ -213,7 +204,6 @@ class AuthRepository(
     suspend fun addGroupToUserProfile(groupId: String, groupName: String, groupPic: String): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
-
             val groupSummary = mapOf(
                 "groupId" to groupId,
                 "groupName" to groupName,
@@ -223,11 +213,9 @@ class AuthRepository(
                 "lastMessageSender" to "",
                 "joinedAt" to System.currentTimeMillis()
             )
-
             firestore.collection("users").document(userId)
                 .update("groups", FieldValue.arrayUnion(groupSummary))
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add group $groupId to profile: ${e.message}", e)
@@ -249,7 +237,6 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
-
             val updatedGroups = groups.map { group ->
                 if (group["groupId"] == groupId) {
                     group.toMutableMap().apply {
@@ -261,11 +248,9 @@ class AuthRepository(
                     group
                 }
             }
-
             firestore.collection("users").document(userId)
                 .update("groups", updatedGroups)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update last message for group=$groupId: ${e.message}", e)
@@ -282,13 +267,10 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
-
             val updatedGroups = groups.filter { it["groupId"] != groupId }
-
             firestore.collection("users").document(userId)
                 .update("groups", updatedGroups)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to remove group $groupId from profile: ${e.message}", e)
@@ -323,7 +305,6 @@ class AuthRepository(
                 .limit(1)
                 .get()
                 .await()
-
             if (querySnapshot.documents.isNotEmpty()) {
                 querySnapshot.documents.first().data
             } else {
@@ -335,7 +316,6 @@ class AuthRepository(
             null
         }
     }
-
 
     /**
      * Send a group invite to a user
@@ -357,20 +337,16 @@ class AuthRepository(
             val currentUserId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val currentUserProfile = getUserProfile()
             val currentUserName = currentUserProfile?.get("name") as? String ?: "Unknown"
-
             val recipient = getUserByEmail(recipientEmail)
                 ?: return Result.failure(Exception("User not found with email: $recipientEmail"))
-
             val recipientId = recipient["uid"] as? String
                 ?: return Result.failure(Exception("Invalid user data"))
-
             // Check if user is already a member
             val recipientGroups = recipient["groups"] as? List<Map<String, Any>> ?: emptyList()
             val alreadyMember = recipientGroups.any { it["groupId"] == groupId }
             if (alreadyMember) {
                 return Result.failure(Exception("User is already a member of this group"))
             }
-
             // Check if invite already exists
             val recipientInvites = recipient["groupInvites"] as? List<Map<String, Any>> ?: emptyList()
             val inviteExists = recipientInvites.any {
@@ -379,7 +355,6 @@ class AuthRepository(
             if (inviteExists) {
                 return Result.failure(Exception("Invite already sent to this user"))
             }
-
             // Create new invite using a unique ID
             val inviteId = firestore.collection("users").document().id
             val invite = mapOf(
@@ -392,12 +367,10 @@ class AuthRepository(
                 "timestamp" to System.currentTimeMillis(),
                 "status" to "pending"
             )
-
             // Add invite to recipient's profile
             firestore.collection("users").document(recipientId)
                 .update("groupInvites", FieldValue.arrayUnion(invite))
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send group invite to $recipientEmail: ${e.message}", e)
@@ -416,7 +389,6 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return emptyList()
             val profile = getUserProfile()
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
-
             invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
                 try {
                     GroupInvite(
@@ -441,6 +413,63 @@ class AuthRepository(
     }
 
     /**
+     * Listen to real-time updates for group invites
+     * Sets up a Firestore snapshot listener that triggers whenever invites change
+     * Returns a ListenerRegistration that can be used to remove the listener
+     * The callback receives a list of pending invites whenever they change
+     *
+     * Usage: val listener = authRepository.listenToGroupInvites { invites -> /* handle invites */ }
+     * To stop listening: listener.remove()
+     */
+    fun listenToGroupInvites(onInvitesChanged: (List<GroupInvite>) -> Unit): ListenerRegistration? {
+        val userId = currentUser?.uid
+        if (userId == null) {
+            Log.e(TAG, "Cannot listen to invites: No user logged in")
+            return null
+        }
+
+        return firestore.collection("users")
+            .document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error listening to group invites: ${error.message}", error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    try {
+                        val invites = snapshot.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
+                        val pendingInvites = invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
+                            try {
+                                GroupInvite(
+                                    inviteId = invite["inviteId"] as? String ?: "",
+                                    groupId = invite["groupId"] as? String ?: "",
+                                    groupName = invite["groupName"] as? String ?: "",
+                                    groupPic = invite["groupPic"] as? String ?: "",
+                                    invitedBy = invite["invitedBy"] as? String ?: "",
+                                    invitedByName = invite["invitedByName"] as? String ?: "",
+                                    timestamp = (invite["timestamp"] as? Long) ?: 0L,
+                                    status = invite["status"] as? String ?: "pending"
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to parse invite in listener: ${e.message}", e)
+                                null
+                            }
+                        }
+                        onInvitesChanged(pendingInvites)
+                        Log.d(TAG, "Group invites updated: ${pendingInvites.size} pending invites")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing invite snapshot: ${e.message}", e)
+                        onInvitesChanged(emptyList())
+                    }
+                } else {
+                    Log.d(TAG, "User document not found")
+                    onInvitesChanged(emptyList())
+                }
+            }
+    }
+
+    /**
      * Accept a group invite
      */
     suspend fun acceptGroupInvite(inviteId: String, groupId: String): Result<Unit> {
@@ -448,7 +477,6 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
-
             // Find and update the invite
             val updatedInvites = invites.map { invite ->
                 if (invite["inviteId"] == inviteId) {
@@ -459,12 +487,10 @@ class AuthRepository(
                     invite
                 }
             }
-
             // Update invites in user profile
             firestore.collection("users").document(userId)
                 .update("groupInvites", updatedInvites)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to accept invite $inviteId: ${e.message}", e)
@@ -481,15 +507,12 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
-
             // Remove the invite
             val updatedInvites = invites.filter { it["inviteId"] != inviteId }
-
             // Update invites in user profile
             firestore.collection("users").document(userId)
                 .update("groupInvites", updatedInvites)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to reject invite $inviteId: ${e.message}", e)
@@ -506,20 +529,16 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
-
             val updatedInvites = invites.filter { it["inviteId"] != inviteId }
-
             firestore.collection("users").document(userId)
                 .update("groupInvites", updatedInvites)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete invite $inviteId: ${e.message}", e)
             Result.failure(e)
         }
     }
-
 
     /**
      * Used to update profile visibility setting
@@ -556,7 +575,6 @@ class AuthRepository(
             "everyone"
         }
     }
-
 
     /**
      * Update notifications enabled/disabled setting
@@ -607,10 +625,8 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
-
             // Get existing library
             val userLibrary = (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
-
             // Create new note entry
             val noteEntry = mapOf(
                 "noteId" to noteId,
@@ -620,14 +636,11 @@ class AuthRepository(
                 "courseId" to courseId,
                 "addedAt" to System.currentTimeMillis()
             )
-
             // Add new entry to the library
             val updatedLibrary = listOf(noteEntry) + userLibrary
-
             firestore.collection("users").document(userId)
                 .update("userLibrary", updatedLibrary)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add note $noteId to library: ${e.message}", e)
@@ -654,7 +667,6 @@ class AuthRepository(
     suspend fun initializeSampleUserLibrary(): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
-
             val sampleLibrary = listOf(
                 mapOf(
                     "noteId" to "sampleNote1",
@@ -673,11 +685,9 @@ class AuthRepository(
                     "addedAt" to System.currentTimeMillis() - 7200000 // 2 hours ago
                 )
             )
-
             firestore.collection("users").document(userId)
                 .update("userLibrary", sampleLibrary)
                 .await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize sample library: ${e.message}", e)

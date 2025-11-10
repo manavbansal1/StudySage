@@ -1,7 +1,9 @@
 package com.group_7.studysage.ui.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.ListenerRegistration
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.GroupRepository
 import com.group_7.studysage.data.repository.GroupInvite
@@ -33,6 +35,10 @@ class GroupViewModel(
     private val authRepository: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "GroupViewModel"
+    }
+
     private val _uiState = MutableStateFlow<GroupUiState>(GroupUiState.Loading)
     val uiState: StateFlow<GroupUiState> = _uiState.asStateFlow()
 
@@ -48,9 +54,24 @@ class GroupViewModel(
     private val _showInviteOverlay = MutableStateFlow(false)
     val showInviteOverlay: StateFlow<Boolean> = _showInviteOverlay.asStateFlow()
 
+    // Real-time listener for group invites
+    private var inviteListener: ListenerRegistration? = null
+
     init {
         loadGroups()
-        loadPendingInvites()
+        startListeningToInvites() // Start real-time listening instead of one-time load
+    }
+
+    /**
+     * Start listening to real-time invite updates
+     * This replaces loadPendingInvites() with automatic updates
+     */
+    private fun startListeningToInvites() {
+        inviteListener = authRepository.listenToGroupInvites { invites ->
+            Log.d(TAG, "Real-time invite update: ${invites.size} pending invites")
+            _pendingInvites.value = invites
+            _pendingInviteCount.value = invites.size
+        }
     }
 
     fun loadGroups() {
@@ -80,20 +101,27 @@ class GroupViewModel(
                 }.sortedByDescending { it.lastMessageTime }
 
                 _uiState.value = GroupUiState.Success(groupItems)
+                Log.d(TAG, "Successfully loaded ${groupItems.size} groups")
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to load groups: ${e.message}", e)
                 _uiState.value = GroupUiState.Error(e.message ?: "Failed to load groups")
             }
         }
     }
 
+    /**
+     * Kept for backward compatibility, but real-time listener is preferred
+     * This is now optional and only needed if listener fails
+     */
     fun loadPendingInvites() {
         viewModelScope.launch {
             try {
                 val invites = authRepository.getPendingInvites()
                 _pendingInvites.value = invites
                 _pendingInviteCount.value = invites.size
+                Log.d(TAG, "Manually loaded ${invites.size} pending invites")
             } catch (e: Exception) {
-                // Handle error silently
+                Log.e(TAG, "Failed to load pending invites: ${e.message}", e)
             }
         }
     }
@@ -105,6 +133,8 @@ class GroupViewModel(
     fun acceptInvite(invite: GroupInvite) {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "Accepting invite for group: ${invite.groupName}")
+
                 // 1. Accept the invite (marks it as accepted in user's invites)
                 val acceptResult = authRepository.acceptGroupInvite(invite.inviteId, invite.groupId)
 
@@ -134,13 +164,18 @@ class GroupViewModel(
                         // 5. Delete the invite after successful acceptance
                         authRepository.deleteInvite(invite.inviteId)
 
-                        // 6. Reload both groups and invites
+                        // 6. Reload groups (invites update automatically via listener)
                         loadGroups()
-                        loadPendingInvites()
+
+                        Log.d(TAG, "Successfully accepted invite and joined group: ${invite.groupName}")
+                    }.onFailure { error ->
+                        Log.e(TAG, "Failed to add user to group: ${error.message}", error)
                     }
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to accept invite: ${error.message}", error)
                 }
             } catch (e: Exception) {
-                // Handle error
+                Log.e(TAG, "Error accepting invite: ${e.message}", e)
             }
         }
     }
@@ -148,14 +183,18 @@ class GroupViewModel(
     fun rejectInvite(invite: GroupInvite) {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "Rejecting invite for group: ${invite.groupName}")
+
                 val result = authRepository.rejectGroupInvite(invite.inviteId)
 
                 result.onSuccess {
-                    // Reload invites
-                    loadPendingInvites()
+                    Log.d(TAG, "Successfully rejected invite for group: ${invite.groupName}")
+                    // Invites update automatically via listener, no need to reload
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to reject invite: ${error.message}", error)
                 }
             } catch (e: Exception) {
-                // Handle error
+                Log.e(TAG, "Error rejecting invite: ${e.message}", e)
             }
         }
     }
@@ -167,6 +206,8 @@ class GroupViewModel(
     fun createGroup(name: String, description: String) {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "Creating group: $name")
+
                 val result = groupRepository.createGroup(name, description)
 
                 result.onSuccess { groupId ->
@@ -179,12 +220,16 @@ class GroupViewModel(
 
                     // Reload groups
                     loadGroups()
+
+                    Log.d(TAG, "Successfully created group: $name with ID: $groupId")
                 }
 
                 result.onFailure { error ->
+                    Log.e(TAG, "Failed to create group: ${error.message}", error)
                     _uiState.value = GroupUiState.Error(error.message ?: "Failed to create group")
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error creating group: ${e.message}", e)
                 _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
             }
         }
@@ -193,6 +238,8 @@ class GroupViewModel(
     fun deleteGroup(groupId: String) {
         viewModelScope.launch {
             try {
+                Log.d(TAG, "Deleting group: $groupId")
+
                 val result = groupRepository.deleteGroup(groupId)
 
                 result.onSuccess {
@@ -201,12 +248,16 @@ class GroupViewModel(
 
                     // Reload groups
                     loadGroups()
+
+                    Log.d(TAG, "Successfully deleted group: $groupId")
                 }
 
                 result.onFailure { error ->
+                    Log.e(TAG, "Failed to delete group: ${error.message}", error)
                     _uiState.value = GroupUiState.Error(error.message ?: "Failed to delete group")
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error deleting group: ${e.message}", e)
                 _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
             }
         }
@@ -217,6 +268,8 @@ class GroupViewModel(
             try {
                 val userId = authRepository.currentUser?.uid ?: return@launch
 
+                Log.d(TAG, "User $userId leaving group: $groupId")
+
                 // Remove user from group
                 val result = groupRepository.removeMemberFromGroup(groupId, userId)
 
@@ -226,12 +279,16 @@ class GroupViewModel(
 
                     // Reload groups
                     loadGroups()
+
+                    Log.d(TAG, "Successfully left group: $groupId")
                 }
 
                 result.onFailure { error ->
+                    Log.e(TAG, "Failed to leave group: ${error.message}", error)
                     _uiState.value = GroupUiState.Error(error.message ?: "Failed to leave group")
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error leaving group: ${e.message}", e)
                 _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
             }
         }
@@ -252,5 +309,15 @@ class GroupViewModel(
         return currentState.groups.filter {
             it.groupName.contains(query, ignoreCase = true)
         }
+    }
+
+    /**
+     * Clean up the real-time listener when ViewModel is destroyed
+     * This prevents memory leaks
+     */
+    override fun onCleared() {
+        super.onCleared()
+        inviteListener?.remove()
+        Log.d(TAG, "GroupViewModel cleared, invite listener removed")
     }
 }
