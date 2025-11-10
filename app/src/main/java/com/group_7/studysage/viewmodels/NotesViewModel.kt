@@ -21,20 +21,29 @@ class NotesViewModel(
         private const val TAG = "NotesViewModel"
     }
 
-    private val _notes = MutableStateFlow<List<Note>>(emptyList())
-    val notes: StateFlow<List<Note>> = _notes.asStateFlow()
-
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _selectedNote = MutableStateFlow<Note?>(null)
-    val selectedNote: StateFlow<Note?> = _selectedNote.asStateFlow()
+    private val _uploadStatus = MutableStateFlow<String?>(null)
+    val uploadStatus: StateFlow<String?> = _uploadStatus.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _processedNote = MutableStateFlow<Note?>(null)
+    val processedNote: StateFlow<Note?> = _processedNote.asStateFlow()
+
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+    val notes: StateFlow<List<Note>> = _notes.asStateFlow()
+
+    private val _selectedNote = MutableStateFlow<Note?>(null)
+    val selectedNote: StateFlow<Note?> = _selectedNote.asStateFlow()
+
     private val _isNoteDetailsLoading = MutableStateFlow(false)
     val isNoteDetailsLoading: StateFlow<Boolean> = _isNoteDetailsLoading.asStateFlow()
+
+    private val _courseNotes = MutableStateFlow<List<Note>>(emptyList())
+    val courseNotes: StateFlow<List<Note>> = _courseNotes.asStateFlow()
 
     init {
         // Initial load is handled by LaunchedEffect in the UI, which can provide courseId
@@ -48,7 +57,11 @@ class NotesViewModel(
 
             try {
                 val userNotes = notesRepository.getUserNotes(courseId)
-                _notes.value = userNotes
+                if (courseId != null) {
+                    _courseNotes.value = userNotes
+                } else {
+                    _notes.value = userNotes
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load notes: ${e.message}"
                 Log.e(TAG, "Failed to load notes: ${e.message}", e)
@@ -118,45 +131,84 @@ class NotesViewModel(
         }
     }
 
-    fun uploadNote(
+    fun uploadAndProcessNote(
         context: Context,
         uri: Uri,
         fileName: String,
-        courseId: String?,
-        onUploadProgress: (String) -> Unit,
-        onUploadComplete: () -> Unit
+        courseId: String? = null,
+        userPreferences: String = ""
     ) {
-        Log.d(TAG, "Uploading note $fileName for courseId=$courseId")
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
+            clearMessages()
+
             try {
-                notesRepository.uploadNotesAndProcess(
+                // Validate file type
+                val supportedTypes = listOf(".pdf", ".txt", ".doc", ".docx", ".md", ".rtf")
+                val isSupported = supportedTypes.any { fileName.endsWith(it, ignoreCase = true) }
+
+                if (!isSupported) {
+                    _errorMessage.value = "Unsupported file type. Please upload PDF, TXT, DOC, or DOCX files."
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                // Check file size (limit to 10MB). Use `use` so the InputStream is closed after reading.
+                val fileSize = context.contentResolver.openInputStream(uri)?.use { it.available() } ?: 0
+                if (fileSize > 10 * 1024 * 1024) { // 10MB limit
+                    _errorMessage.value = "File too large. Please upload files smaller than 10MB."
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                val result = notesRepository.uploadNotesAndProcess(
                     context = context,
                     uri = uri,
                     fileName = fileName,
-                    courseId = courseId,
-                    onProgress = onUploadProgress
+                    courseId = courseId, // Pass the courseId
+                    userPreferences = userPreferences, // Pass user preferences
+                    onProgress = { status ->
+                        _uploadStatus.value = status
+                    }
                 )
-                    .onSuccess { newNote ->
-                        _notes.value = listOf(newNote) + _notes.value // Add new note to the top
-                        _errorMessage.value = null
-                        onUploadComplete()
-                        Log.d(TAG, "Note upload succeeded id=${newNote.id}")
+
+                result.onSuccess { note ->
+                    _processedNote.value = note
+                    _uploadStatus.value = "Document processed successfully!"
+                    loadNotes(courseId) // Refresh the notes list
+                }.onFailure { exception ->
+                    val errorMsg = when {
+                        exception.message?.contains("authentication", ignoreCase = true) == true ->
+                            "Please sign in to upload files"
+                        exception.message?.contains("network", ignoreCase = true) == true ->
+                            "Network error. Please check your connection"
+                        exception.message?.contains("API", ignoreCase = true) == true ->
+                            "AI processing temporarily unavailable. Please try again"
+                        exception.message?.contains("PDF", ignoreCase = true) == true ->
+                            "PDF processing failed. Please try a different file"
+                        else -> "Error processing file: ${exception.message}"
                     }
-                    .onFailure { exception ->
-                        _errorMessage.value = "Upload failed: ${exception.message}"
-                        onUploadComplete()
-                        Log.e(TAG, "Note upload failed: ${exception.message}", exception)
-                    }
+                    _errorMessage.value = errorMsg
+                }
+
             } catch (e: Exception) {
-                _errorMessage.value = "Upload failed: ${e.message}"
-                onUploadComplete()
-                Log.e(TAG, "Unexpected upload failure: ${e.message}", e)
+                _errorMessage.value = "Unexpected error: ${e.message}"
             }
+
             _isLoading.value = false
         }
     }
+
+    fun clearMessages() {
+        _uploadStatus.value = null
+        _errorMessage.value = null
+    }
+
+    fun clearProcessedNote() {
+        _processedNote.value = null
+    }
+
 
     fun downloadNote(context: Context, note: Note) {
         Log.d(TAG, "Downloading note ${note.id}")
@@ -168,23 +220,27 @@ class NotesViewModel(
         }
     }
 
-    fun searchNotes(query: String) {
+    fun searchNotes(query: String, courseId: String? = null) {
         Log.d(TAG, "Searching notes with query=$query")
         if (query.isBlank()) {
-            loadNotes()
+            loadNotes(courseId)
             return
         }
 
         viewModelScope.launch {
             try {
-                val allNotes = notesRepository.getUserNotes()
+                val allNotes = notesRepository.getUserNotes(courseId)
                 val filteredNotes = allNotes.filter { note ->
                     note.title.contains(query, ignoreCase = true) ||
                             note.summary.contains(query, ignoreCase = true) ||
                             note.tags.any { it.contains(query, ignoreCase = true) } ||
                             note.keyPoints.any { it.contains(query, ignoreCase = true) }
                 }
-                _notes.value = filteredNotes
+                if (courseId != null) {
+                    _courseNotes.value = filteredNotes
+                } else {
+                    _notes.value = filteredNotes
+                }
             } catch (e: Exception) {
                 _errorMessage.value = "Search failed: ${e.message}"
                 Log.e(TAG, "Note search failed: ${e.message}", e)
@@ -195,5 +251,26 @@ class NotesViewModel(
     fun clearError() {
         Log.d(TAG, "Clearing note errors")
         _errorMessage.value = null
+    }
+
+    fun updateNoteSummary(noteId: String, content: String, userPreferences: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val newSummary = notesRepository.updateNoteSummary(noteId, content, userPreferences)
+                _selectedNote.value = _selectedNote.value?.copy(summary = newSummary)
+                // Refresh the notes list to reflect the change
+                val currentNotes = _courseNotes.value.toMutableList()
+                val index = currentNotes.indexOfFirst { it.id == noteId }
+                if (index != -1) {
+                    currentNotes[index] = currentNotes[index].copy(summary = newSummary)
+                    _courseNotes.value = currentNotes
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to update summary: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 }
