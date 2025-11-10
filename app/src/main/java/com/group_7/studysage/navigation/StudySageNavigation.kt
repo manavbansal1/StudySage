@@ -72,6 +72,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object GroupChat : Screen("group_chat/{groupId}", "Group Chat") {
         fun createRoute(groupId: String) = "group_chat/$groupId"
     }
+    object GameLobby : Screen("game_lobby/{groupId}", "Game Lobby")
+    object GamePlay : Screen("game_play/{groupId}/{sessionId}/{gameType}", "Play")
+    object GameResults : Screen("game_results/{groupId}/{sessionId}", "Results")
 }
 @Composable
 private fun GlassCard(
