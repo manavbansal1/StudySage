@@ -1,8 +1,8 @@
-import androidx.compose.runtime.collectAsState
+package com.group_7.studysage.viewmodels
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.api.GameApiService
-import com.group_7.studysage.data.models.GameSessionData
 import com.group_7.studysage.data.models.GameSettings
 import com.group_7.studysage.data.models.GameType
 import com.group_7.studysage.data.models.LobbyUiState

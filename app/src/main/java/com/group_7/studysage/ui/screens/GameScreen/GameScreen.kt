@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.group_7.studysage.data.models.GameType
 
+@OptIn(ExperimentalMaterial3Api::class)  // ✅ ADD THIS LINE
 @Composable
 fun GameScreen(navController: NavController) {
     val games = listOf(
