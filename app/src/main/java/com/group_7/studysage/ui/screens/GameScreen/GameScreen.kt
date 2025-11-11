@@ -47,6 +47,19 @@ import androidx.compose.material3.Surface
 fun GameScreen(navController: NavController, gameViewModel: GameViewModel = viewModel()) {
     val showGameActionOverlay by gameViewModel.showGameActionOverlay.collectAsState()
     val selectedGameTitle by gameViewModel.selectedGameTitle.collectAsState()
+    
+    var showQuizGenerationScreen by remember { mutableStateOf(false) }
+    
+    if (showQuizGenerationScreen) {
+        QuizGenerationScreen(
+            onBack = { 
+                showQuizGenerationScreen = false
+                gameViewModel.resetQuizGeneration()
+            },
+            gameViewModel = gameViewModel
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -111,8 +124,7 @@ fun GameScreen(navController: NavController, gameViewModel: GameViewModel = view
                         title = "Quiz Game",
                         modifier = Modifier.weight(1f).aspectRatio(1f),
                         onClick = {
-                            gameViewModel.setSelectedGameTitle("Quiz Game")
-                            gameViewModel.setShowGameActionOverlay(true)
+                            showQuizGenerationScreen = true
                         }
                     )
                     GameCard(
