@@ -28,6 +28,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -55,6 +57,7 @@ import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.viewmodels.AuthViewModel
+import com.group_7.studysage.viewmodels.CourseViewModel
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -117,16 +120,23 @@ fun StudySageNavigation(
     if (isUserSignedIn) {
         // Create a fresh NavController for authenticated users
         val navController = androidx.navigation.compose.rememberNavController()
+        val courseViewModel: CourseViewModel = viewModel()
+        val courseUiState by courseViewModel.uiState.collectAsState()
+        
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
         val selectedIndex = screens.indexOfFirst { screen ->
             currentDestination?.hierarchy?.any { it.route == screen.route } == true
         }
+        
+        // Hide bottom nav when in group chat, profile pages, or when viewing course details
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
-                currentDestination?.route == "notification_settings"
+                currentDestination?.route == "notification_settings" ||
+                (currentDestination?.route == Screen.Course.route && courseUiState.selectedCourse != null)
+        
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -271,7 +281,7 @@ fun StudySageNavigation(
                         slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
                     }
                 ) {
-                    CoursesScreen()
+                    CoursesScreen(viewModel = courseViewModel)
                 }
                 composable(
                     Screen.Groups.route,

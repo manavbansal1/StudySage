@@ -33,7 +33,8 @@ data class Note(
     val userId: String = "",
     val fileUrl: String = "",
     val fileType: String = "",
-    val courseId: String = "" // New field for course association
+    val courseId: String = "", // New field for course association
+    val isStarred: Boolean = false // Star/favorite the summary
 )
 
 class NotesRepository(
@@ -121,12 +122,15 @@ class NotesRepository(
                 resourceType = if (getFileType(fileName).contains("Image")) "image" else "raw"
             ) ?: throw Exception("Failed to upload file to Cloudinary.")
 
-            onProgress("Generating AI summary...")
+            // Skip AI summary generation during upload to keep uploads fast and
+            // allow users to request summaries later with custom preferences.
+            onProgress("Skipping AI summary generation for now...")
 
-            val summary = generateAISummary(fileContent as String, false, userPreferences)
-            val keyPoints = extractKeyPoints(fileContent)
-            val tags = generateTags(fileContent)
-            val title = generateTitle(fileContent, fileName)
+            val summary = "" // empty summary saved; generate on-demand later
+            val keyPoints = emptyList<String>()
+            // Generate lightweight tags and title locally (no LLM) so notes are searchable
+            val tags = generateBasicTags(fileContent)
+            val title = generateBasicTitle(fileContent, fileName)
 
             onProgress("Saving to database...")
 
@@ -581,5 +585,24 @@ class NotesRepository(
 
     suspend fun getNewSummary( content: String, userPreferences: String): String {
         return generateAISummary(content, true, userPreferences)
+    }
+
+    suspend fun toggleNoteStar(noteId: String): Result<Boolean> {
+        return try {
+            val userId = auth.currentUser?.uid ?: throw Exception("User is not authenticated.")
+            val noteDoc = firestore.collection("notes").document(noteId).get().await()
+            val currentStarred = noteDoc.getBoolean("isStarred") ?: false
+            val newStarred = !currentStarred
+            
+            firestore.collection("notes").document(noteId)
+                .update("isStarred", newStarred)
+                .await()
+            
+            Log.d(TAG, "Note $noteId star toggled to $newStarred for user $userId")
+            Result.success(newStarred)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error toggling note star: ${e.message}")
+            Result.failure(e)
+        }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,6 +70,7 @@ fun CourseDetailScreen(
     var selectedNote by remember { mutableStateOf<Note?>(null) }
     var showNoteOptions by remember { mutableStateOf(false) }
     var showSummaryScreen by remember { mutableStateOf(false) }
+    var showGenerateSummaryDialog by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -94,7 +96,11 @@ fun CourseDetailScreen(
                     showSummaryScreen = false
                     notesViewModel.clearSelectedNote()
                 },
-                onDownload = { notesViewModel.downloadNote(context, summaryNote) }
+                onDownload = { notesViewModel.downloadNote(context, summaryNote) },
+                onToggleStar = { notesViewModel.toggleNoteStar(summaryNote.id) },
+                onRegenerateSummary = { preferences ->
+                    notesViewModel.updateNoteSummary(summaryNote.id, summaryNote.content, preferences)
+                }
             )
         } else {
             Scaffold(
@@ -169,7 +175,6 @@ fun CourseDetailScreen(
 
     Scaffold(
         topBar = {
-
             TopAppBar(
                 title = {
                     Text(
@@ -186,46 +191,48 @@ fun CourseDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                type = "*/*"
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                val mimeTypes = arrayOf(
+                                    "application/pdf",
+                                    "text/plain",
+                                    "application/msword",
+                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "text/markdown",
+                                    "application/rtf",
+                                    "image/*"
+                                )
+                                putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                            }
+                            filePickerLauncher.launch(intent)
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Note",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                        type = "*/*"
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                        val mimeTypes = arrayOf(
-                            "application/pdf",
-                            "text/plain",
-                            "application/msword",
-                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            "text/markdown",
-                            "application/rtf",
-                            "image/*"
-                        )
-                        putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-                    }
-                    filePickerLauncher.launch(intent)
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Add Note",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -287,7 +294,7 @@ fun CourseDetailScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp)) // Space for FAB
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -356,29 +363,76 @@ fun CourseDetailScreen(
                             contentDescription = null
                         )
                     },
-                    modifier = Modifier.clickable {
-                        showNoteOptions = false
-                        selectedNote = null
-                        if (note.id.isBlank()) {
-                            Toast.makeText(
-                                context,
-                                "Note details not available yet for this document.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            notesViewModel.selectNote(note)
-                            showSummaryScreen = true
-                            if (note.summary.isBlank()) {
-                                notesViewModel.loadNoteById(note.id)
+                        modifier = Modifier.clickable {
+                            showNoteOptions = false
+                            selectedNote = null
+                            if (note.id.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Note details not available yet for this document.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                // Select the note in the ViewModel so we can fetch details if needed
+                                notesViewModel.selectNote(note)
+
+                                if (note.summary.isNotBlank()) {
+                                    // Already has a summary -> show it
+                                    showSummaryScreen = true
+                                    // ensure latest details loaded
+                                    if (note.summary.isBlank()) {
+                                        notesViewModel.loadNoteById(note.id)
+                                    }
+                                } else {
+                                    // No summary yet -> ask user for preferences and generate on demand
+                                    showGenerateSummaryDialog = true
+                                    // Trigger load of full note content if it's not present
+                                    notesViewModel.loadNoteById(note.id)
+                                }
                             }
                         }
-                    }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
+
+        // Dialog to collect generation preferences and trigger summary generation
+        if (showGenerateSummaryDialog) {
+            val currentSelected = selectedNoteState
+
+            // Ensure content is loaded
+            LaunchedEffect(currentSelected?.id) {
+                currentSelected?.let {
+                    if (it.content.isBlank()) {
+                        notesViewModel.loadNoteById(it.id)
+                    }
+                }
+            }
+
+            GenerateSummaryDialog(
+                title = "Generate AI Summary",
+                onDismiss = {
+                    showGenerateSummaryDialog = false
+                    notesViewModel.clearSelectedNote()
+                },
+                onGenerate = { preferences ->
+                    val contentToSummarize = selectedNoteState?.content ?: ""
+                    if (contentToSummarize.isNotBlank()) {
+                        notesViewModel.updateNoteSummary(
+                            selectedNoteState?.id ?: "",
+                            contentToSummarize,
+                            preferences
+                        )
+                        showGenerateSummaryDialog = false
+                        showSummaryScreen = true
+                    } else {
+                        selectedNoteState?.id?.let { notesViewModel.loadNoteById(it) }
+                    }
+                }
+            )
+        }
 
     // Upload confirmation dialog
     if (showUploadDialog && pendingFileUri != null) {
@@ -715,8 +769,12 @@ fun NoteSummaryScreen(
     note: Note,
     isLoading: Boolean = false,
     onBack: () -> Unit,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    onToggleStar: () -> Unit = {},
+    onRegenerateSummary: (String) -> Unit = {}
 ) {
+    var showRegenerateDialog by remember { mutableStateOf(false) }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -736,6 +794,17 @@ fun NoteSummaryScreen(
                     }
                 },
                 actions = {
+                    // Star button - only show when summary exists
+                    if (note.summary.isNotBlank()) {
+                        IconButton(onClick = onToggleStar) {
+                            Icon(
+                                imageVector = if (note.isStarred) Icons.Filled.Star else Icons.Outlined.Star,
+                                contentDescription = if (note.isStarred) "Unstar summary" else "Star summary",
+                                tint = if (note.isStarred) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                    
                     IconButton(
                         onClick = onDownload,
                         enabled = note.fileUrl.isNotBlank()
@@ -801,11 +870,33 @@ fun NoteSummaryScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "Summary",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Summary",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            // Regenerate button - only show when summary exists
+                            if (note.summary.isNotBlank()) {
+                                TextButton(
+                                    onClick = { showRegenerateDialog = true }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Regenerate")
+                                }
+                            }
+                        }
+                        
                         when {
                             note.summary.isNotBlank() -> {
                                 Text(
@@ -908,10 +999,84 @@ fun NoteSummaryScreen(
                 }
             }
         }
+        
+        // Regenerate Summary Dialog
+        if (showRegenerateDialog) {
+            GenerateSummaryDialog(
+                title = "Regenerate AI Summary",
+                onDismiss = { showRegenerateDialog = false },
+                onGenerate = { preferences ->
+                    onRegenerateSummary(preferences)
+                    showRegenerateDialog = false
+                }
+            )
+        }
     }
 }
 
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+@Composable
+fun GenerateSummaryDialog(
+    title: String = "Generate AI Summary",
+    onDismiss: () -> Unit,
+    onGenerate: (String) -> Unit
+) {
+    var preferences by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Provide preferences for the AI summary generation (optional):",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                OutlinedTextField(
+                    value = preferences,
+                    onValueChange = { preferences = it },
+                    label = { Text("Summary Preferences") },
+                    placeholder = { Text("e.g., Focus on key formulas, brief bullet points, detailed explanations...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                
+                Text(
+                    text = "Leave empty for a standard summary",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onGenerate(preferences) }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Generate")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

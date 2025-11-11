@@ -273,4 +273,33 @@ class NotesViewModel(
             }
         }
     }
+
+    fun toggleNoteStar(noteId: String) {
+        viewModelScope.launch {
+            try {
+                notesRepository.toggleNoteStar(noteId)
+                    .onSuccess { newStarredState ->
+                        // Update selected note
+                        _selectedNote.value = _selectedNote.value?.copy(isStarred = newStarredState)
+                        
+                        // Update in course notes list
+                        val currentNotes = _courseNotes.value.toMutableList()
+                        val index = currentNotes.indexOfFirst { it.id == noteId }
+                        if (index != -1) {
+                            currentNotes[index] = currentNotes[index].copy(isStarred = newStarredState)
+                            _courseNotes.value = currentNotes
+                        }
+                        
+                        Log.d(TAG, "Note star toggled: $newStarredState")
+                    }
+                    .onFailure { exception ->
+                        _errorMessage.value = "Failed to star note: ${exception.message}"
+                        Log.e(TAG, "Failed to toggle star: ${exception.message}", exception)
+                    }
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to star note: ${e.message}"
+                Log.e(TAG, "Failed to toggle star: ${e.message}", e)
+            }
+        }
+    }
 }
