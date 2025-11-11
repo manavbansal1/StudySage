@@ -1,4 +1,5 @@
-import androidx.compose.runtime.collectAsState
+package com.group_7.studysage.viewmodels
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.api.GameApiService
