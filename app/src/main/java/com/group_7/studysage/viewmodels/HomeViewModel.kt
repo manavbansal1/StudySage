@@ -82,7 +82,8 @@ class HomeViewModel(
         context: Context,
         uri: Uri,
         fileName: String,
-        courseId: String? = null
+        courseId: String? = null,
+        userPreferences: String = ""
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -113,6 +114,7 @@ class HomeViewModel(
                     uri = uri,
                     fileName = fileName,
                     courseId = courseId, // Pass the courseId
+                    userPreferences = userPreferences, // Pass user preferences
                     onProgress = { status ->
                         _uploadStatus.value = status
                     }
@@ -213,7 +215,7 @@ class HomeViewModel(
             try {
                 // Simple test with a basic text file simulation
                 val testContent = "This is a test document for AI processing."
-                val summary = notesRepository.generateAISummary(testContent)
+                val summary = notesRepository.generateAISummary(testContent, false, "")
 
                 if (summary.isNotBlank()) {
                     _testResult.value = "✅ AI connection successful"
@@ -228,9 +230,9 @@ class HomeViewModel(
         }
     }
 
-    fun retryProcessing(context: Context, uri: Uri, fileName: String, courseId: String? = null) {
+    fun retryProcessing(context: Context, uri: Uri, fileName: String, courseId: String? = null, userPreferences: String = "") {
         // Clear previous errors and try again
         clearMessages()
-        uploadAndProcessNote(context, uri, fileName, courseId)
+        uploadAndProcessNote(context, uri, fileName, courseId, userPreferences)
     }
 }
