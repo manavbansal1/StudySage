@@ -119,6 +119,8 @@ dependencies {
 
     // Accompanist for permissions
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+    implementation(libs.androidx.animation)
+    implementation(libs.androidx.foundation)
 
     // Testing
     testImplementation(libs.junit)

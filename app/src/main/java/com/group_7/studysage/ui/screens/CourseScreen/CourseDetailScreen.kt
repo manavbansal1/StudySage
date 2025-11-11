@@ -71,6 +71,7 @@ fun CourseDetailScreen(
     var showNoteOptions by remember { mutableStateOf(false) }
     var showSummaryScreen by remember { mutableStateOf(false) }
     var showGenerateSummaryDialog by remember { mutableStateOf(false) }
+    var showFlashcardScreen by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -131,6 +132,17 @@ fun CourseDetailScreen(
                 }
             }
         }
+        return
+    }
+
+    if (showFlashcardScreen && selectedNote != null) {
+        com.group_7.studysage.ui.screens.Flashcards.FlashcardScreen(
+            note = selectedNote!!,
+            onBack = {
+                showFlashcardScreen = false
+                selectedNote = null
+            }
+        )
         return
     }
 
@@ -393,6 +405,27 @@ fun CourseDetailScreen(
                         }
                 )
 
+                ListItem(
+                    headlineContent = { Text("View Flashcards") },
+                    supportingContent = {
+                        Text(
+                            text = note.originalFileName.ifBlank { "Show flashcards" },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showNoteOptions = false
+                        selectedNote = note
+                        showFlashcardScreen = true
+                    }
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
@@ -453,7 +486,7 @@ fun CourseDetailScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     // User Preferences TextField
                     OutlinedTextField(
                         value = userPreferences,
@@ -480,9 +513,9 @@ fun CourseDetailScreen(
                     onClick = {
                         pendingFileUri?.let { uri ->
                             homeViewModel.uploadAndProcessNote(
-                                context, 
-                                uri, 
-                                pendingFileName, 
+                                context,
+                                uri,
+                                pendingFileName,
                                 course.id,
                                 userPreferences
                             )
@@ -774,7 +807,7 @@ fun NoteSummaryScreen(
     onRegenerateSummary: (String) -> Unit = {}
 ) {
     var showRegenerateDialog by remember { mutableStateOf(false) }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -804,7 +837,7 @@ fun NoteSummaryScreen(
                             )
                         }
                     }
-                    
+
                     IconButton(
                         onClick = onDownload,
                         enabled = note.fileUrl.isNotBlank()
@@ -880,7 +913,7 @@ fun NoteSummaryScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            
+
                             // Regenerate button - only show when summary exists
                             if (note.summary.isNotBlank()) {
                                 TextButton(
@@ -896,7 +929,7 @@ fun NoteSummaryScreen(
                                 }
                             }
                         }
-                        
+
                         when {
                             note.summary.isNotBlank() -> {
                                 Text(
@@ -999,7 +1032,7 @@ fun NoteSummaryScreen(
                 }
             }
         }
-        
+
         // Regenerate Summary Dialog
         if (showRegenerateDialog) {
             GenerateSummaryDialog(
@@ -1038,7 +1071,7 @@ fun GenerateSummaryDialog(
                     text = "Provide preferences for the AI summary generation (optional):",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                
+
                 OutlinedTextField(
                     value = preferences,
                     onValueChange = { preferences = it },
@@ -1052,7 +1085,7 @@ fun GenerateSummaryDialog(
                         focusedLabelColor = MaterialTheme.colorScheme.primary
                     )
                 )
-                
+
                 Text(
                     text = "Leave empty for a standard summary",
                     style = MaterialTheme.typography.bodySmall,
