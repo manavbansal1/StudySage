@@ -65,6 +65,7 @@ fun CourseDetailScreen(
     }
     val notes = if (courseNotes.isNotEmpty()) courseNotes else libraryNotes
 
+    var noteToShare by remember { mutableStateOf<Note?>(null) }
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
@@ -85,10 +86,12 @@ fun CourseDetailScreen(
     val selectedNoteState by notesViewModel.selectedNote.collectAsState()
     val isSummaryLoading by notesViewModel.isNoteDetailsLoading.collectAsState()
 
-    if (showShareNFCScreen) {
+    if (showShareNFCScreen && noteToShare != null) {
         ShareNFCScreen(
+            note = noteToShare!!,
             onBack = {
                 showShareNFCScreen = false
+                noteToShare = null
             }
         )
         return
@@ -96,6 +99,7 @@ fun CourseDetailScreen(
 
     if (showReceiveNFCScreen) {
         ReceiveNFCScreen(
+            courseId = course.id,
             onBack = {
                 showReceiveNFCScreen = false
             }
@@ -531,6 +535,7 @@ fun CourseDetailScreen(
                     },
                     modifier = Modifier.clickable {
                         showNoteOptions = false
+                        noteToShare = selectedNote
                         selectedNote = null
                         showShareNFCScreen = true
                     }
