@@ -34,6 +34,8 @@ import com.group_7.studysage.data.repository.CourseWithNotes
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.NotesViewModel
 import com.group_7.studysage.viewmodels.HomeViewModel
+import com.group_7.studysage.ui.screens.nfc.ReceiveNFCScreen
+import com.group_7.studysage.ui.screens.nfc.ShareNFCScreen
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -63,6 +65,7 @@ fun CourseDetailScreen(
     }
     val notes = if (courseNotes.isNotEmpty()) courseNotes else libraryNotes
 
+    var noteToShare by remember { mutableStateOf<Note?>(null) }
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
@@ -72,6 +75,9 @@ fun CourseDetailScreen(
     var showSummaryScreen by remember { mutableStateOf(false) }
     var showGenerateSummaryDialog by remember { mutableStateOf(false) }
     var showFlashcardScreen by remember { mutableStateOf(false) }
+    var showUploadOptionsSheet by remember { mutableStateOf(false) }
+    var showShareNFCScreen by remember { mutableStateOf(false) }
+    var showReceiveNFCScreen by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -79,6 +85,27 @@ fun CourseDetailScreen(
     val errorMessage by homeViewModel.errorMessage
     val selectedNoteState by notesViewModel.selectedNote.collectAsState()
     val isSummaryLoading by notesViewModel.isNoteDetailsLoading.collectAsState()
+
+    if (showShareNFCScreen && noteToShare != null) {
+        ShareNFCScreen(
+            note = noteToShare!!,
+            onBack = {
+                showShareNFCScreen = false
+                noteToShare = null
+            }
+        )
+        return
+    }
+
+    if (showReceiveNFCScreen) {
+        ReceiveNFCScreen(
+            courseId = course.id,
+            onBack = {
+                showReceiveNFCScreen = false
+            }
+        )
+        return
+    }
 
     if (showSummaryScreen) {
         val summaryNote = selectedNoteState
@@ -206,21 +233,7 @@ fun CourseDetailScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                type = "*/*"
-                                addCategory(Intent.CATEGORY_OPENABLE)
-                                val mimeTypes = arrayOf(
-                                    "application/pdf",
-                                    "text/plain",
-                                    "application/msword",
-                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    "text/markdown",
-                                    "application/rtf",
-                                    "image/*"
-                                )
-                                putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-                            }
-                            filePickerLauncher.launch(intent)
+                            showUploadOptionsSheet = true
                         },
                         enabled = !isLoading,
                         modifier = Modifier.size(44.dp)
@@ -311,6 +324,86 @@ fun CourseDetailScreen(
         }
     }
 
+    // Upload Options Bottom Sheet
+    if (showUploadOptionsSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showUploadOptionsSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Add Note",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+
+                Divider()
+
+                ListItem(
+                    headlineContent = { Text("Upload from phone") },
+                    supportingContent = {
+                        Text(
+                            text = "Select a file from your device",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Upload,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showUploadOptionsSheet = false
+                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "*/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            val mimeTypes = arrayOf(
+                                "application/pdf",
+                                "text/plain",
+                                "application/msword",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                "text/markdown",
+                                "application/rtf",
+                                "image/*"
+                            )
+                            putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                        }
+                        filePickerLauncher.launch(intent)
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Receive via NFC") },
+                    supportingContent = {
+                        Text(
+                            text = "Transfer notes from another device",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Nfc,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showUploadOptionsSheet = false
+                        showReceiveNFCScreen = true
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+
     if (showNoteOptions && selectedNote != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val note = selectedNote!!
@@ -375,34 +468,34 @@ fun CourseDetailScreen(
                             contentDescription = null
                         )
                     },
-                        modifier = Modifier.clickable {
-                            showNoteOptions = false
-                            selectedNote = null
-                            if (note.id.isBlank()) {
-                                Toast.makeText(
-                                    context,
-                                    "Note details not available yet for this document.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            } else {
-                                // Select the note in the ViewModel so we can fetch details if needed
-                                notesViewModel.selectNote(note)
+                    modifier = Modifier.clickable {
+                        showNoteOptions = false
+                        selectedNote = null
+                        if (note.id.isBlank()) {
+                            Toast.makeText(
+                                context,
+                                "Note details not available yet for this document.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            // Select the note in the ViewModel so we can fetch details if needed
+                            notesViewModel.selectNote(note)
 
-                                if (note.summary.isNotBlank()) {
-                                    // Already has a summary -> show it
-                                    showSummaryScreen = true
-                                    // ensure latest details loaded
-                                    if (note.summary.isBlank()) {
-                                        notesViewModel.loadNoteById(note.id)
-                                    }
-                                } else {
-                                    // No summary yet -> ask user for preferences and generate on demand
-                                    showGenerateSummaryDialog = true
-                                    // Trigger load of full note content if it's not present
+                            if (note.summary.isNotBlank()) {
+                                // Already has a summary -> show it
+                                showSummaryScreen = true
+                                // ensure latest details loaded
+                                if (note.summary.isBlank()) {
                                     notesViewModel.loadNoteById(note.id)
                                 }
+                            } else {
+                                // No summary yet -> ask user for preferences and generate on demand
+                                showGenerateSummaryDialog = true
+                                // Trigger load of full note content if it's not present
+                                notesViewModel.loadNoteById(note.id)
                             }
                         }
+                    }
                 )
 
                 ListItem(
@@ -426,46 +519,68 @@ fun CourseDetailScreen(
                     }
                 )
 
+                ListItem(
+                    headlineContent = { Text("Share via NFC") },
+                    supportingContent = {
+                        Text(
+                            text = "Share the note with another device",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Nfc,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showNoteOptions = false
+                        noteToShare = selectedNote
+                        selectedNote = null
+                        showShareNFCScreen = true
+                    }
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 
-        // Dialog to collect generation preferences and trigger summary generation
-        if (showGenerateSummaryDialog) {
-            val currentSelected = selectedNoteState
+    // Dialog to collect generation preferences and trigger summary generation
+    if (showGenerateSummaryDialog) {
+        val currentSelected = selectedNoteState
 
-            // Ensure content is loaded
-            LaunchedEffect(currentSelected?.id) {
-                currentSelected?.let {
-                    if (it.content.isBlank()) {
-                        notesViewModel.loadNoteById(it.id)
-                    }
+        // Ensure content is loaded
+        LaunchedEffect(currentSelected?.id) {
+            currentSelected?.let {
+                if (it.content.isBlank()) {
+                    notesViewModel.loadNoteById(it.id)
                 }
             }
-
-            GenerateSummaryDialog(
-                title = "Generate AI Summary",
-                onDismiss = {
-                    showGenerateSummaryDialog = false
-                    notesViewModel.clearSelectedNote()
-                },
-                onGenerate = { preferences ->
-                    val contentToSummarize = selectedNoteState?.content ?: ""
-                    if (contentToSummarize.isNotBlank()) {
-                        notesViewModel.updateNoteSummary(
-                            selectedNoteState?.id ?: "",
-                            contentToSummarize,
-                            preferences
-                        )
-                        showGenerateSummaryDialog = false
-                        showSummaryScreen = true
-                    } else {
-                        selectedNoteState?.id?.let { notesViewModel.loadNoteById(it) }
-                    }
-                }
-            )
         }
+
+        GenerateSummaryDialog(
+            title = "Generate AI Summary",
+            onDismiss = {
+                showGenerateSummaryDialog = false
+                notesViewModel.clearSelectedNote()
+            },
+            onGenerate = { preferences ->
+                val contentToSummarize = selectedNoteState?.content ?: ""
+                if (contentToSummarize.isNotBlank()) {
+                    notesViewModel.updateNoteSummary(
+                        selectedNoteState?.id ?: "",
+                        contentToSummarize,
+                        preferences
+                    )
+                    showGenerateSummaryDialog = false
+                    showSummaryScreen = true
+                } else {
+                    selectedNoteState?.id?.let { notesViewModel.loadNoteById(it) }
+                }
+            }
+        )
+    }
 
     // Upload confirmation dialog
     if (showUploadDialog && pendingFileUri != null) {
