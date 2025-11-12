@@ -3,4 +3,6 @@
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+    <string name="nfc_service_description">StudySage NFC Share Service</string>
+    <string name="nfc_aid_description">StudySage Note Transfer</string>
 </resources>
