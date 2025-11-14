@@ -1,11 +1,16 @@
 package com.group_7.studysage.data.repository
 
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import com.google.gson.Gson
 import com.group_7.studysage.data.api.ApiResponse
 import com.group_7.studysage.data.api.GameApiService
+import com.group_7.studysage.data.model.Quiz
 import com.group_7.studysage.data.models.*
 import com.group_7.studysage.data.websocket.ConnectionState
 import com.group_7.studysage.data.websocket.GameWebSocketManager
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * Repository for managing multiplayer game operations
@@ -262,5 +267,81 @@ class GameRepository(
      */
     fun cleanup() {
         wsManager.cleanup()
+    }
+
+    // ============================================
+    // QUIZ GENERATION (for QuizGenerationScreen)
+    // ============================================
+
+    private val firestore = Firebase.firestore
+    private val gson = Gson()
+
+    /**
+     * Generate quiz questions from note content using backend AI
+     */
+    suspend fun generateQuizQuestions(
+        noteId: String,
+        noteTitle: String,
+        content: String,
+        userPreferences: String
+    ): Result<Quiz> {
+        return try {
+            // Call backend API to generate quiz
+            val response = apiService.generateQuiz(
+                noteId = noteId,
+                noteTitle = noteTitle,
+                content = content,
+                userPreferences = userPreferences
+            )
+
+            if (response.success && response.data != null) {
+                Result.success(response.data)
+            } else {
+                Result.failure(Exception(response.message ?: "Failed to generate quiz"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Save generated quiz to Firestore
+     */
+    suspend fun saveQuizToFirestore(quiz: Quiz): Result<String> {
+        return try {
+            val quizData = hashMapOf(
+                "quizId" to quiz.quizId,
+                "noteId" to quiz.noteId,
+                "noteTitle" to quiz.noteTitle,
+                "userId" to quiz.userId,
+                "questions" to quiz.questions.map { question ->
+                    hashMapOf(
+                        "question" to question.question,
+                        "options" to question.options.map { option ->
+                            hashMapOf(
+                                "text" to option.text,
+                                "isCorrect" to option.isCorrect
+                            )
+                        },
+                        "explanation" to question.explanation
+                    )
+                },
+                "preferences" to quiz.preferences,
+                "createdAt" to quiz.createdAt,
+                "totalQuestions" to quiz.totalQuestions
+            )
+
+            val docRef = firestore.collection("quizzes").add(quizData).await()
+            Result.success(docRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Convert quiz to JSON string
+     */
+    fun quizToJson(quiz: Quiz): String {
+        return gson.toJson(quiz)
     }
 }
