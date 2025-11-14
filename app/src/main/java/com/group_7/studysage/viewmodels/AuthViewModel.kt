@@ -4,7 +4,10 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseUser
 import com.group_7.studysage.data.repository.AuthRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
@@ -23,8 +26,14 @@ class AuthViewModel(
     private val _userProfile = mutableStateOf<Map<String, Any>?>(null)
     val userProfile: State<Map<String, Any>?> = _userProfile
 
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(authRepository.getCurrentUser())
+    val currentUser: StateFlow<FirebaseUser?> = _currentUser
+
     init {
-        if (_isSignedIn.value) loadUserProfile()
+        if (_isSignedIn.value) {
+            loadUserProfile()
+            _currentUser.value = authRepository.getCurrentUser()
+        }
     }
 
     fun signUp(email: String, password: String, name: String) {
@@ -45,6 +54,7 @@ class AuthViewModel(
                 .onSuccess {
                     _isSignedIn.value = true
                     loadUserProfile()
+                    _currentUser.value = authRepository.getCurrentUser()
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Sign up failed"
@@ -68,6 +78,7 @@ class AuthViewModel(
                 .onSuccess {
                     _isSignedIn.value = true
                     loadUserProfile()
+                    _currentUser.value = authRepository.getCurrentUser()
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Sign in failed"
@@ -81,6 +92,7 @@ class AuthViewModel(
         authRepository.signOut()
         _isSignedIn.value = false
         _userProfile.value = null
+        _currentUser.value = null
     }
 
     fun clearError() {
