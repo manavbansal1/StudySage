@@ -488,6 +488,41 @@ class GameApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
             ApiResponse(success = false, message = e.message ?: "Unknown error")
         }
     }
+
+    /**
+     * Generate quiz from note content
+     * POST /api/games/quiz/generate
+     */
+    suspend fun generateQuiz(
+        noteId: String,
+        noteTitle: String,
+        content: String,
+        userPreferences: String
+    ): ApiResponse<com.group_7.studysage.data.model.Quiz> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = json.encodeToString(
+                GenerateQuizRequest.serializer(),
+                GenerateQuizRequest(noteId, noteTitle, content, userPreferences)
+            )
+
+            val request = Request.Builder()
+                .url("$baseUrl/api/games/quiz/generate")
+                .post(requestBody.toRequestBody("application/json".toMediaType()))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+
+            if (response.isSuccessful) {
+                val result = json.decodeFromString<ApiResponse<com.group_7.studysage.data.model.Quiz>>(body)
+                result
+            } else {
+                ApiResponse(success = false, message = "Failed to generate quiz")
+            }
+        } catch (e: Exception) {
+            ApiResponse(success = false, message = e.message ?: "Unknown error")
+        }
+    }
 }
 
 // ============================================
@@ -567,4 +602,12 @@ data class GameHistoryEntry(
     val rank: Int,
     val playedAt: Long,
     val duration: Long
+)
+
+@Serializable
+data class GenerateQuizRequest(
+    val noteId: String,
+    val noteTitle: String,
+    val content: String,
+    val userPreferences: String
 )
