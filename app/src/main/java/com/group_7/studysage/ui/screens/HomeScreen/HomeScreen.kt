@@ -145,6 +145,7 @@ fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val userFullName by homeViewModel.userFullName
     val userProfile by homeViewModel.userProfile
     val isLoadingProfile by homeViewModel.isLoadingProfile
@@ -439,6 +440,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+
             // RECENTLY OPENED PDFs SECTION
             val recentPdfs by homeViewModel.recentlyOpenedPdfs
 
@@ -446,7 +448,7 @@ fun HomeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 25.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -456,7 +458,7 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    TextButton(onClick = { /* TODO: Navigate to all PDFs */ }) {
+                    TextButton(onClick = { /* TODO: Navigate to all notes */ }) {
                         Text(
                             text = "See All",
                             fontSize = 14.sp,
@@ -471,14 +473,17 @@ fun HomeScreen(
                 ) {
                     items(recentPdfs.size) { index ->
                         val pdf = recentPdfs[index]
+                        val courseId = pdf["courseId"] as? String ?: ""
                         RecentPdfCard(
-                            pdfName = pdf["pdfName"] as? String ?: "Unknown",
-                            subject = pdf["subject"] as? String ?: "",
-                            progress = (pdf["progress"] as? Number)?.toFloat() ?: 0f,
-                            pageCount = (pdf["pageCount"] as? Number)?.toInt() ?: 0,
-                            lastPage = (pdf["lastPage"] as? Number)?.toInt() ?: 0,
+                            pdfName = pdf["title"] as? String ?: pdf["fileName"] as? String ?: "Unknown",
+                            subject = homeViewModel.getCourseName(courseId),
+                            lastOpenedAt = (pdf["lastOpenedAt"] as? Number)?.toLong() ?: 0L,
+                            openCount = (pdf["openCount"] as? Number)?.toInt() ?: 0,
                             onClick = {
-                                homeViewModel.openPdf(pdf["pdfUrl"] as? String ?: "")
+                                val pdfUrl = pdf["fileUrl"] as? String
+                                if (!pdfUrl.isNullOrBlank()) {
+                                    homeViewModel.openPdf(context, pdfUrl)
+                                }
                             }
                         )
                     }
@@ -488,7 +493,7 @@ fun HomeScreen(
                 GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
+                        .height(180.dp)
                         .padding(horizontal = 16.dp)
                 ) {
                     Column(
@@ -698,22 +703,21 @@ private fun QuickActionCard(
     }
 }
 
-// Recent PDF Card - Refactored for consistency
+// Recent PDF Card - Simplified to show title, subject, and relative time
 @Composable
 fun RecentPdfCard(
     pdfName: String,
     subject: String,
-    progress: Float,
-    pageCount: Int,
-    lastPage: Int,
+    lastOpenedAt: Long,
+    openCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     GlassCard(
         onClick = onClick,
         modifier = modifier
-            .width(240.dp) // A bit wider
-            .height(130.dp) // A bit taller
+            .width(240.dp)
+            .height(130.dp)
     ) {
         Row(
             modifier = Modifier
@@ -753,50 +757,58 @@ fun RecentPdfCard(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = subject,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // Bottom section - Progress and info
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    if (subject.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Page $lastPage of $pageCount",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = subject,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // Progress bar
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                }
+
+                // Bottom section - Last opened time
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = getRelativeTimeString(lastOpenedAt),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
+    }
+}
+
+/**
+ * Convert timestamp to relative time string (e.g., "2h ago", "3d ago")
+ */
+private fun getRelativeTimeString(timestamp: Long): String {
+    if (timestamp == 0L) return "Just now"
+
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now" // Less than 1 minute
+        diff < 3_600_000 -> "${diff / 60_000}m ago" // Less than 1 hour
+        diff < 86_400_000 -> "${diff / 3_600_000}h ago" // Less than 1 day
+        diff < 604_800_000 -> "${diff / 86_400_000}d ago" // Less than 1 week
+        diff < 2_592_000_000 -> "${diff / 604_800_000}w ago" // Less than 30 days
+        else -> "${diff / 2_592_000_000}mo ago" // Months
     }
 }

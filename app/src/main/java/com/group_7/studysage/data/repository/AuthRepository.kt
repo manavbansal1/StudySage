@@ -612,8 +612,8 @@ class AuthRepository(
     }
 
     /**
-     * Add a recently opened PDF to user's profile
-     * Maintains a list of last 5 PDFs with most recent first
+     * Add a note to user's upload library (tracks uploads)
+     * This is separate from recently opened tracking
      */
     suspend fun addNoteToUserLibrary(
         noteId: String,
@@ -649,7 +649,7 @@ class AuthRepository(
     }
 
     /**
-     * Get recently opened PDFs
+     * Get user's upload library
      */
     suspend fun getUserLibrary(): List<Map<String, Any>> {
         return try {
@@ -662,35 +662,93 @@ class AuthRepository(
     }
 
     /**
-     * Initialize user profile with sample PDFs (for testing)
+     * Add a note to recently opened list
+     * Tracks when users actually open/view notes
+     * Updates timestamp if note already exists in the list
+     * Maintains a list of most recent 20 items
      */
-    suspend fun initializeSampleUserLibrary(): Result<Unit> {
+    suspend fun addToRecentlyOpened(
+        noteId: String,
+        title: String,
+        fileName: String,
+        fileUrl: String,
+        courseId: String
+    ): Result<Unit> {
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
-            val sampleLibrary = listOf(
-                mapOf(
-                    "noteId" to "sampleNote1",
-                    "fileName" to "Introduction to Biology.pdf",
-                    "fileUrl" to "https://example.com/biology_intro.pdf",
-                    "subject" to "Biology",
-                    "courseId" to "BIO101",
-                    "addedAt" to System.currentTimeMillis() - 3600000 // 1 hour ago
-                ),
-                mapOf(
-                    "noteId" to "sampleNote2",
-                    "fileName" to "Calculus Fundamentals.pdf",
-                    "fileUrl" to "https://example.com/calculus_basics.pdf",
-                    "subject" to "Mathematics",
-                    "courseId" to "MATH101",
-                    "addedAt" to System.currentTimeMillis() - 7200000 // 2 hours ago
-                )
+            val profile = getUserProfile()
+
+            // Get existing recently opened list
+            val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
+
+            // Find if this note already exists
+            val existingEntry = recentlyOpened.find { it["noteId"] == noteId }
+            val openCount = ((existingEntry?.get("openCount") as? Number)?.toInt() ?: 0) + 1
+
+            // Create updated entry
+            val noteEntry = mapOf(
+                "noteId" to noteId,
+                "title" to title,
+                "fileName" to fileName,
+                "fileUrl" to fileUrl,
+                "courseId" to courseId,
+                "lastOpenedAt" to System.currentTimeMillis(),
+                "openCount" to openCount
             )
+
+            // Remove existing entry if present and add new one at the front
+            val filteredList = recentlyOpened.filter { it["noteId"] != noteId }
+            val updatedList = listOf(noteEntry) + filteredList
+
+            // Keep only the 20 most recent items
+            val limitedList = updatedList.take(20)
+
             firestore.collection("users").document(userId)
-                .update("userLibrary", sampleLibrary)
+                .update("recentlyOpened", limitedList)
                 .await()
+
+            Log.d(TAG, "Added note $noteId to recently opened (open count: $openCount)")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize sample library: ${e.message}", e)
+            Log.e(TAG, "Failed to add note $noteId to recently opened: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get recently opened notes
+     * Returns list sorted by lastOpenedAt (most recent first)
+     */
+    suspend fun getRecentlyOpened(limit: Int = 10): Result<List<Map<String, Any>>> {
+        return try {
+            val profile = getUserProfile()
+            val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
+
+            // Already sorted by most recent first, just limit the results
+            val limitedList = recentlyOpened.take(limit)
+
+            Log.d(TAG, "Retrieved ${limitedList.size} recently opened notes")
+            Result.success(limitedList)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch recently opened notes: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Clear all recently opened notes
+     * Useful for testing or user preference
+     */
+    suspend fun clearRecentlyOpened(): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            firestore.collection("users").document(userId)
+                .update("recentlyOpened", emptyList<Map<String, Any>>())
+                .await()
+            Log.d(TAG, "Cleared recently opened notes")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear recently opened notes: ${e.message}", e)
             Result.failure(e)
         }
     }

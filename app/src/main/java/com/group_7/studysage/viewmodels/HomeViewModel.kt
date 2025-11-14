@@ -9,11 +9,13 @@ import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
+import com.group_7.studysage.data.repository.CourseRepository
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val notesRepository: NotesRepository = NotesRepository(),
-    private val authRepository: AuthRepository = AuthRepository()
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val courseRepository: CourseRepository = CourseRepository()
 ) : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
@@ -47,11 +49,14 @@ class HomeViewModel(
     private val _recentlyOpenedPdfs = mutableStateOf<List<Map<String, Any>>>(emptyList())
     val recentlyOpenedPdfs: State<List<Map<String, Any>>> = _recentlyOpenedPdfs
 
+    // Store course ID to name mapping
+    private val _courseNameMap = mutableStateOf<Map<String, String>>(emptyMap())
+
     init {
         loadRecentNotes()
         loadUserProfile()
         loadRecentlyOpenedPdfs()
-        initializeSampleData()
+        loadCourses()
     }
 
     // Load user profile from Firestore
@@ -75,6 +80,60 @@ class HomeViewModel(
     // Public method to refresh user name
     fun refreshUserProfile() {
         loadUserProfile()
+    }
+
+    /**
+     * Mark a note as opened/viewed
+     * This updates the recently opened list with timestamp and open count
+     */
+    fun markNoteAsOpened(
+        noteId: String,
+        title: String,
+        fileName: String,
+        fileUrl: String,
+        courseId: String
+    ) {
+        viewModelScope.launch {
+            try {
+                authRepository.addToRecentlyOpened(
+                    noteId = noteId,
+                    title = title,
+                    fileName = fileName,
+                    fileUrl = fileUrl,
+                    courseId = courseId
+                )
+                // Refresh the recently opened list
+                loadRecentlyOpenedPdfs()
+            } catch (e: Exception) {
+                // Log error but don't show to user - this is a background operation
+                android.util.Log.e("HomeViewModel", "Failed to mark note as opened: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Load all courses to build course ID to name mapping
+     */
+    private fun loadCourses() {
+        viewModelScope.launch {
+            try {
+                val courses = courseRepository.getUserCourses()
+                val mapping = courses.associate { course ->
+                    course.id to "${course.code} - ${course.title}"
+                }
+                _courseNameMap.value = mapping
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Failed to load courses: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Get course display name from course ID
+     * Returns the course code and title, or the courseId if not found
+     */
+    fun getCourseName(courseId: String): String {
+        return _courseNameMap.value[courseId] ?: courseId
     }
 
     // Updated method to accept courseId parameter
@@ -162,20 +221,16 @@ class HomeViewModel(
     private fun loadRecentlyOpenedPdfs() {
         viewModelScope.launch {
             try {
-                val pdfs = authRepository.getUserLibrary()
-                _recentlyOpenedPdfs.value = pdfs
+                val result = authRepository.getRecentlyOpened(limit = 10)
+                result.onSuccess { pdfs ->
+                    _recentlyOpenedPdfs.value = pdfs
+                }.onFailure { exception ->
+                    android.util.Log.e("HomeViewModel", "Failed to load recently opened: ${exception.message}")
+                    _recentlyOpenedPdfs.value = emptyList()
+                }
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to load recently opened PDFs"
-            }
-        }
-    }
-
-    private fun initializeSampleData() {
-        viewModelScope.launch {
-            // Only initialize sample PDFs if no PDFs exist
-            if (authRepository.getUserLibrary().isEmpty()) {
-                authRepository.initializeSampleUserLibrary()
-                loadRecentlyOpenedPdfs()
+                android.util.Log.e("HomeViewModel", "Error loading recently opened: ${e.message}")
+                _recentlyOpenedPdfs.value = emptyList()
             }
         }
     }
@@ -184,9 +239,20 @@ class HomeViewModel(
         return recentlyOpenedPdfs.value.filter { it["courseId"] == courseId }
     }
 
-    fun openPdf(pdfUrl: String) {
-        // TODO: Navigate to PDF viewer
-        // navController.navigate("pdf_viewer/$pdfUrl")
+    /**
+     * Open a PDF URL in an external app (browser or PDF viewer)
+     */
+    fun openPdf(context: Context, pdfUrl: String) {
+        try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                data = Uri.parse(pdfUrl)
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            _errorMessage.value = "Unable to open PDF: ${e.message}"
+            android.util.Log.e("HomeViewModel", "Failed to open PDF: ${e.message}")
+        }
     }
 
     fun refreshNotes() {

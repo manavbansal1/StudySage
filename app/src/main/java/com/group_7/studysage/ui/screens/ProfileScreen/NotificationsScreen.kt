@@ -79,7 +79,7 @@ fun NotificationsScreen(
 
                         // Title (center)
                         Text(
-                            text = "Notification Settings",
+                            text = "Notifications",
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
