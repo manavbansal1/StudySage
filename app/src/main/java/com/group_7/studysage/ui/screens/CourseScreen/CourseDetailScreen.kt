@@ -312,6 +312,15 @@ fun CourseDetailScreen(
                 val notesList = notes.toList()
                 itemsIndexed(notesList, key = { _: Int, note: Note -> note.id }) { _: Int, note: Note ->
                     CourseNoteCard(note = note, onClick = {
+                        // Track that the note was opened
+                        homeViewModel.markNoteAsOpened(
+                            noteId = note.id,
+                            title = if (note.title.isNotBlank()) note.title else note.originalFileName,
+                            fileName = note.originalFileName,
+                            fileUrl = note.fileUrl,
+                            courseId = note.courseId
+                        )
+
                         selectedNote = note
                         showNoteOptions = true
                     })
