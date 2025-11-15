@@ -236,6 +236,7 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
             val updatedGroups = groups.map { group ->
                 if (group["groupId"] == groupId) {
@@ -266,6 +267,7 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
             val updatedGroups = groups.filter { it["groupId"] != groupId }
             firestore.collection("users").document(userId)
@@ -285,6 +287,7 @@ class AuthRepository(
     suspend fun getUserGroups(): List<Map<String, Any>> {
         return try {
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             (profile?.get("groups") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch user groups: ${e.message}", e)
@@ -342,12 +345,14 @@ class AuthRepository(
             val recipientId = recipient["uid"] as? String
                 ?: return Result.failure(Exception("Invalid user data"))
             // Check if user is already a member
+            @Suppress("UNCHECKED_CAST")
             val recipientGroups = recipient["groups"] as? List<Map<String, Any>> ?: emptyList()
             val alreadyMember = recipientGroups.any { it["groupId"] == groupId }
             if (alreadyMember) {
                 return Result.failure(Exception("User is already a member of this group"))
             }
             // Check if invite already exists
+            @Suppress("UNCHECKED_CAST")
             val recipientInvites = recipient["groupInvites"] as? List<Map<String, Any>> ?: emptyList()
             val inviteExists = recipientInvites.any {
                 it["groupId"] == groupId && it["status"] == "pending"
@@ -388,6 +393,7 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return emptyList()
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
                 try {
@@ -438,6 +444,7 @@ class AuthRepository(
 
                 if (snapshot != null && snapshot.exists()) {
                     try {
+                        @Suppress("UNCHECKED_CAST")
                         val invites = snapshot.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
                         val pendingInvites = invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
                             try {
@@ -476,6 +483,7 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             // Find and update the invite
             val updatedInvites = invites.map { invite ->
@@ -506,6 +514,7 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             // Remove the invite
             val updatedInvites = invites.filter { it["inviteId"] != inviteId }
@@ -528,6 +537,7 @@ class AuthRepository(
         return try {
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             val updatedInvites = invites.filter { it["inviteId"] != inviteId }
             firestore.collection("users").document(userId)
@@ -626,6 +636,7 @@ class AuthRepository(
             val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             // Get existing library
+            @Suppress("UNCHECKED_CAST")
             val userLibrary = (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
             // Create new note entry
             val noteEntry = mapOf(
@@ -654,6 +665,7 @@ class AuthRepository(
     suspend fun getUserLibrary(): List<Map<String, Any>> {
         return try {
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch user library: ${e.message}", e)
@@ -679,6 +691,7 @@ class AuthRepository(
             val profile = getUserProfile()
 
             // Get existing recently opened list
+            @Suppress("UNCHECKED_CAST")
             val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
 
             // Find if this note already exists
@@ -722,6 +735,7 @@ class AuthRepository(
     suspend fun getRecentlyOpened(limit: Int = 10): Result<List<Map<String, Any>>> {
         return try {
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
 
             // Already sorted by most recent first, just limit the results
