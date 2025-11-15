@@ -59,6 +59,142 @@ class GameApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
     }
 
     // ============================================
+    // STANDALONE GAME OPERATIONS (No Group Dependency)
+    // ============================================
+
+    /**
+     * Host a new standalone game
+     * POST /api/games/host
+     */
+    suspend fun hostGame(
+        hostId: String,
+        hostName: String,
+        gameType: GameType,
+        contentSource: ContentSource,
+        contentData: String? = null,
+        topicDescription: String? = null,
+        settings: GameSettings = GameSettings()
+    ): ApiResponse<HostGameResponse> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = HostGameRequest(
+                hostId = hostId,
+                hostName = hostName,
+                gameType = gameType,
+                contentSource = contentSource,
+                contentData = contentData,
+                topicDescription = topicDescription,
+                settings = settings
+            )
+
+            val jsonBody = json.encodeToString(HostGameRequest.serializer(), requestBody)
+
+            val request = Request.Builder()
+                .url("$baseUrl/api/games/host")
+                .post(jsonBody.toRequestBody("application/json".toMediaType()))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+
+            if (response.isSuccessful) {
+                val apiResponse = json.decodeFromString<ApiResponse<HostGameResponse>>(body)
+                apiResponse
+            } else {
+                ApiResponse(success = false, message = "Failed to host game: ${response.code}")
+            }
+        } catch (e: Exception) {
+            ApiResponse(success = false, message = e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Join a game by code
+     * POST /api/games/join
+     */
+    suspend fun joinGameByCode(
+        gameCode: String,
+        userId: String,
+        userName: String
+    ): ApiResponse<JoinGameResponse> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = JoinGameRequest(
+                gameCode = gameCode,
+                userId = userId,
+                userName = userName
+            )
+
+            val jsonBody = json.encodeToString(JoinGameRequest.serializer(), requestBody)
+
+            val request = Request.Builder()
+                .url("$baseUrl/api/games/join")
+                .post(jsonBody.toRequestBody("application/json".toMediaType()))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+
+            if (response.isSuccessful) {
+                val apiResponse = json.decodeFromString<ApiResponse<JoinGameResponse>>(body)
+                apiResponse
+            } else {
+                ApiResponse(success = false, message = "Failed to join game: ${response.code}")
+            }
+        } catch (e: Exception) {
+            ApiResponse(success = false, message = e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Get game session by code
+     * GET /api/games/session/{gameCode}
+     */
+    suspend fun getGameByCode(gameCode: String): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/api/games/session/$gameCode")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+
+            if (response.isSuccessful) {
+                val apiResponse = json.decodeFromString<ApiResponse<GameSessionData>>(body)
+                apiResponse
+            } else {
+                ApiResponse(success = false, message = "Game not found")
+            }
+        } catch (e: Exception) {
+            ApiResponse(success = false, message = e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Get global leaderboard
+     * GET /api/games/leaderboard
+     */
+    suspend fun getGlobalLeaderboard(limit: Int = 100): ApiResponse<LeaderboardResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/api/games/leaderboard?limit=$limit")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: throw Exception("Empty response")
+
+            if (response.isSuccessful) {
+                val apiResponse = json.decodeFromString<ApiResponse<LeaderboardResponse>>(body)
+                apiResponse
+            } else {
+                ApiResponse(success = false, message = "Failed to get leaderboard")
+            }
+        } catch (e: Exception) {
+            ApiResponse(success = false, message = e.message ?: "Unknown error")
+        }
+    }
+
+    // ============================================
     // GAME SESSION MANAGEMENT
     // ============================================
 
@@ -175,12 +311,12 @@ class GameApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
         userName: String
     ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
         try {
-            val requestBody = JoinGameRequest(
+            val requestBody = JoinGameSessionRequest(
                 userId = userId,
                 userName = userName
             )
 
-            val jsonBody = json.encodeToString(JoinGameRequest.serializer(), requestBody)
+            val jsonBody = json.encodeToString(JoinGameSessionRequest.serializer(), requestBody)
 
             val request = Request.Builder()
                 .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/join")
@@ -563,7 +699,7 @@ data class CreateGameSessionResponse(
 )
 
 @Serializable
-data class JoinGameRequest(
+data class JoinGameSessionRequest(
     val userId: String,
     val userName: String
 )

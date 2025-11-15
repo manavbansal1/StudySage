@@ -27,6 +27,12 @@ enum class GameStatus {
 }
 
 @Serializable
+enum class ContentSource {
+    PDF,
+    TEXT
+}
+
+@Serializable
 enum class MessageType {
     // Connection
     PLAYER_JOINED,
@@ -166,9 +172,11 @@ data class GameSessionData(
     val name: String,
     val gameType: GameType,
     val hostId: String,
-    val groupId: String,
-    val players: List<Player> = emptyList(),
-    val teams: List<Team> = emptyList(),
+    val hostName: String,
+    val hostProfilePic: String? = null,
+    val gameCode: String, // Unique code for joining
+    val players: Map<String, Player> = emptyMap(),
+    val teams: Map<String, Team> = emptyMap(),
     val maxPlayers: Int = 8,
     val status: GameStatus = GameStatus.WAITING,
     val currentQuestionIndex: Int = 0,
@@ -179,8 +187,9 @@ data class GameSessionData(
     val endTime: Long? = null,
     val pausedAt: Long? = null,
     val settings: GameSettings = GameSettings(),
-    val documentId: String? = null,
-    val documentName: String? = null,
+    val contentSource: ContentSource = ContentSource.TEXT,
+    val contentData: String? = null, // PDF URL or text content
+    val topicDescription: String? = null, // User-provided topic description
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
@@ -409,4 +418,63 @@ data class LobbyUiState(
     val currentSession: GameSessionData? = null,
     val isJoining: Boolean = false,
     val isCreating: Boolean = false
+)
+
+// ============================================
+// REQUEST/RESPONSE MODELS FOR NEW STANDALONE API
+// ============================================
+
+@Serializable
+data class HostGameRequest(
+    val hostId: String,
+    val hostName: String,
+    val gameType: GameType,
+    val contentSource: ContentSource,
+    val contentData: String? = null, // PDF URL or text content
+    val topicDescription: String? = null, // User-provided description of topics
+    val settings: GameSettings = GameSettings()
+)
+
+@Serializable
+data class HostGameResponse(
+    val gameCode: String,
+    val sessionId: String,
+    val message: String = "Game created successfully"
+)
+
+@Serializable
+data class JoinGameRequest(
+    val gameCode: String,
+    val userId: String,
+    val userName: String
+)
+
+@Serializable
+data class JoinGameResponse(
+    val sessionId: String,
+    val gameCode: String,
+    val session: GameSessionData,
+    val message: String = "Joined game successfully"
+)
+
+@Serializable
+data class GlobalLeaderboardEntry(
+    val userId: String,
+    val userName: String,
+    val profilePic: String? = null,
+    val totalGames: Int = 0,
+    val gamesWon: Int = 0,
+    val totalScore: Int = 0,
+    val averageScore: Double = 0.0,
+    val bestScore: Int = 0,
+    val bestStreak: Int = 0,
+    val rank: Int = 0,
+    val lastUpdated: Long = System.currentTimeMillis()
+)
+
+@Serializable
+data class LeaderboardResponse(
+    val entries: List<GlobalLeaderboardEntry>,
+    val totalPlayers: Int,
+    val lastUpdated: Long = System.currentTimeMillis()
 )

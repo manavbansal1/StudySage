@@ -35,6 +35,27 @@ class GamePlayViewModel(
         }
     }
 
+    /**
+     * Connect to a standalone game using only the game code
+     */
+    fun connectToStandaloneGame(gameCode: String) {
+        val currentUser = authViewModel.currentUser.value
+        currentUser?.let {
+            // Get user's name from Firestore profile
+            val userName = authViewModel.userProfile.value?.get("name") as? String
+                ?: it.displayName?.takeIf { it.isNotBlank() }
+                ?: "Player"
+
+            // For standalone games, use empty groupId or the game code itself
+            webSocketManager.connect(
+                groupId = "", // No group dependency
+                sessionId = gameCode,
+                userId = it.uid,
+                userName = userName
+            )
+        }
+    }
+
     fun setPlayerReady(isReady: Boolean) {
         webSocketManager.sendPlayerReady(isReady)
     }
@@ -74,7 +95,12 @@ class GamePlayViewModel(
         webSocketManager.roomUpdate
             .onEach { session ->
                 session?.let {
-                    _gameUiState.value = _gameUiState.value.copy(currentSession = it)
+                    val currentUser = authViewModel.currentUser.value
+                    val isHost = currentUser?.uid == it.hostId
+                    _gameUiState.value = _gameUiState.value.copy(
+                        currentSession = it,
+                        isHost = isHost
+                    )
                 }
             }
             .launchIn(viewModelScope)
