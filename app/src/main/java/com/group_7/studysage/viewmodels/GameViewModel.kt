@@ -29,6 +29,12 @@ data class QuizGenerationState(
     val savedQuizId: String? = null
 )
 
+data class StandaloneGameState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val gameCode: String? = null
+)
+
 class GameViewModel(
     private val gameApiService: GameApiService,
     private val webSocketManager: GameWebSocketManager,
@@ -250,6 +256,114 @@ class GameViewModel(
     override fun onCleared() {
         super.onCleared()
         webSocketManager.disconnect()
+    }
+
+    // ============================================
+    // STANDALONE GAME OPERATIONS (No Group Dependency)
+    // ============================================
+
+    private val _standaloneGameState = MutableStateFlow(StandaloneGameState())
+    val standaloneGameState: StateFlow<StandaloneGameState> = _standaloneGameState.asStateFlow()
+
+    /**
+     * Host a new standalone game
+     */
+    fun hostGame(
+        gameType: GameType,
+        contentSource: ContentSource,
+        contentData: String?,
+        topicDescription: String?
+    ) {
+        viewModelScope.launch {
+            _standaloneGameState.value = StandaloneGameState(isLoading = true)
+
+            try {
+                val currentUser = authViewModel.currentUser.value
+                if (currentUser == null) {
+                    _standaloneGameState.value = StandaloneGameState(error = "You must be logged in to host a game")
+                    return@launch
+                }
+
+                // Get user's name from Firestore profile
+                val userName = authViewModel.userProfile.value?.get("name") as? String
+                    ?: currentUser.displayName?.takeIf { it.isNotBlank() }
+                    ?: "Player"
+
+                val response = gameApiService.hostGame(
+                    hostId = currentUser.uid,
+                    hostName = userName,
+                    gameType = gameType,
+                    contentSource = contentSource,
+                    contentData = contentData,
+                    topicDescription = topicDescription
+                )
+
+                if (response.success && response.data != null) {
+                    _standaloneGameState.value = StandaloneGameState(
+                        isLoading = false,
+                        gameCode = response.data.gameCode
+                    )
+                } else {
+                    _standaloneGameState.value = StandaloneGameState(
+                        isLoading = false,
+                        error = response.message ?: "Failed to create game"
+                    )
+                }
+            } catch (e: Exception) {
+                _standaloneGameState.value = StandaloneGameState(
+                    isLoading = false,
+                    error = e.message ?: "Unknown error occurred"
+                )
+            }
+        }
+    }
+
+    /**
+     * Join a standalone game by code
+     */
+    fun joinGame(gameCode: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            _standaloneGameState.value = StandaloneGameState(isLoading = true)
+
+            try {
+                val currentUser = authViewModel.currentUser.value
+                if (currentUser == null) {
+                    _standaloneGameState.value = StandaloneGameState(error = "You must be logged in to join a game")
+                    onResult(false)
+                    return@launch
+                }
+
+                val response = gameApiService.joinGameByCode(
+                    gameCode = gameCode,
+                    userId = currentUser.uid,
+                    userName = currentUser.displayName ?: "Player"
+                )
+
+                if (response.success && response.data != null) {
+                    _standaloneGameState.value = StandaloneGameState(isLoading = false)
+                    onResult(true)
+                } else {
+                    _standaloneGameState.value = StandaloneGameState(
+                        isLoading = false,
+                        error = response.message ?: "Failed to join game"
+                    )
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                _standaloneGameState.value = StandaloneGameState(
+                    isLoading = false,
+                    error = e.message ?: "Unknown error occurred"
+                )
+                onResult(false)
+            }
+        }
+    }
+
+    /**
+     * Clear standalone game state
+     */
+    fun clearStandaloneGameState() {
+        _standaloneGameState.value = StandaloneGameState()
     }
 
     // ============================================

@@ -6,6 +6,8 @@ import com.group_7.studysage.data.api.GameApiService
 import com.group_7.studysage.data.models.GameSettings
 import com.group_7.studysage.data.models.GameType
 import com.group_7.studysage.data.models.LobbyUiState
+import com.group_7.studysage.data.repository.Note
+import com.group_7.studysage.data.repository.NotesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,11 +15,18 @@ import kotlinx.coroutines.launch
 
 class GameLobbyViewModel(
     private val gameApiService: GameApiService,
-    private val authViewModel: AuthViewModel
+    private val authViewModel: AuthViewModel,
+    private val notesRepository: NotesRepository = NotesRepository()
 ) : ViewModel() {
 
     private val _lobbyUiState = MutableStateFlow(LobbyUiState())
     val lobbyUiState: StateFlow<LobbyUiState> = _lobbyUiState.asStateFlow()
+
+    private val _availableNotes = MutableStateFlow<List<Note>>(emptyList())
+    val availableNotes: StateFlow<List<Note>> = _availableNotes.asStateFlow()
+
+    private val _isLoadingNotes = MutableStateFlow(false)
+    val isLoadingNotes: StateFlow<Boolean> = _isLoadingNotes.asStateFlow()
 
     fun loadActiveSessions(groupId: String) {
         viewModelScope.launch {
@@ -33,6 +42,22 @@ class GameLobbyViewModel(
                     isLoading = false,
                     error = response.message
                 )
+            }
+        }
+    }
+
+    fun loadAvailableNotes() {
+        viewModelScope.launch {
+            _isLoadingNotes.value = true
+            try {
+                val notes = notesRepository.getUserNotes()
+                _availableNotes.value = notes.filter { it.content.isNotBlank() }
+            } catch (e: Exception) {
+                _lobbyUiState.value = _lobbyUiState.value.copy(
+                    error = "Failed to load notes: ${e.message}"
+                )
+            } finally {
+                _isLoadingNotes.value = false
             }
         }
     }

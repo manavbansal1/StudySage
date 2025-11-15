@@ -78,9 +78,10 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object GameLobby : Screen("game_lobby/{gameType}", "Game Lobby") {
         fun createRoute(gameType: GameType) = "game_lobby/$gameType"
     }
-    object GamePlay : Screen("game_play/{sessionId}", "Play") {
-        fun createRoute(sessionId: String) = "game_play/$sessionId"
+    object GamePlay : Screen("game_play/{gameCode}", "Play") {
+        fun createRoute(gameCode: String) = "game_play/$gameCode"
     }
+    object Leaderboard : Screen("leaderboard", "Leaderboard")
 }
 @Composable
 private fun GlassCard(
@@ -386,28 +387,39 @@ fun StudySageNavigation(
                     GameScreen(navController = navController)
                 }
                 composable(
-                    route = Screen.GameLobby.route,
-                    arguments = listOf(navArgument("gameType") { type = NavType.StringType })
+                    route = "game_lobby/{gameType}/{groupId}",
+                    arguments = listOf(
+                        navArgument("gameType") { type = NavType.StringType },
+                        navArgument("groupId") { type = NavType.StringType }
+                    )
                 ) { backStackEntry ->
                     val gameType = enumValueOf<GameType>(backStackEntry.arguments?.getString("gameType")!!)
+                    val groupId = backStackEntry.arguments?.getString("groupId")!!
                     GameLobbyScreen(
                         navController = navController,
                         gameType = gameType,
                         authViewModel = authViewModel,
-                        groupId = "1" // Hardcoded for now
+                        groupId = groupId
                     )
                 }
                 composable(
-                    route = Screen.GamePlay.route,
-                    arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+                    route = "game_play/{gameCode}",
+                    arguments = listOf(
+                        navArgument("gameCode") { type = NavType.StringType }
+                    )
                 ) { backStackEntry ->
-                    val sessionId = backStackEntry.arguments?.getString("sessionId")!!
+                    val gameCode = backStackEntry.arguments?.getString("gameCode")!!
                     GamePlayScreen(
                         navController = navController,
-                        sessionId = sessionId,
-                        authViewModel = authViewModel,
-                        groupId = "1" // Hardcoded for now
+                        gameCode = gameCode,
+                        authViewModel = authViewModel
                     )
+                }
+                composable(
+                    route = "leaderboard"
+                ) {
+                    // TODO: Implement LeaderboardScreen
+                    // LeaderboardScreen(navController = navController)
                 }
                 // GroupChat without transitions
                 composable(

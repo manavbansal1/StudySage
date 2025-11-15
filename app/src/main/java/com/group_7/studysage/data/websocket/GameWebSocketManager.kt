@@ -91,7 +91,12 @@ class GameWebSocketManager(
         userId: String,
         userName: String
     ) {
-        val url = "$baseUrl/api/games/groups/$groupId/sessions/$sessionId/ws?userId=$userId&userName=$userName"
+        // Use standalone route if no groupId, otherwise use group-based route
+        val url = if (groupId.isEmpty()) {
+            "$baseUrl/api/games/sessions/$sessionId/ws?userId=$userId&userName=$userName"
+        } else {
+            "$baseUrl/api/games/groups/$groupId/sessions/$sessionId/ws?userId=$userId&userName=$userName"
+        }
 
         val request = Request.Builder()
             .url(url)
