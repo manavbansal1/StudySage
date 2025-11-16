@@ -138,6 +138,7 @@ class FlashcardRepository {
             }
 
             val summary = noteDoc.getString("summary") ?: ""
+            @Suppress("UNCHECKED_CAST")
             val keyPoints = noteDoc.get("keyPoints") as? List<String> ?: emptyList()
             val content = noteDoc.getString("content") ?: ""
 

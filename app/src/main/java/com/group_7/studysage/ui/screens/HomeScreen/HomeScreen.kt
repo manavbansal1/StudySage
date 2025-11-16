@@ -35,11 +35,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.SportsEsports
@@ -154,9 +154,9 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         val sample = listOf(
-            DailyTask("1", "Complete a Quiz", "Test your knowledge", 25, Icons.Default.MenuBook),
-            DailyTask("2", "Study for 30 mins", "Focus time", 50, Icons.Default.MenuBook),
-            DailyTask("3", "Review Flashcards", "Memorize concepts", 30, Icons.Default.MenuBook),
+            DailyTask("1", "Complete a Quiz", "Test your knowledge", 25, Icons.AutoMirrored.Filled.MenuBook),
+            DailyTask("2", "Study for 30 mins", "Focus time", 50, Icons.AutoMirrored.Filled.MenuBook),
+            DailyTask("3", "Review Flashcards", "Memorize concepts", 30, Icons.AutoMirrored.Filled.MenuBook),
         )
         tasksState.clear()
         tasksState.addAll(sample)

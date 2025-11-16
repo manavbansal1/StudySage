@@ -6,6 +6,10 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ListenerRegistration
+import com.group_7.studysage.utils.ResendEmailService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -72,6 +76,18 @@ class AuthRepository(
                 "groupInvites" to listOf<Map<String, Any>>() // List of pending invites
             )
             firestore.collection("users").document(user.uid).set(userProfile).await()
+            //  Send welcome email via Resend (non-blocking)
+            CoroutineScope(Dispatchers.IO).launch {
+                Log.d(TAG, "📧 Attempting to send welcome email via Resend...")
+                ResendEmailService.sendWelcomeEmail(email, name)
+                    .onSuccess {
+                        Log.d(TAG, "✅ Welcome email sent successfully via Resend to $email")
+                    }
+                    .onFailure { error ->
+                        // Email failure doesn't affect signup
+                        Log.w(TAG, "⚠️ Welcome email failed (non-critical): ${error.message}")
+                    }
+            }
             Result.success(user)
         } catch (e: Exception) {
             Log.e(TAG, "Sign up failed for email=$email: ${e.message}", e)
