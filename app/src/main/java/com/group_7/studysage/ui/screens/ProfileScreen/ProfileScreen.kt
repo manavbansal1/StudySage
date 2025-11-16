@@ -285,21 +285,21 @@ fun ProfileScreen(
                         ) {
                             StatCard(
                                 icon = Icons.Default.Star,
-                                value = profile["xp"]?.toString() ?: "0",
+                                value = (profile["xpPoints"] as? Number)?.toString() ?: "0",
                                 label = "XP",
                                 iconColor = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.weight(1f)
                             )
                             StatCard(
                                 icon = Icons.Default.DateRange,
-                                value = profile["streak"]?.toString() ?: "0",
+                                value = (profile["streakDays"] as? Number)?.toString() ?: "0",
                                 label = "Day Streak",
                                 iconColor = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.weight(1f)
                             )
                             StatCard(
                                 icon = Icons.Default.Groups,
-                                value = profile["groupCount"]?.toString() ?: "0",
+                                value = ((profile["groups"] as? List<*>)?.size ?: 0).toString(),
                                 label = "Groups",
                                 iconColor = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.weight(1f)
