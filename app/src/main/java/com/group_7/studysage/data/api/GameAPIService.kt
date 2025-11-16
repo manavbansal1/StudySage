@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
  * API Service for StudySage multiplayer games backend
  * Handles all REST API calls for game session management
  */
-class GameApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
+class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)

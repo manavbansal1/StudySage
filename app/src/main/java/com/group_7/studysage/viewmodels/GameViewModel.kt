@@ -98,7 +98,7 @@ class GameViewModel(
                 documentId = documentId,
                 documentName = documentName,
                 hostId = currentUser.uid,
-                hostName = currentUser.displayName ?: "Unknown",
+                hostName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Unknown",
                 gameType = gameType,
                 settings = settings
             )
@@ -127,7 +127,7 @@ class GameViewModel(
                 groupId = groupId,
                 sessionId = sessionId,
                 userId = currentUser.uid,
-                userName = currentUser.displayName ?: "Unknown"
+                userName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Unknown"
             )
 
             if (response.success && response.data != null) {
