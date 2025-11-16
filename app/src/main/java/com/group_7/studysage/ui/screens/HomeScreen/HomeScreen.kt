@@ -143,9 +143,9 @@ private fun GlassCard(
 fun HomeScreen(
     navController: NavController,
     homeViewModel: HomeViewModel = viewModel(),
+    courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val userFullName by homeViewModel.userFullName
     val userProfile by homeViewModel.userProfile
     val isLoadingProfile by homeViewModel.isLoadingProfile
@@ -480,9 +480,8 @@ fun HomeScreen(
                             lastOpenedAt = (pdf["lastOpenedAt"] as? Number)?.toLong() ?: 0L,
                             openCount = (pdf["openCount"] as? Number)?.toInt() ?: 0,
                             onClick = {
-                                val pdfUrl = pdf["fileUrl"] as? String
-                                if (!pdfUrl.isNullOrBlank()) {
-                                    homeViewModel.openPdf(context, pdfUrl)
+                                if (courseId.isNotBlank()) {
+                                    homeViewModel.openCourse(courseId, courseViewModel, navController)
                                 }
                             }
                         )

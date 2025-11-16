@@ -62,7 +62,7 @@ object ResendEmailService {
 
             // Create email request
             val emailRequest = ResendEmailRequest(
-                from = "StudySage <onboarding@resend.dev>",
+                from = "StudySage <noreply@studysage.dev>",
                 to = listOf(toEmail),
                 subject = "Welcome to StudySage! 🎓",
                 html = createHtmlTemplate(userName),
