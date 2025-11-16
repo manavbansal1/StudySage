@@ -195,6 +195,7 @@ class CourseRepository {
         return try {
             val course = getCourseById(courseId) ?: return null
             val notes = getNotesForCourse(courseId)
+            @Suppress("UNCHECKED_CAST")
             CourseWithNotes(course, notes as java.util.List<Note>)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching course with notes: ${e.message}", e)

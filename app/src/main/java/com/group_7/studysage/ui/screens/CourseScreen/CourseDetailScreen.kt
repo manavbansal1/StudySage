@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -141,7 +142,7 @@ fun CourseDetailScreen(
                                 notesViewModel.clearSelectedNote()
                             }) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowBack,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back"
                                 )
                             }
@@ -225,7 +226,7 @@ fun CourseDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -352,7 +353,7 @@ fun CourseDetailScreen(
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 ListItem(
                     headlineContent = { Text("Upload from phone") },
@@ -436,7 +437,7 @@ fun CourseDetailScreen(
                         .padding(vertical = 12.dp)
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 ListItem(
                     headlineContent = { Text("Download original note") },
@@ -894,7 +895,7 @@ fun EmptyNotesCard() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                Icons.Default.NoteAdd,
+                Icons.AutoMirrored.Filled.NoteAdd,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -945,7 +946,7 @@ fun NoteSummaryScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
