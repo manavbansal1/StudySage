@@ -52,6 +52,7 @@ class AuthRepository(
                 "level" to 1,
                 "xpPoints" to 0,
                 "streakDays" to 0,
+                "lastLoginDate" to System.currentTimeMillis(),
                 "quizStats" to mapOf(
                     "totalQuizzes" to 0,
                     "averageScore" to 0.0,
@@ -781,5 +782,83 @@ class AuthRepository(
             Log.e(TAG, "Failed to clear recently opened notes: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * Update user's daily streak based on app open
+     * Called when MainActivity is created
+     * - Increments streak if app opened on consecutive days
+     * - Maintains streak if app opened same day
+     * - Resets streak to 1 if missed days
+     *
+     * NOTE: Uses "lastLoginDate" field name for backward compatibility
+     * NOTE: This is called when app opens, not on login
+     */
+    suspend fun updateDailyStreak() {
+        try {
+            // Get current user ID
+            val userId = firebaseAuth.currentUser?.uid
+            if (userId == null) {
+                Log.d(TAG, "No user signed in, skipping streak update")
+                return
+            }
+
+            // Fetch user document from Firestore
+            val userDoc = firestore.collection("users").document(userId).get().await()
+
+            if (!userDoc.exists()) {
+                Log.w(TAG, "User document not found for streak update")
+                return
+            }
+
+            // Read current values
+            val currentStreak = (userDoc.getLong("streakDays") ?: 0L).toInt()
+            val lastLoginDate = userDoc.getLong("lastLoginDate") ?: 0L
+
+            // Calculate day start timestamps for comparison
+            val currentTime = System.currentTimeMillis()
+            val currentDayStart = getDayStartTimestamp(currentTime)
+            val lastOpenDayStart = getDayStartTimestamp(lastLoginDate)
+
+            // Calculate days difference
+            val daysDifference = ((currentDayStart - lastOpenDayStart) / (1000 * 60 * 60 * 24)).toInt()
+
+            // Determine new streak based on days difference
+            val newStreak = when (daysDifference) {
+                0 -> currentStreak // Same day, keep current streak
+                1 -> currentStreak + 1 // Consecutive day, increment streak
+                else -> 1 // Missed days, reset to 1
+            }
+
+            // Update Firestore with new streak and current timestamp
+            firestore.collection("users").document(userId)
+                .update(
+                    mapOf(
+                        "streakDays" to newStreak,
+                        "lastLoginDate" to currentTime
+                    )
+                )
+                .await()
+
+            Log.d(TAG, "✅ Streak updated: $currentStreak → $newStreak (days diff: $daysDifference)")
+        } catch (e: Exception) {
+            // Log error but don't throw - this is a non-critical operation
+            Log.e(TAG, "❌ Failed to update daily streak: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Get the start of day timestamp (midnight) for a given timestamp
+     * @param timestamp The timestamp to convert
+     * @return The timestamp at 00:00:00.000 of that day
+     */
+    private fun getDayStartTimestamp(timestamp: Long): Long {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 }

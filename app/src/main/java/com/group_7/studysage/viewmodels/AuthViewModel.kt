@@ -1,10 +1,12 @@
 package com.group_7.studysage.viewmodels
 
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
+import com.group_7.studysage.utils.ResendEmailService
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
