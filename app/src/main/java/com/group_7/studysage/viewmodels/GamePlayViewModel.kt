@@ -82,6 +82,22 @@ class GamePlayViewModel(
         }
     }
 
+    fun submitFlashcardAnswer(isCorrect: Boolean, timeElapsed: Long) {
+        val state = _gameUiState.value
+        val flashcard = state.currentFlashcard?.flashcard
+        val player = authViewModel.currentUser.value
+
+        if (flashcard != null && player != null) {
+            webSocketManager.submitFlashcardAnswer(
+                playerId = player.uid,
+                flashcardId = flashcard.id,
+                isCorrect = isCorrect,
+                timeElapsed = timeElapsed
+            )
+            _gameUiState.value = state.copy(isAnswered = true)
+        }
+    }
+
     private fun observeWebSocket() {
         webSocketManager.connectionState
             .onEach { state ->
@@ -109,9 +125,22 @@ class GamePlayViewModel(
             .onEach { questionData ->
                 _gameUiState.value = _gameUiState.value.copy(
                     currentQuestion = questionData,
+                    currentFlashcard = null, // Clear flashcard when question comes
                     isAnswered = false,
                     selectedAnswerIndex = null,
                     timeRemaining = questionData?.timeLimit ?: 0
+                )
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.nextFlashcard
+            .onEach { flashcardData ->
+                _gameUiState.value = _gameUiState.value.copy(
+                    currentFlashcard = flashcardData,
+                    currentQuestion = null, // Clear question when flashcard comes
+                    isAnswered = false,
+                    selectedAnswerIndex = null,
+                    timeRemaining = flashcardData?.timeLimit ?: 0
                 )
             }
             .launchIn(viewModelScope)

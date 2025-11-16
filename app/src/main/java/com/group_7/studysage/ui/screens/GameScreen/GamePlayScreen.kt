@@ -6,6 +6,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -74,6 +76,14 @@ fun GamePlayScreen(
                         gameUiState = gameUiState,
                         onAnswerClick = { answerIndex ->
                             gamePlayViewModel.submitAnswer(answerIndex, 0) // TODO: track time elapsed
+                        }
+                    )
+                }
+                gameUiState.currentFlashcard != null -> {
+                    FlashcardBattleScreen(
+                        gameUiState = gameUiState,
+                        onFlashcardAnswer = { isCorrect ->
+                            gamePlayViewModel.submitFlashcardAnswer(isCorrect, 0) // TODO: track time elapsed
                         }
                     )
                 }
@@ -328,6 +338,196 @@ fun GameResultsScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Back to Lobby")
+        }
+    }
+}
+
+@Composable
+fun FlashcardBattleScreen(
+    gameUiState: com.group_7.studysage.data.models.GameUiState,
+    onFlashcardAnswer: (Boolean) -> Unit
+) {
+    val flashcardData = gameUiState.currentFlashcard ?: return
+    val flashcard = flashcardData.flashcard
+    val isAnswered = gameUiState.isAnswered
+    val lastResult = gameUiState.lastResult
+
+    var showAnswer by remember { mutableStateOf(false) }
+
+    // Reset showAnswer when flashcard changes
+    LaunchedEffect(flashcard.id) {
+        showAnswer = false
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Flashcard header
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Flashcard ${flashcardData.flashcardNumber} of ${flashcardData.totalFlashcards}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Timer
+            Text(
+                text = "Time: ${gameUiState.timeRemaining}s",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (gameUiState.timeRemaining <= 5) Color.Red else MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        // Flashcard content
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(vertical = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Question side
+                Text(
+                    text = "Question",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = flashcard.question,
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                if (showAnswer) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                    )
+
+                    // Answer side
+                    Text(
+                        text = "Answer",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = flashcard.answer,
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+        }
+
+        // Action buttons
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (!showAnswer && !isAnswered) {
+                Button(
+                    onClick = { showAnswer = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text(
+                        text = "Show Answer",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            } else if (showAnswer && !isAnswered) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { onFlashcardAnswer(false) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(60.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336) // Red
+                        )
+                    ) {
+                        Text(
+                            text = "Need Review",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Button(
+                        onClick = { onFlashcardAnswer(true) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(60.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50) // Green
+                        )
+                    ) {
+                        Text(
+                            text = "Got it!",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+
+        // Result feedback
+        if (isAnswered && lastResult != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (lastResult.isCorrect)
+                        Color(0xFF4CAF50).copy(alpha = 0.2f)
+                    else
+                        Color(0xFFF44336).copy(alpha = 0.2f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (lastResult.isCorrect) "Great job! ✓" else "Keep practicing!",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    )
+                    Text(
+                        text = "+${lastResult.points} points",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        } else {
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
