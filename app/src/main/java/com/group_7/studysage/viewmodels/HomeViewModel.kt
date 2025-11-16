@@ -242,16 +242,19 @@ class HomeViewModel(
     /**
      * Open a PDF URL in an external app (browser or PDF viewer)
      */
-    fun openPdf(context: Context, pdfUrl: String) {
+    /**
+     * Navigate to the course screen for a given courseId
+     * Opens the course detail view where the user can see all notes
+     */
+    fun openCourse(courseId: String, courseViewModel: CourseViewModel, navController: androidx.navigation.NavController) {
         try {
-            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                data = Uri.parse(pdfUrl)
-                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(intent)
+            // Load the course with its notes
+            courseViewModel.loadCourseWithNotes(courseId)
+            // Navigate to the course screen
+            navController.navigate("course")
         } catch (e: Exception) {
-            _errorMessage.value = "Unable to open PDF: ${e.message}"
-            android.util.Log.e("HomeViewModel", "Failed to open PDF: ${e.message}")
+            _errorMessage.value = "Unable to open course: ${e.message}"
+            android.util.Log.e("HomeViewModel", "Failed to open course: ${e.message}")
         }
     }
 
