@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
  * Handles WebSocket connection, message sending/receiving for game sessions
  */
 class GameWebSocketManager(
-    private val baseUrl: String = "ws://10.0.2.2:8080"
+    private val baseUrl: String = com.group_7.studysage.data.api.ApiConfig.BASE_WS_URL
 ) {
 
     private var webSocket: WebSocket? = null

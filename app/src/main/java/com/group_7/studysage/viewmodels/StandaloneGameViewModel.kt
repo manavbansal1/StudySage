@@ -45,7 +45,7 @@ class StandaloneGameViewModel : ViewModel() {
 
                 val response = apiService.hostGame(
                     hostId = currentUser.uid,
-                    hostName = currentUser.displayName ?: "Player",
+                    hostName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Player",
                     gameType = gameType,
                     contentSource = contentSource,
                     contentData = contentData,
@@ -90,7 +90,7 @@ class StandaloneGameViewModel : ViewModel() {
                 val response = apiService.joinGameByCode(
                     gameCode = gameCode,
                     userId = currentUser.uid,
-                    userName = currentUser.displayName ?: "Player"
+                    userName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Player"
                 )
 
                 if (response.success && response.data != null) {
