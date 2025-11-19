@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -189,7 +190,7 @@ fun ProfileScreen(
                                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
                             ) {
                                 Icon(
-                                    Icons.Default.ArrowBack,
+                                    Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
                                     tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(20.dp)
@@ -284,21 +285,21 @@ fun ProfileScreen(
                         ) {
                             StatCard(
                                 icon = Icons.Default.Star,
-                                value = profile["xp"]?.toString() ?: "0",
+                                value = (profile["xpPoints"] as? Number)?.toString() ?: "0",
                                 label = "XP",
                                 iconColor = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.weight(1f)
                             )
                             StatCard(
                                 icon = Icons.Default.DateRange,
-                                value = profile["streak"]?.toString() ?: "0",
+                                value = (profile["streakDays"] as? Number)?.toString() ?: "0",
                                 label = "Day Streak",
                                 iconColor = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.weight(1f)
                             )
                             StatCard(
                                 icon = Icons.Default.Groups,
-                                value = profile["groupCount"]?.toString() ?: "0",
+                                value = ((profile["groups"] as? List<*>)?.size ?: 0).toString(),
                                 label = "Groups",
                                 iconColor = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.weight(1f)
@@ -345,7 +346,7 @@ fun ProfileScreen(
                             )
 
                             SettingsOption(
-                                icon = Icons.Default.ExitToApp,
+                                Icons.AutoMirrored.Filled.ExitToApp,
                                 title = "Sign Out",
                                 subtitle = "Log out from your account",
                                 onClick = { showSignOutDialog = true },
