@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
 import java.util.Calendar
 
 data class CourseUiState(
@@ -20,6 +22,7 @@ data class CourseUiState(
     val selectedYear: String = Calendar.getInstance().get(Calendar.YEAR).toString(),
     val availableYears: List<String> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false, // Added pull-to-refresh flag
     val error: String? = null,
     val message: String? = null,
     val isCreatingCourse: Boolean = false,
@@ -65,6 +68,45 @@ class CourseViewModel(
                         error = "Failed to load courses: ${e.message}"
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Refresh the courses list used by pull-to-refresh.
+     * Reuses existing loadCourses() and updates isRefreshing in uiState.
+     */
+    fun refreshCourses() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isRefreshing = true, error = null) }
+                // Call existing loader (it uses its own coroutine)
+                val loadDeferred = async { loadCourses() }
+                loadDeferred.await()
+                // Smooth UX
+                delay(300)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to refresh courses: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+
+    /**
+     * Refresh a single course's details (course + notes) used on course detail screen.
+     */
+    fun refreshCourse(courseId: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isRefreshing = true, error = null) }
+                val loadDeferred = async { loadCourseWithNotes(courseId) }
+                loadDeferred.await()
+                delay(250)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to refresh course: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
             }
         }
     }

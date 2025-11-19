@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -77,6 +78,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.group_7.studysage.viewmodels.HomeViewModel
 
 // Data class as specified
@@ -149,6 +153,11 @@ fun HomeScreen(
     val userFullName by homeViewModel.userFullName
     val userProfile by homeViewModel.userProfile
     val isLoadingProfile by homeViewModel.isLoadingProfile
+    val recentPdfs by homeViewModel.recentlyOpenedPdfs
+
+    // Pull-to-refresh state
+    val isRefreshing by homeViewModel.isRefreshing
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
 
     val tasksState = remember { mutableStateListOf<DailyTask>() }
 
@@ -201,12 +210,28 @@ fun HomeScreen(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 16.dp) // Page padding
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            SwipeRefresh(
+                state = swipeRefreshState,
+                onRefresh = { homeViewModel.refreshHomeData() },
+                indicator = { state, trigger ->
+                    SwipeRefreshIndicator(
+                        state = state,
+                        refreshTriggerDistance = trigger,
+                        scale = true,
+                        backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        elevation = 6.dp
+                    )
+                }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 16.dp) // Page padding
+                ) {
             // HEADER
             Row(
                 modifier = Modifier
@@ -525,11 +550,49 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
+
+            // Animated "Refreshing..." message overlay
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isRefreshing,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Refreshing your notes...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+
 
 // Enhanced TaskCard - Refactored for consistency
 @Composable
-private fun EnhancedTaskCard(
+fun EnhancedTaskCard(
     task: DailyTask,
     onToggleCompleted: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -657,7 +720,7 @@ private fun EnhancedTaskCard(
 
 // NEW Quick Action Card
 @Composable
-private fun QuickActionCard(
+fun QuickActionCard(
     action: QuickAction,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -796,7 +859,7 @@ fun RecentPdfCard(
 /**
  * Convert timestamp to relative time string (e.g., "2h ago", "3d ago")
  */
-private fun getRelativeTimeString(timestamp: Long): String {
+fun getRelativeTimeString(timestamp: Long): String {
     if (timestamp == 0L) return "Just now"
 
     val now = System.currentTimeMillis()
@@ -809,5 +872,46 @@ private fun getRelativeTimeString(timestamp: Long): String {
         diff < 604_800_000 -> "${diff / 86_400_000}d ago" // Less than 1 week
         diff < 2_592_000_000 -> "${diff / 604_800_000}w ago" // Less than 30 days
         else -> "${diff / 2_592_000_000}mo ago" // Months
+    }
+}
+
+/**
+ * Empty state composable for when there are no recently opened PDFs
+ * Shows a friendly message encouraging users to upload their first note
+ */
+@Composable
+fun EmptyRecentPdfsState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Description,
+            contentDescription = "No recent notes",
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            modifier = Modifier.size(64.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "No recent notes",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Upload your first note to get started!",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
