@@ -10,6 +10,7 @@ import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
 import com.group_7.studysage.data.repository.CourseRepository
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -51,6 +52,10 @@ class HomeViewModel(
 
     // Store course ID to name mapping
     private val _courseNameMap = mutableStateOf<Map<String, String>>(emptyMap())
+
+    // Pull-to-refresh state
+    private val _isRefreshing = mutableStateOf(false)
+    val isRefreshing: State<Boolean> = _isRefreshing
 
     init {
         loadRecentNotes()
@@ -303,5 +308,46 @@ class HomeViewModel(
         // Clear previous errors and try again
         clearMessages()
         uploadAndProcessNote(context, uri, fileName, courseId, userPreferences)
+    }
+
+    /**
+     * Refresh all home screen data
+     * Reloads user profile, recent notes, recently opened PDFs, and courses in parallel
+     * Called when user performs pull-to-refresh gesture
+     */
+    fun refreshHomeData() {
+        viewModelScope.launch {
+            try {
+                _isRefreshing.value = true
+                android.util.Log.d(TAG, "🔄 Starting home data refresh...")
+
+                // Launch all data loads in parallel for better performance using async
+                val profileDeferred = async { loadUserProfile() }
+                val notesDeferred = async { loadRecentNotes() }
+                val pdfsDeferred = async { loadRecentlyOpenedPdfs() }
+                val coursesDeferred = async { loadCourses() }
+
+                // Wait for all parallel operations to complete
+                profileDeferred.await()
+                notesDeferred.await()
+                pdfsDeferred.await()
+                coursesDeferred.await()
+
+                // Optional: Add small delay for better UX (shows refresh animation)
+                kotlinx.coroutines.delay(300)
+
+                android.util.Log.d(TAG, "✅ Home data refresh completed")
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ Error refreshing home data: ${e.message}", e)
+                _errorMessage.value = "Failed to refresh: ${e.message}"
+            } finally {
+                // Always reset refresh state, even if there's an error
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "HomeViewModel"
     }
 }

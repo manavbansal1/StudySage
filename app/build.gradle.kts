@@ -77,6 +77,9 @@ dependencies {
     // Activity Compose
     implementation("androidx.activity:activity-compose:1.9.3")
 
+    // Accompanist - Pull-to-refresh
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+
     // ViewModel Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")

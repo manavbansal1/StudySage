@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.Semester
 import com.group_7.studysage.ui.theme.StudySageTheme
@@ -91,91 +94,109 @@ fun CoursesScreen(
             containerColor = Color.Transparent, // Let the theme background show
         ) { paddingValues ->
 
-            // The entire screen is a scrolling grid
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = paddingValues, // Apply insets
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp) // Page horizontal padding
+            // Pull-to-refresh wrapper for the grid
+            val isRefreshing = uiState.isRefreshing
+            val swipeState = rememberSwipeRefreshState(isRefreshing)
+
+            SwipeRefresh(
+                state = swipeState,
+                onRefresh = { viewModel.refreshCourses() },
+                indicator = { state, trigger ->
+                    SwipeRefreshIndicator(
+                        state = state,
+                        refreshTriggerDistance = trigger,
+                        backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        elevation = 6.dp
+                    )
+                }
             ) {
-                // 1. HEADER
-                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    CoursesHeader(
-                        onAddClick = { showAddCourseDialog = true },
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
-                // 2. FILTER SECTION
-                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    FilterSection(
-                        selectedSemester = uiState.selectedSemester,
-                        selectedYear = uiState.selectedYear,
-                        availableYears = uiState.availableYears,
-                        onSemesterChange = { viewModel.setSemesterFilter(it) },
-                        onYearChange = { viewModel.setYearFilter(it) }
-                    )
-                }
-
-                // 3. COURSES HEADER
-                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 20.dp, bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Courses",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${uiState.courses.size} courses",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                // The entire screen is a scrolling grid
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    contentPadding = paddingValues, // Apply insets
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp) // Page horizontal padding
+                ) {
+                    // 1. HEADER
+                    item(span = { GridItemSpan(this.maxLineSpan) }) {
+                        CoursesHeader(
+                            onAddClick = { showAddCourseDialog = true },
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
-                }
 
-                // 4. LOADING / EMPTY / CONTENT
-                if (uiState.isLoading) {
+                    // 2. FILTER SECTION
                     item(span = { GridItemSpan(this.maxLineSpan) }) {
-                        Box(
+                        FilterSection(
+                            selectedSemester = uiState.selectedSemester,
+                            selectedYear = uiState.selectedYear,
+                            availableYears = uiState.availableYears,
+                            onSemesterChange = { viewModel.setSemesterFilter(it) },
+                            onYearChange = { viewModel.setYearFilter(it) }
+                        )
+                    }
+
+                    // 3. COURSES HEADER
+                    item(span = { GridItemSpan(this.maxLineSpan) }) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 100.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(top = 20.dp, bottom = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CircularProgressIndicator()
+                            Text(
+                                text = "Courses",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${uiState.courses.size} courses",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-                } else if (uiState.courses.isEmpty()) {
-                    item(span = { GridItemSpan(this.maxLineSpan) }) {
-                        EmptyCoursesState(
-                            semester = uiState.selectedSemester,
-                            year = uiState.selectedYear,
-                            onAddCourse = { showAddCourseDialog = true }
-                        )
-                    }
-                } else {
-                    // 5. COURSES GRID
-                    items(uiState.courses) { course ->
-                        CourseGridCard(
-                            course = course,
-                            onClick = { viewModel.loadCourseWithNotes(course.id) }
-                        )
-                    }
-                }
 
-                // 6. SPACER FOR NAV BAR
-                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    Spacer(modifier = Modifier.height(80.dp))
+                    // 4. LOADING / EMPTY / CONTENT
+                    if (uiState.isLoading) {
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 100.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    } else if (uiState.courses.isEmpty()) {
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
+                            EmptyCoursesState(
+                                semester = uiState.selectedSemester,
+                                year = uiState.selectedYear,
+                                onAddCourse = { showAddCourseDialog = true }
+                            )
+                        }
+                    } else {
+                        // 5. COURSES GRID
+                        items(uiState.courses) { course ->
+                            CourseGridCard(
+                                course = course,
+                                onClick = { viewModel.loadCourseWithNotes(course.id) }
+                            )
+                        }
+                    }
+
+                    // 6. SPACER FOR NAV BAR
+                    item(span = { GridItemSpan(this.maxLineSpan) }) {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
                 }
             }
         }
