@@ -27,6 +27,9 @@ import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.ui.viewmodels.GroupViewModel
 import com.group_7.studysage.ui.viewmodels.GroupUiState
 import com.group_7.studysage.ui.viewmodels.GroupItem
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,9 +50,21 @@ fun GroupScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(top = 16.dp, bottom = 16.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
+        // Pull-to-refresh wrapper
+        val isRefreshing by viewModel.isRefreshing.collectAsState()
+        val swipeState = rememberSwipeRefreshState(isRefreshing)
+
+        SwipeRefresh(
+            state = swipeState,
+            onRefresh = { viewModel.refreshGroups() },
+            indicator = { state, trigger ->
+                SwipeRefreshIndicator(
+                    state = state,
+                    refreshTriggerDistance = trigger,
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            }
         ) {
             Column(
                 modifier = Modifier

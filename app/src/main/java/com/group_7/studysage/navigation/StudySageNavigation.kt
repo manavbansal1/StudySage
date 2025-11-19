@@ -252,7 +252,10 @@ fun StudySageNavigation(
                         slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
                     }
                 ) {
-                    HomeScreen(navController = navController)
+                    HomeScreen(
+                        navController = navController,
+                        courseViewModel = courseViewModel
+                    )
                 }
                 composable(
                     Screen.Course.route,
