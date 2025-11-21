@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.group_7.studysage.data.api.ApiResponse
 import com.group_7.studysage.data.api.GameApiService
 import com.group_7.studysage.data.model.Quiz
+import com.group_7.studysage.data.model.QuizGenerationResponse
 import com.group_7.studysage.data.models.*
 import com.group_7.studysage.data.websocket.ConnectionState
 import com.group_7.studysage.data.websocket.GameWebSocketManager
@@ -275,9 +276,10 @@ class GameRepository(
 
     private val firestore = Firebase.firestore
     private val gson = Gson()
+    private val notesRepository = NotesRepository()
 
     /**
-     * Generate quiz questions from note content using backend AI
+     * Generate quiz questions from note content using AI
      */
     suspend fun generateQuizQuestions(
         noteId: String,
@@ -286,21 +288,81 @@ class GameRepository(
         userPreferences: String
     ): Result<Quiz> {
         return try {
-            // Call backend API to generate quiz
-            val response = apiService.generateQuiz(
-                noteId = noteId,
-                noteTitle = noteTitle,
-                content = content,
-                userPreferences = userPreferences
+            // Use NotesRepository's AI generation with quiz-specific prompt
+            val quizPrompt = """
+                $userPreferences
+                
+                Based on the following content, generate a quiz with 5 multiple-choice questions.
+                Each question must have exactly 4 options with only one correct answer.
+                
+                Return ONLY valid JSON in this exact format (no markdown, no code blocks, no extra text):
+                {
+                  "questions": [
+                    {
+                      "question": "question text here",
+                      "options": [
+                        {"text": "option 1", "isCorrect": false},
+                        {"text": "option 2", "isCorrect": true},
+                        {"text": "option 3", "isCorrect": false},
+                        {"text": "option 4", "isCorrect": false}
+                      ],
+                      "explanation": "brief explanation of correct answer"
+                    }
+                  ]
+                }
+                
+                Content:
+                $content
+            """.trimIndent()
+
+            val aiResponse = notesRepository.generateAISummary(
+                content = quizPrompt,
+                wantsNewSummary = true,
+                userPreferences = ""
             )
 
-            if (response.success && response.data != null) {
-                Result.success(response.data)
-            } else {
-                Result.failure(Exception(response.message ?: "Failed to generate quiz"))
+            // Clean up the JSON response more thoroughly
+            var jsonResponse = aiResponse.trim()
+            
+            // Remove markdown code blocks
+            if (jsonResponse.startsWith("```")) {
+                jsonResponse = jsonResponse
+                    .removePrefix("```json")
+                    .removePrefix("```")
+                    .removeSuffix("```")
+                    .trim()
             }
+            
+            // Find the JSON object if there's extra text
+            val jsonStart = jsonResponse.indexOf("{")
+            val jsonEnd = jsonResponse.lastIndexOf("}") + 1
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                jsonResponse = jsonResponse.substring(jsonStart, jsonEnd)
+            }
+
+            android.util.Log.d("GameRepository", "Cleaned JSON: $jsonResponse")
+
+            val quizResponse = gson.fromJson(jsonResponse, QuizGenerationResponse::class.java)
+            
+            if (quizResponse.questions.isEmpty()) {
+                return Result.failure(Exception("No questions were generated"))
+            }
+            
+            val quiz = Quiz(
+                quizId = "",
+                noteId = noteId,
+                noteTitle = noteTitle,
+                userId = "",
+                questions = quizResponse.questions,
+                preferences = userPreferences,
+                createdAt = System.currentTimeMillis(),
+                totalQuestions = quizResponse.questions.size
+            )
+
+            Result.success(quiz)
         } catch (e: Exception) {
-            Result.failure(e)
+            android.util.Log.e("GameRepository", "Quiz generation error", e)
+            Result.failure(Exception("Failed to generate quiz: ${e.message}"))
         }
     }
 

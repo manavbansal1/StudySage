@@ -6,6 +6,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,7 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
@@ -39,8 +43,14 @@ import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.NotesViewModel
 import com.group_7.studysage.viewmodels.HomeViewModel
 import com.group_7.studysage.viewmodels.CourseViewModel
+import com.group_7.studysage.viewmodels.GameViewModel
+import com.group_7.studysage.viewmodels.GameViewModelFactory
+import com.group_7.studysage.viewmodels.AuthViewModel
+import com.group_7.studysage.data.api.GameApiService
+import com.group_7.studysage.data.websocket.GameWebSocketManager
 import com.group_7.studysage.ui.screens.nfc.ReceiveNFCScreen
 import com.group_7.studysage.ui.screens.nfc.ShareNFCScreen
+import com.group_7.studysage.ui.screens.GameScreen.PlayQuizScreen
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -53,7 +63,15 @@ fun CourseDetailScreen(
     onBack: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
     notesViewModel: NotesViewModel = viewModel(),
-    courseViewModel: CourseViewModel = viewModel()
+    courseViewModel: CourseViewModel = viewModel(),
+    authViewModel: AuthViewModel,
+    gameViewModel: GameViewModel = viewModel(
+        factory = GameViewModelFactory(
+            gameApiService = GameApiService(),
+            webSocketManager = GameWebSocketManager(),
+            authViewModel = authViewModel
+        )
+    )
 ) {
     val context = LocalContext.current
     val course = courseWithNotes.course
@@ -84,6 +102,8 @@ fun CourseDetailScreen(
     var showUploadOptionsSheet by remember { mutableStateOf(false) }
     var showShareNFCScreen by remember { mutableStateOf(false) }
     var showReceiveNFCScreen by remember { mutableStateOf(false) }
+    var showPlayQuizScreen by remember { mutableStateOf(false) }
+    var showQuizGeneratingDialog by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -91,6 +111,7 @@ fun CourseDetailScreen(
     val errorMessage by homeViewModel.errorMessage
     val selectedNoteState by notesViewModel.selectedNote.collectAsState()
     val isSummaryLoading by notesViewModel.isNoteDetailsLoading.collectAsState()
+    val quizGenerationState by gameViewModel.quizGenerationState.collectAsState()
 
     if (showShareNFCScreen && noteToShare != null) {
         ShareNFCScreen(
@@ -110,6 +131,23 @@ fun CourseDetailScreen(
                 showReceiveNFCScreen = false
             }
         )
+        return
+    }
+
+    if (showPlayQuizScreen && quizGenerationState.generatedQuiz != null) {
+        // Full-screen quiz overlay (hides bottom navigation)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            PlayQuizScreen(
+                quiz = quizGenerationState.generatedQuiz!!,
+                onBack = {
+                    showPlayQuizScreen = false
+                    gameViewModel.resetQuizGeneration()
+                }
+            )
+        }
         return
     }
 
@@ -548,6 +586,27 @@ fun CourseDetailScreen(
                 )
 
                 ListItem(
+                    headlineContent = { Text("Generate Quiz") },
+                    supportingContent = {
+                        Text(
+                            text = "Create an interactive quiz from this note",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Quiz,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showNoteOptions = false
+                        selectedNote = note
+                        showQuizGeneratingDialog = true
+                    }
+                )
+
+                ListItem(
                     headlineContent = { Text("Share via NFC") },
                     supportingContent = {
                         Text(
@@ -608,6 +667,239 @@ fun CourseDetailScreen(
                 }
             }
         )
+    }
+
+    // Quiz generation dialog and logic
+    if (showQuizGeneratingDialog && selectedNote != null) {
+        var quizPreferences by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = {
+                showQuizGeneratingDialog = false
+                selectedNote = null
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Quiz,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { 
+                Text(
+                    "Generate Quiz",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = {
+                Column {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = selectedNote!!.title.ifBlank { selectedNote!!.originalFileName },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    Text(
+                        text = "Customize your quiz (optional):",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = quizPreferences,
+                        onValueChange = { quizPreferences = it },
+                        label = { Text("Quiz Preferences") },
+                        placeholder = { Text("e.g., 10 questions, focus on definitions, easy difficulty") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 4,
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = null
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Leave empty for a standard quiz",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        gameViewModel.setSelectedNote(selectedNote!!)
+                        gameViewModel.setUserPreferences(quizPreferences.ifBlank { "Generate a quiz with multiple choice questions" })
+                        gameViewModel.generateQuiz()
+                        showQuizGeneratingDialog = false
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Generate",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showQuizGeneratingDialog = false
+                        selectedNote = null
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Show animated loading dialog while generating quiz
+    if (quizGenerationState.isGenerating) {
+        var dotCount by remember { mutableStateOf(0) }
+        
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(500)
+                dotCount = (dotCount + 1) % 4
+            }
+        }
+        
+        AlertDialog(
+            onDismissRequest = { },
+            icon = {
+                Box(contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        strokeWidth = 4.dp
+                    )
+                }
+            },
+            title = { 
+                Text(
+                    "Generating Quiz",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                ) 
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AnimatedContent(
+                        targetState = dotCount,
+                        transitionSpec = {
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                        },
+                        label = "loading_text"
+                    ) { dots ->
+                        Text(
+                            text = "Creating quiz questions${".".repeat(dots)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "AI is analyzing your note",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            },
+            confirmButton = { },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Handle quiz generation completion
+    LaunchedEffect(quizGenerationState.generatedQuiz) {
+        if (quizGenerationState.generatedQuiz != null && !showPlayQuizScreen) {
+            showPlayQuizScreen = true
+        }
+    }
+
+    // Handle quiz generation errors
+    LaunchedEffect(quizGenerationState.error) {
+        quizGenerationState.error?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+        }
     }
 
     // Upload confirmation dialog
