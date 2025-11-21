@@ -165,7 +165,7 @@ class GroupViewModel(
 
                 acceptResult.onSuccess {
                     val userProfile = authRepository.getUserProfile()
-                    val userId = authRepository.getCurrentUser()?.uid ?: return@launch
+                    val userId = authRepository.currentUser?.uid ?: return@launch
                     val userName = userProfile?.get("name") as? String ?: "User"
                     val userProfilePic = userProfile?.get("profileImageUrl") as? String ?: ""
 
@@ -279,7 +279,7 @@ class GroupViewModel(
     fun leaveGroup(groupId: String) {
         viewModelScope.launch {
             try {
-                val userId = authRepository.getCurrentUser()?.uid ?: return@launch
+                val userId = authRepository.currentUser?.uid ?: return@launch
 
                 Log.d(TAG, "User ${'$'}userId leaving group: ${'$'}groupId")
 
@@ -303,7 +303,7 @@ class GroupViewModel(
     }
 
     private suspend fun checkIfAdmin(groupId: String): Boolean {
-        val userId = authRepository.getCurrentUser()?.uid ?: return false
+        val userId = authRepository.currentUser?.uid ?: return false
         return groupRepository.isUserAdmin(groupId, userId)
     }
 

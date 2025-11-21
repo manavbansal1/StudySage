@@ -57,10 +57,12 @@ import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.viewmodels.AuthViewModel
+import com.group_7.studysage.viewmodels.CourseViewModel
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.models.GameType
 import com.group_7.studysage.ui.theme.*
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -127,6 +129,7 @@ fun StudySageNavigation(
     if (isUserSignedIn) {
         // Create a fresh NavController for authenticated users
         val navController = androidx.navigation.compose.rememberNavController()
+        val courseViewModel: CourseViewModel = viewModel()
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
