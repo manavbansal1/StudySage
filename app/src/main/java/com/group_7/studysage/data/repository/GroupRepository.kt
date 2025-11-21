@@ -190,6 +190,7 @@ class GroupRepository(
     suspend fun removeMemberFromGroup(groupId: String, userId: String): Result<Unit> {
         return try {
             val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
             val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
 
             val updatedMembers = members.filter { it["userId"] != userId }
@@ -216,6 +217,7 @@ class GroupRepository(
     suspend fun promoteMemberToAdmin(groupId: String, userId: String): Result<Unit> {
         return try {
             val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
             val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
 
             val updatedMembers = members.map { member ->
@@ -305,6 +307,8 @@ class GroupRepository(
 
             snapshot.documents.mapNotNull { doc ->
                 try {
+                    @Suppress("UNCHECKED_CAST")
+                    val imagesList = (doc.get("images") as? List<String>) ?: emptyList()
                     GroupMessage(
                         messageId = doc.getString("messageId") ?: "",
                         senderId = doc.getString("senderId") ?: "",
@@ -312,7 +316,7 @@ class GroupRepository(
                         senderProfilePic = doc.getString("senderProfilePic") ?: "",
                         message = doc.getString("message") ?: "",
                         timestamp = doc.getLong("timestamp") ?: 0L,
-                        images = (doc.get("images") as? List<String>) ?: emptyList()
+                        images = imagesList
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to parse message: ${e.message}", e)
@@ -374,6 +378,7 @@ class GroupRepository(
     suspend fun isUserAdmin(groupId: String, userId: String): Boolean {
         return try {
             val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
             val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
 
             members.any {
@@ -391,6 +396,7 @@ class GroupRepository(
     suspend fun getGroupMembers(groupId: String): List<GroupMember> {
         return try {
             val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
             val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
 
             members.mapNotNull { member ->
@@ -450,6 +456,8 @@ class GroupRepository(
 
                 val messages = snapshot?.documents?.mapNotNull { doc ->
                     try {
+                        @Suppress("UNCHECKED_CAST")
+                        val imagesList = (doc.get("images") as? List<String>) ?: emptyList()
                         GroupMessage(
                             messageId = doc.getString("messageId") ?: "",
                             senderId = doc.getString("senderId") ?: "",
@@ -457,7 +465,7 @@ class GroupRepository(
                             senderProfilePic = doc.getString("senderProfilePic") ?: "",
                             message = doc.getString("message") ?: "",
                             timestamp = doc.getLong("timestamp") ?: 0L,
-                            images = (doc.get("images") as? List<String>) ?: emptyList()
+                            images = imagesList
                         )
                     } catch (e: Exception) {
                         null

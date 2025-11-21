@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,7 +66,7 @@ fun FlashcardScreen(
                 title = { Text("Flashcards", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
@@ -326,7 +327,7 @@ fun FlashcardScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         ) {
-                            Icon(Icons.Default.ArrowBack, null)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                             Spacer(Modifier.width(8.dp))
                             Text("Previous")
                         }
@@ -348,7 +349,7 @@ fun FlashcardScreen(
                             Spacer(Modifier.width(8.dp))
                             Icon(
                                 if (currentIndex < flashcards.size - 1)
-                                    Icons.Default.ArrowForward
+                                    Icons.AutoMirrored.Filled.ArrowForward
                                 else
                                     Icons.Default.Check,
                                 null

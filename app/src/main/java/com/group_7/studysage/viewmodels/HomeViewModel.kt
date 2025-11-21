@@ -9,11 +9,14 @@ import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
+import com.group_7.studysage.data.repository.CourseRepository
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val notesRepository: NotesRepository = NotesRepository(),
-    private val authRepository: AuthRepository = AuthRepository()
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val courseRepository: CourseRepository = CourseRepository()
 ) : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
@@ -47,11 +50,18 @@ class HomeViewModel(
     private val _recentlyOpenedPdfs = mutableStateOf<List<Map<String, Any>>>(emptyList())
     val recentlyOpenedPdfs: State<List<Map<String, Any>>> = _recentlyOpenedPdfs
 
+    // Store course ID to name mapping
+    private val _courseNameMap = mutableStateOf<Map<String, String>>(emptyMap())
+
+    // Pull-to-refresh state
+    private val _isRefreshing = mutableStateOf(false)
+    val isRefreshing: State<Boolean> = _isRefreshing
+
     init {
         loadRecentNotes()
         loadUserProfile()
         loadRecentlyOpenedPdfs()
-        initializeSampleData()
+        loadCourses()
     }
 
     // Load user profile from Firestore
@@ -75,6 +85,60 @@ class HomeViewModel(
     // Public method to refresh user name
     fun refreshUserProfile() {
         loadUserProfile()
+    }
+
+    /**
+     * Mark a note as opened/viewed
+     * This updates the recently opened list with timestamp and open count
+     */
+    fun markNoteAsOpened(
+        noteId: String,
+        title: String,
+        fileName: String,
+        fileUrl: String,
+        courseId: String
+    ) {
+        viewModelScope.launch {
+            try {
+                authRepository.addToRecentlyOpened(
+                    noteId = noteId,
+                    title = title,
+                    fileName = fileName,
+                    fileUrl = fileUrl,
+                    courseId = courseId
+                )
+                // Refresh the recently opened list
+                loadRecentlyOpenedPdfs()
+            } catch (e: Exception) {
+                // Log error but don't show to user - this is a background operation
+                android.util.Log.e("HomeViewModel", "Failed to mark note as opened: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Load all courses to build course ID to name mapping
+     */
+    private fun loadCourses() {
+        viewModelScope.launch {
+            try {
+                val courses = courseRepository.getUserCourses()
+                val mapping = courses.associate { course ->
+                    course.id to "${course.code} - ${course.title}"
+                }
+                _courseNameMap.value = mapping
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Failed to load courses: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Get course display name from course ID
+     * Returns the course code and title, or the courseId if not found
+     */
+    fun getCourseName(courseId: String): String {
+        return _courseNameMap.value[courseId] ?: courseId
     }
 
     // Updated method to accept courseId parameter
@@ -162,20 +226,16 @@ class HomeViewModel(
     private fun loadRecentlyOpenedPdfs() {
         viewModelScope.launch {
             try {
-                val pdfs = authRepository.getUserLibrary()
-                _recentlyOpenedPdfs.value = pdfs
+                val result = authRepository.getRecentlyOpened(limit = 10)
+                result.onSuccess { pdfs ->
+                    _recentlyOpenedPdfs.value = pdfs
+                }.onFailure { exception ->
+                    android.util.Log.e("HomeViewModel", "Failed to load recently opened: ${exception.message}")
+                    _recentlyOpenedPdfs.value = emptyList()
+                }
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to load recently opened PDFs"
-            }
-        }
-    }
-
-    private fun initializeSampleData() {
-        viewModelScope.launch {
-            // Only initialize sample PDFs if no PDFs exist
-            if (authRepository.getUserLibrary().isEmpty()) {
-                authRepository.initializeSampleUserLibrary()
-                loadRecentlyOpenedPdfs()
+                android.util.Log.e("HomeViewModel", "Error loading recently opened: ${e.message}")
+                _recentlyOpenedPdfs.value = emptyList()
             }
         }
     }
@@ -184,9 +244,23 @@ class HomeViewModel(
         return recentlyOpenedPdfs.value.filter { it["courseId"] == courseId }
     }
 
-    fun openPdf(pdfUrl: String) {
-        // TODO: Navigate to PDF viewer
-        // navController.navigate("pdf_viewer/$pdfUrl")
+    /**
+     * Open a PDF URL in an external app (browser or PDF viewer)
+     */
+    /**
+     * Navigate to the course screen for a given courseId
+     * Opens the course detail view where the user can see all notes
+     */
+    fun openCourse(courseId: String, courseViewModel: CourseViewModel, navController: androidx.navigation.NavController) {
+        try {
+            // Load the course with its notes
+            courseViewModel.loadCourseWithNotes(courseId)
+            // Navigate to the course screen
+            navController.navigate("course")
+        } catch (e: Exception) {
+            _errorMessage.value = "Unable to open course: ${e.message}"
+            android.util.Log.e("HomeViewModel", "Failed to open course: ${e.message}")
+        }
     }
 
     fun refreshNotes() {
@@ -234,5 +308,46 @@ class HomeViewModel(
         // Clear previous errors and try again
         clearMessages()
         uploadAndProcessNote(context, uri, fileName, courseId, userPreferences)
+    }
+
+    /**
+     * Refresh all home screen data
+     * Reloads user profile, recent notes, recently opened PDFs, and courses in parallel
+     * Called when user performs pull-to-refresh gesture
+     */
+    fun refreshHomeData() {
+        viewModelScope.launch {
+            try {
+                _isRefreshing.value = true
+                android.util.Log.d(TAG, "🔄 Starting home data refresh...")
+
+                // Launch all data loads in parallel for better performance using async
+                val profileDeferred = async { loadUserProfile() }
+                val notesDeferred = async { loadRecentNotes() }
+                val pdfsDeferred = async { loadRecentlyOpenedPdfs() }
+                val coursesDeferred = async { loadCourses() }
+
+                // Wait for all parallel operations to complete
+                profileDeferred.await()
+                notesDeferred.await()
+                pdfsDeferred.await()
+                coursesDeferred.await()
+
+                // Optional: Add small delay for better UX (shows refresh animation)
+                kotlinx.coroutines.delay(300)
+
+                android.util.Log.d(TAG, "✅ Home data refresh completed")
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ Error refreshing home data: ${e.message}", e)
+                _errorMessage.value = "Failed to refresh: ${e.message}"
+            } finally {
+                // Always reset refresh state, even if there's an error
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "HomeViewModel"
     }
 }

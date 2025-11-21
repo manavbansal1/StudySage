@@ -6,17 +6,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.utils.CloudinaryUploader
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 data class ProfileUiState(
     val userProfile: Map<String, Any>? = null,
     val isLoading: Boolean = false,
     val isUploadingImage: Boolean = false,
     val isChangingPassword: Boolean = false, // ⭐ NEW
+    val isRefreshing: Boolean = false,
     val message: String? = null,
     val error: String? = null
 )
@@ -140,8 +143,22 @@ class ProfileViewModel(
         _uiState.update { it.copy(message = null, error = null) }
     }
 
-    fun showError(message: String) {
-        _uiState.update { it.copy(error = message) }
+    /**
+     * Refresh profile data for pull-to-refresh
+     */
+    fun refreshProfile() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isRefreshing = true, error = null) }
+                val deferred = async { loadUserProfile() }
+                deferred.await()
+                delay(300)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to refresh profile: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     /**

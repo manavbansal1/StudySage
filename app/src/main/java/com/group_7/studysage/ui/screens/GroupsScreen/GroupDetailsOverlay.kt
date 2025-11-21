@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -221,7 +222,7 @@ fun GroupDetailsOverlay(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.ExitToApp,
+                                    Icons.AutoMirrored.Filled.ExitToApp,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -294,7 +295,7 @@ fun GroupDetailsOverlay(
         AlertDialog(
             onDismissRequest = { showLeaveConfirmation = false },
             icon = {
-                Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = MaterialTheme.colorScheme.error)
             },
             title = { Text("Leave Group?") },
             text = { Text("Are you sure you want to leave $groupName?") },
