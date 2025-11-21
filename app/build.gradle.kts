@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
-    id("org.jetbrains.kotlin.plugin.serialization")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -20,7 +20,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "GEMINI_API_KEY", "\"AIzaSyDTv4K1I5sbExsFjdiGlWuhTPZN8LVw908\"")
-        buildConfigField("String", "GEMINI_API_KEY2", "\"AIzaSyBCMMuq5PpKRR-diiqOyB4HzqIpJxvqYNA\"")
 
         // Add Cloudinary credentials (replace with your actual values)
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"dczuk4cxa\"")
@@ -110,6 +109,8 @@ dependencies {
     // OkHttp for Cloudinary uploads
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
 
     // Retrofit (if needed for other APIs)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -127,8 +128,6 @@ dependencies {
 
     // Accompanist for permissions
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
-    implementation(libs.androidx.animation)
-    implementation(libs.androidx.foundation)
 
     // Testing
     testImplementation(libs.junit)
@@ -138,5 +137,4 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 }

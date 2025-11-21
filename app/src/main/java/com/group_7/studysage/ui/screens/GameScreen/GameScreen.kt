@@ -1,236 +1,408 @@
-package com.group_7.studysage.ui.screens.GameScreen
+package com.group_7.studysage.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.offset
-import androidx.navigation.NavController
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
-import com.group_7.studysage.viewmodels.GameViewModel
-import androidx.compose.material3.Surface
+import androidx.navigation.NavController
+import com.group_7.studysage.data.models.ContentSource
+import com.group_7.studysage.data.models.GameType
+import com.group_7.studysage.viewmodels.StandaloneGameViewModel
+import com.google.firebase.auth.FirebaseAuth
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameScreen(navController: NavController, gameViewModel: GameViewModel = viewModel()) {
-    val showGameActionOverlay by gameViewModel.showGameActionOverlay.collectAsState()
-    val selectedGameTitle by gameViewModel.selectedGameTitle.collectAsState()
-    
-    var showQuizGenerationScreen by remember { mutableStateOf(false) }
-    
-    if (showQuizGenerationScreen) {
-        QuizGenerationScreen(
-            onBack = { 
-                showQuizGenerationScreen = false
-                gameViewModel.resetQuizGeneration()
-            },
-            gameViewModel = gameViewModel
-        )
-        return
-    }
+fun GameScreen(navController: NavController) {
+    val viewModel: StandaloneGameViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 16.dp, bottom = 16.dp),
-    ) {
+    var showHostDialog by remember { mutableStateOf(false) }
+    var showJoinDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Multiplayer Games", fontWeight = FontWeight.Bold, fontSize = 24.sp) },
+                actions = {
+                    IconButton(onClick = { navController.navigate("leaderboard") }) {
+                        Icon(Icons.Default.EmojiEvents, contentDescription = "Leaderboard")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(paddingValues)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(18.dp))
+            // Game Icon
+            Icon(
+                imageVector = Icons.Default.SportsEsports,
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
 
-            // Header Section
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Challenge yourself!",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Ready to Play?",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Host a game or join with a code",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Host Game Button
+            Button(
+                onClick = { showHostDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Host a Game", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Join Game Button
+            OutlinedButton(
+                onClick = { showJoinDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Icon(Icons.Default.Login, contentDescription = null)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Join a Game", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // Show loading/error states
+            if (uiState.isLoading) {
+                Spacer(modifier = Modifier.height(24.dp))
+                CircularProgressIndicator()
+            }
+
+            uiState.error?.let { error ->
+                Spacer(modifier = Modifier.height(24.dp))
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
                 ) {
                     Text(
-                        text = "Games",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        text = error,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
+                }
+            }
 
-                    // Stats button
-                    IconButton(
-                        onClick = { /* TODO: Navigate to stats screen */ },
-                        modifier = Modifier.size(44.dp)
+            uiState.gameCode?.let { code ->
+                Spacer(modifier = Modifier.height(24.dp))
+                GameCodeDisplay(
+                    gameCode = code,
+                    onNavigateToGame = {
+                        navController.navigate("game_play/$code")
+                    }
+                )
+            }
+        }
+
+        // Dialogs
+        if (showHostDialog) {
+            HostGameDialog(
+                onDismiss = { showHostDialog = false },
+                onHostGame = { gameType, contentSource, contentData, topicDescription ->
+                    viewModel.hostGame(gameType, contentSource, contentData, topicDescription)
+                    showHostDialog = false
+                }
+            )
+        }
+
+        if (showJoinDialog) {
+            JoinGameDialog(
+                onDismiss = { showJoinDialog = false },
+                onJoinGame = { gameCode ->
+                    viewModel.joinGame(gameCode) { success ->
+                        if (success) {
+                            showJoinDialog = false
+                            navController.navigate("game_play/$gameCode")
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun GameCodeDisplay(gameCode: String, onNavigateToGame: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Game Created!",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Share this code with your friends:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = gameCode,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 4.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onNavigateToGame,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Enter Game Lobby")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HostGameDialog(
+    onDismiss: () -> Unit,
+    onHostGame: (GameType, ContentSource, String?, String?) -> Unit
+) {
+    var selectedGameType by remember { mutableStateOf(GameType.QUIZ_RACE) }
+    var selectedContentSource by remember { mutableStateOf(ContentSource.TEXT) }
+    var topicText by remember { mutableStateOf("") }
+    var selectedPdfUri by remember { mutableStateOf<Uri?>(null) }
+
+    val pdfPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedPdfUri = uri
+    }
+
+    val gameTypes = listOf(
+        GameType.QUIZ_RACE to "Quiz Race",
+        GameType.FLASHCARD_BATTLE to "Flashcard Battle",
+        GameType.TEAM_TRIVIA to "Team Trivia",
+        GameType.SPEED_MATCH to "Speed Match"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Host a Game", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Game Type Selection
+                Text("Select Game Type", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                gameTypes.forEach { (type, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.BarChart,
-                            contentDescription = "Game Stats",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(26.dp)
+                        RadioButton(
+                            selected = selectedGameType == type,
+                            onClick = { selectedGameType = type }
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(name)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Content Source Selection
+                Text("Content Source", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedContentSource == ContentSource.TEXT,
+                        onClick = { selectedContentSource = ContentSource.TEXT }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Enter Topics as Text")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedContentSource == ContentSource.PDF,
+                        onClick = { selectedContentSource = ContentSource.PDF }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Upload PDF")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Content Input
+                when (selectedContentSource) {
+                    ContentSource.TEXT -> {
+                        OutlinedTextField(
+                            value = topicText,
+                            onValueChange = { topicText = it },
+                            label = { Text("Describe topics for questions") },
+                            placeholder = { Text("e.g., Photosynthesis, Cell Biology, etc.") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 5
+                        )
+                    }
+                    ContentSource.PDF -> {
+                        Button(
+                            onClick = { pdfPickerLauncher.launch("application/pdf") },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Upload, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(selectedPdfUri?.let { "PDF Selected" } ?: "Choose PDF")
+                        }
+                        selectedPdfUri?.let {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = it.lastPathSegment ?: "Selected PDF",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val contentData = when (selectedContentSource) {
+                        ContentSource.TEXT -> null
+                        ContentSource.PDF -> selectedPdfUri?.toString()
+                    }
+                    val topic = if (selectedContentSource == ContentSource.TEXT) topicText else null
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Column(
-                modifier = Modifier.fillMaxSize().offset(y = -32.dp), // Added offset
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    onHostGame(selectedGameType, selectedContentSource, contentData, topic)
+                },
+                enabled = when (selectedContentSource) {
+                    ContentSource.TEXT -> topicText.isNotBlank()
+                    ContentSource.PDF -> selectedPdfUri != null
+                }
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    GameCard(
-                        title = "Quiz Game",
-                        modifier = Modifier.weight(1f).aspectRatio(1f),
-                        onClick = {
-                            showQuizGenerationScreen = true
-                        }
-                    )
-                    GameCard(
-                        title = "Placeholder Game 1",
-                        modifier = Modifier.weight(1f).aspectRatio(1f),
-                        onClick = {
-                            gameViewModel.setSelectedGameTitle("Placeholder Game 1")
-                            gameViewModel.setShowGameActionOverlay(true)
-                        }
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    GameCard(
-                        title = "Placeholder Game 2",
-                        modifier = Modifier.weight(1f).aspectRatio(1f),
-                        onClick = {
-                            gameViewModel.setSelectedGameTitle("Placeholder Game 2")
-                            gameViewModel.setShowGameActionOverlay(true)
-                        }
-                    )
-                    GameCard(
-                        title = "Placeholder Game 3",
-                        modifier = Modifier.weight(1f).aspectRatio(1f),
-                        onClick = {
-                            gameViewModel.setSelectedGameTitle("Placeholder Game 3")
-                            gameViewModel.setShowGameActionOverlay(true)
-                        }
-                    )
-                }
+                Text("Create Game")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
-    }
-
-    if (showGameActionOverlay) {
-        GameActionOverlay(
-            gameTitle = selectedGameTitle,
-            onHostGame = {
-                // TODO: Implement host game logic
-                gameViewModel.setShowGameActionOverlay(false)
-            },
-            onJoinGame = {
-                // TODO: Implement join game logic
-                gameViewModel.setShowGameActionOverlay(false)
-            },
-            onDismiss = { gameViewModel.setShowGameActionOverlay(false) }
-        )
-    }
+    )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameCard(title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        onClick = onClick
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-
-
-@Composable
-fun GameActionOverlay(
-    gameTitle: String,
-    onHostGame: () -> Unit,
-    onJoinGame: () -> Unit,
-    onDismiss: () -> Unit
+fun JoinGameDialog(
+    onDismiss: () -> Unit,
+    onJoinGame: (String) -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier
-                .fillMaxWidth(0.7f) // Reduced width to 70%
-                .height(180.dp) // Increased height slightly
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp), // Fill the surface and add padding
-                verticalArrangement = Arrangement.SpaceEvenly, // Distribute buttons evenly
-                horizontalAlignment = Alignment.CenterHorizontally
+    var gameCode by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Join a Game", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text("Enter the 6-character game code")
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = gameCode,
+                    onValueChange = {
+                        if (it.length <= 6) {
+                            gameCode = it.uppercase()
+                        }
+                    },
+                    label = { Text("Game Code") },
+                    placeholder = { Text("ABC123") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onJoinGame(gameCode) },
+                enabled = gameCode.length == 6
             ) {
-                Button(
-                    onClick = onHostGame,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Host Game")
-                }
-                Button(
-                    onClick = onJoinGame,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Join Game")
-                }
+                Text("Join")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
-    }
+    )
 }

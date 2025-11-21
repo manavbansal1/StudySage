@@ -47,7 +47,7 @@ class GroupChatViewModel(
     val uploadError: StateFlow<String?> = _uploadError.asStateFlow()
 
     init {
-        _currentUserId.value = authRepository.currentUser?.uid ?: ""
+        _currentUserId.value = authRepository.getCurrentUser()?.uid ?: ""
     }
 
     fun loadGroupData(groupId: String) {
@@ -68,7 +68,7 @@ class GroupChatViewModel(
                     @Suppress("UNCHECKED_CAST")
                     val members = groupProfile["members"] as? List<Map<String, Any>> ?: emptyList()
 
-                    val currentUserId = authRepository.currentUser?.uid ?: ""
+                    val currentUserId = authRepository.getCurrentUser()?.uid ?: ""
                     val isAdmin = groupRepository.isUserAdmin(groupId, currentUserId)
 
                     _uiState.value = GroupChatUiState.Success(
@@ -106,7 +106,7 @@ class GroupChatViewModel(
 
                 result.onSuccess {
                     // Update last message in user's group summary
-                    val currentUser = authRepository.currentUser
+                    val currentUser = authRepository.getCurrentUser()
                     val userName = currentUser?.displayName ?: "You"
 
                     authRepository.updateGroupLastMessage(
@@ -211,7 +211,7 @@ class GroupChatViewModel(
     fun leaveGroup(groupId: String) {
         viewModelScope.launch {
             try {
-                val userId = authRepository.currentUser?.uid ?: return@launch
+                val userId = authRepository.getCurrentUser()?.uid ?: return@launch
 
                 // Remove user from group
                 groupRepository.removeMemberFromGroup(groupId, userId)
