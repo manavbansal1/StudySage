@@ -28,9 +28,9 @@ class AuthRepository(
         private const val TAG = "AuthRepository"
     }
 
-    fun getCurrentUser(): FirebaseUser? {
-        return firebaseAuth.currentUser
-    }
+    val currentUser: FirebaseUser?
+        get() = firebaseAuth.currentUser
+
 
     /**
      * Sign up a new user with email, password, and name
@@ -129,7 +129,7 @@ class AuthRepository(
      * Check if a user is currently signed in
      */
     fun isUserSignedIn(): Boolean {
-        val signedIn = getCurrentUser() != null
+        val signedIn = currentUser != null
         return signedIn
     }
 
@@ -140,7 +140,7 @@ class AuthRepository(
      */
     suspend fun getUserProfile(): Map<String, Any>? {
         return try {
-            val userId = getCurrentUser()?.uid ?: return null
+            val userId = currentUser?.uid ?: return null
             val document = firestore.collection("users").document(userId).get().await()
             document.data
         } catch (e: Exception) {
@@ -155,7 +155,7 @@ class AuthRepository(
      */
     suspend fun updateUserProfile(updates: Map<String, Any>): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             firestore.collection("users").document(userId).update(updates).await()
             Log.d(TAG, "User profile updated for uid=$userId")
             Result.success(Unit)
@@ -171,7 +171,7 @@ class AuthRepository(
      */
     suspend fun updateProfileImage(imageUrl: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             firestore.collection("users").document(userId)
                 .update("profileImageUrl", imageUrl)
                 .await()
@@ -190,7 +190,7 @@ class AuthRepository(
      */
     suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
         return try {
-            val user = getCurrentUser() ?: return Result.failure(Exception("No user logged in"))
+            val user = currentUser?: return Result.failure(Exception("No user logged in"))
             val email = user.email ?: return Result.failure(Exception("No email found"))
             val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
             user.reauthenticate(credential).await()
@@ -221,7 +221,7 @@ class AuthRepository(
      */
     suspend fun addGroupToUserProfile(groupId: String, groupName: String, groupPic: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val groupSummary = mapOf(
                 "groupId" to groupId,
                 "groupName" to groupName,
@@ -252,7 +252,7 @@ class AuthRepository(
         timestamp: Long
     ): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             @Suppress("UNCHECKED_CAST")
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
@@ -283,7 +283,7 @@ class AuthRepository(
      */
     suspend fun removeGroupFromUserProfile(groupId: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             @Suppress("UNCHECKED_CAST")
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
@@ -355,7 +355,7 @@ class AuthRepository(
         groupPic: String
     ): Result<Unit> {
         return try {
-            val currentUserId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val currentUserId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val currentUserProfile = getUserProfile()
             val currentUserName = currentUserProfile?.get("name") as? String ?: "Unknown"
             val recipient = getUserByEmail(recipientEmail)
@@ -409,7 +409,7 @@ class AuthRepository(
      */
     suspend fun getPendingInvites(): List<GroupInvite> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return emptyList()
+            val userId = currentUser?.uid ?: return emptyList()
             val profile = getUserProfile()
             @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
@@ -446,7 +446,7 @@ class AuthRepository(
      * To stop listening: listener.remove()
      */
     fun listenToGroupInvites(onInvitesChanged: (List<GroupInvite>) -> Unit): ListenerRegistration? {
-        val userId = getCurrentUser()?.uid
+        val userId = currentUser?.uid
         if (userId == null) {
             Log.e(TAG, "Cannot listen to invites: No user logged in")
             return null
@@ -499,7 +499,7 @@ class AuthRepository(
      */
     suspend fun acceptGroupInvite(inviteId: String, groupId: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
@@ -530,7 +530,7 @@ class AuthRepository(
      */
     suspend fun rejectGroupInvite(inviteId: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
@@ -553,7 +553,7 @@ class AuthRepository(
      */
     suspend fun deleteInvite(inviteId: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
@@ -575,7 +575,7 @@ class AuthRepository(
      */
     suspend fun updateProfileVisibility(visibility: String): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("Not signed in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
             firestore.collection("users")
                 .document(userId)
                 .update("privacy.profileVisibility", visibility)
@@ -594,7 +594,7 @@ class AuthRepository(
      */
     suspend fun getProfileVisibility(): String {
         return try {
-            val userId = getCurrentUser()?.uid ?: return "everyone"
+            val userId = currentUser?.uid ?: return "everyone"
             val doc = firestore.collection("users").document(userId).get().await()
             val privacy = doc.get("privacy") as? Map<*, *>
             (privacy?.get("profileVisibility") as? String) ?: "everyone"
@@ -610,7 +610,7 @@ class AuthRepository(
      */
     suspend fun updateNotificationsEnabled(enabled: Boolean): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("Not signed in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
             firestore.collection("users")
                 .document(userId)
                 .update("notifications.enabled", enabled)
@@ -629,7 +629,7 @@ class AuthRepository(
      */
     suspend fun getNotificationsEnabled(): Boolean {
         return try {
-            val userId = getCurrentUser()?.uid ?: return true
+            val userId = currentUser?.uid ?: return true
             val doc = firestore.collection("users").document(userId).get().await()
             val notifications = doc.get("notifications") as? Map<*, *>
             (notifications?.get("enabled") as? Boolean) ?: true
@@ -651,7 +651,7 @@ class AuthRepository(
         courseId: String
     ): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             // Get existing library
             @Suppress("UNCHECKED_CAST")
@@ -705,24 +705,26 @@ class AuthRepository(
         courseId: String
     ): Result<Unit> {
         return try {
-            val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
-            val sampleLibrary = listOf(
-                mapOf(
-                    "noteId" to "sampleNote1",
-                    "fileName" to "Introduction to Biology.pdf",
-                    "fileUrl" to "https://example.com/biology_intro.pdf",
-                    "subject" to "Biology",
-                    "courseId" to "BIO101",
-                    "addedAt" to System.currentTimeMillis() - 3600000 // 1 hour ago
-                ),
-                mapOf(
-                    "noteId" to "sampleNote2",
-                    "fileName" to "Calculus Fundamentals.pdf",
-                    "fileUrl" to "https://example.com/calculus_basics.pdf",
-                    "subject" to "Mathematics",
-                    "courseId" to "MATH101",
-                    "addedAt" to System.currentTimeMillis() - 7200000 // 2 hours ago
-                )
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+
+            // Get existing recently opened list
+            @Suppress("UNCHECKED_CAST")
+            val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
+
+            // Find if this note already exists
+            val existingEntry = recentlyOpened.find { it["noteId"] == noteId }
+            val openCount = ((existingEntry?.get("openCount") as? Number)?.toInt() ?: 0) + 1
+
+            // Create updated entry
+            val noteEntry = mapOf(
+                "noteId" to noteId,
+                "title" to title,
+                "fileName" to fileName,
+                "fileUrl" to fileUrl,
+                "courseId" to courseId,
+                "lastOpenedAt" to System.currentTimeMillis(),
+                "openCount" to openCount
             )
 
             // Remove existing entry if present and add new one at the front

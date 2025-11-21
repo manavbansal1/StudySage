@@ -27,13 +27,13 @@ class AuthViewModel(
     private val _userProfile = mutableStateOf<Map<String, Any>?>(null)
     val userProfile: State<Map<String, Any>?> = _userProfile
 
-    private val _currentUser = MutableStateFlow<FirebaseUser?>(authRepository.getCurrentUser())
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(authRepository.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser
 
     init {
         if (_isSignedIn.value) {
             loadUserProfile()
-            _currentUser.value = authRepository.getCurrentUser()
+            _currentUser.value = authRepository.currentUser
         }
     }
 
@@ -55,7 +55,7 @@ class AuthViewModel(
                 .onSuccess {
                     _isSignedIn.value = true
                     loadUserProfile()
-                    _currentUser.value = authRepository.getCurrentUser()
+                    _currentUser.value = authRepository.currentUser
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Sign up failed"
@@ -79,7 +79,7 @@ class AuthViewModel(
                 .onSuccess {
                     _isSignedIn.value = true
                     loadUserProfile()
-                    _currentUser.value = authRepository.getCurrentUser()
+                    _currentUser.value = authRepository.currentUser
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Sign in failed"
