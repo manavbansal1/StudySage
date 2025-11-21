@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -29,11 +30,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.group_7.studysage.data.repository.Course
 import com.group_7.studysage.data.repository.CourseWithNotes
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.NotesViewModel
 import com.group_7.studysage.viewmodels.HomeViewModel
+import com.group_7.studysage.viewmodels.CourseViewModel
 import com.group_7.studysage.ui.screens.nfc.ReceiveNFCScreen
 import com.group_7.studysage.ui.screens.nfc.ShareNFCScreen
 import com.group_7.studysage.utils.FileUtils
@@ -47,7 +52,8 @@ fun CourseDetailScreen(
     courseWithNotes: CourseWithNotes,
     onBack: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
-    notesViewModel: NotesViewModel = viewModel()
+    notesViewModel: NotesViewModel = viewModel(),
+    courseViewModel: CourseViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val course = courseWithNotes.course
@@ -141,7 +147,7 @@ fun CourseDetailScreen(
                                 notesViewModel.clearSelectedNote()
                             }) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowBack,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back"
                                 )
                             }
@@ -199,10 +205,14 @@ fun CourseDetailScreen(
         }
     }
 
-    // Show messages
+    // Show messages and refresh course on successful upload
     LaunchedEffect(uploadStatus) {
         uploadStatus?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            // Refresh course to show newly uploaded document
+            if (message.contains("processed successfully", ignoreCase = true)) {
+                courseViewModel.refreshCourse(course.id)
+            }
         }
     }
 
@@ -225,7 +235,7 @@ fun CourseDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -260,66 +270,84 @@ fun CourseDetailScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        // Simple swipe-to-refresh state using Accompanist (deprecated warning is acceptable for now)
+        val isRefreshing = courseViewModel.uiState.collectAsState().value.isRefreshing
+        val swipeState = rememberSwipeRefreshState(isRefreshing)
+
+        SwipeRefresh(
+            state = swipeState,
+            onRefresh = { courseViewModel.refreshCourse(course.id) },
+            indicator = { state, trigger ->
+                SwipeRefreshIndicator(
+                    state = state,
+                    refreshTriggerDistance = trigger,
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            }
         ) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            // Course Info Card
-            item {
-                CourseInfoCard(course)
-            }
+                // Course Info Card
+                item { CourseInfoCard(course) }
 
-            // Notes Section Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Course Notes (${notes.size})",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Bold
-                    )
+                // Notes Section Header
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Course Notes (${notes.size})",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                    if (isLoading && uploadStatus != null) {
-                        Column(horizontalAlignment = Alignment.End) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                            Text(
-                                text = uploadStatus!!,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                        if (isLoading && uploadStatus != null) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = uploadStatus!!,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
                             )
+                            }
                         }
                     }
                 }
-            }
 
-            // Empty state or notes
-            if (notes.isEmpty()) {
-                item {
-                    EmptyNotesCard()
-                }
-            } else {
-                val notesList = notes.toList()
-                itemsIndexed(notesList, key = { _: Int, note: Note -> note.id }) { _: Int, note: Note ->
-                    CourseNoteCard(note = note, onClick = {
-                        selectedNote = note
-                        showNoteOptions = true
-                    })
-                }
-            }
+                // Empty state or notes
+                if (notes.isEmpty()) {
+                    item { EmptyNotesCard() }
+                } else {
+                    val notesList = notes.toList()
+                    itemsIndexed(notesList, key = { _, note: Note -> note.id }) { _, note ->
+                        CourseNoteCard(note = note, onClick = {
+                            // Track that the note was opened
+                            homeViewModel.markNoteAsOpened(
+                                noteId = note.id,
+                                title = if (note.title.isNotBlank()) note.title else note.originalFileName,
+                                fileName = note.originalFileName,
+                                fileUrl = note.fileUrl,
+                                courseId = note.courseId
+                            )
 
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
+                            selectedNote = note
+                            showNoteOptions = true
+                        })
+                    }
+                }
+
+                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
     }
@@ -343,7 +371,7 @@ fun CourseDetailScreen(
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 ListItem(
                     headlineContent = { Text("Upload from phone") },
@@ -427,7 +455,7 @@ fun CourseDetailScreen(
                         .padding(vertical = 12.dp)
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 ListItem(
                     headlineContent = { Text("Download original note") },
@@ -885,7 +913,7 @@ fun EmptyNotesCard() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                Icons.Default.NoteAdd,
+                Icons.AutoMirrored.Filled.NoteAdd,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -936,7 +964,7 @@ fun NoteSummaryScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }

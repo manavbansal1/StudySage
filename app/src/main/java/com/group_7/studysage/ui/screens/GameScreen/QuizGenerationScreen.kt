@@ -6,7 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
@@ -56,7 +56,7 @@ fun QuizGenerationScreen(
                 title = { Text("Generate Quiz") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -216,7 +216,7 @@ fun QuizGenerationScreen(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Preferences Input
                 Text(
@@ -396,7 +396,7 @@ fun QuizResultScreen(
                     }
                     
                     if (question.explanation.isNotBlank()) {
-                        Divider()
+                        HorizontalDivider()
                         Text(
                             text = "Explanation: ${question.explanation}",
                             style = MaterialTheme.typography.bodySmall,
@@ -407,7 +407,7 @@ fun QuizResultScreen(
             }
         }
 
-        Divider()
+        HorizontalDivider()
 
         // Action buttons
         Column(

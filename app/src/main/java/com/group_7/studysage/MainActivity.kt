@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.navigation.StudySageNavigation
@@ -23,6 +24,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.group_7.studysage.utils.PermissionHandler
 import com.group_7.studysage.services.NfcHostApduService
 import com.group_7.studysage.data.nfc.NFCPayload
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +48,17 @@ class MainActivity : ComponentActivity() {
 
         PermissionHandler.init(this)
         PermissionHandler.requestAllPermissions(this)
+
+        // Update daily streak when app opens (non-blocking, background operation)
+        lifecycleScope.launch {
+            try {
+                val authRepository = AuthRepository()
+                authRepository.updateDailyStreak()
+            } catch (e: Exception) {
+                // Silently catch - streak update failure shouldn't crash app
+                Log.e("MainActivity", "Failed to update daily streak: ${e.message}")
+            }
+        }
 
         // Set up HCE callback
         NfcHostApduService.onDataReceived = { data ->

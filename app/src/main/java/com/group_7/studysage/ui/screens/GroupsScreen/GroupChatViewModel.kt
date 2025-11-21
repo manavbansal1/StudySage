@@ -65,6 +65,7 @@ class GroupChatViewModel(
                     val groupName = groupProfile["name"] as? String ?: "Unknown Group"
                     val groupPic = groupProfile["profilePic"] as? String ?: ""
                     val memberCount = (groupProfile["memberCount"] as? Long)?.toInt() ?: 0
+                    @Suppress("UNCHECKED_CAST")
                     val members = groupProfile["members"] as? List<Map<String, Any>> ?: emptyList()
 
                     val currentUserId = authRepository.getCurrentUser()?.uid ?: ""
@@ -175,6 +176,7 @@ class GroupChatViewModel(
                     // Remove group from user's profile
                     val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     val userDoc = firestore.collection("users").document(userId).get().await()
+                    @Suppress("UNCHECKED_CAST")
                     val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
 
                     val updatedGroups = userGroups.filter { it["groupId"] != groupId }
@@ -232,6 +234,7 @@ class GroupChatViewModel(
                 val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 members.forEach { member ->
                     val userDoc = firestore.collection("users").document(member.userId).get().await()
+                    @Suppress("UNCHECKED_CAST")
                     val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
 
                     val updatedGroups = userGroups.filter { it["groupId"] != groupId }
@@ -302,6 +305,7 @@ class GroupChatViewModel(
 
             members.forEach { member ->
                 val userDoc = firestore.collection("users").document(member.userId).get().await()
+                @Suppress("UNCHECKED_CAST")
                 val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
 
                 val updatedGroups = userGroups.map { group ->
@@ -335,6 +339,7 @@ class GroupChatViewModel(
 
             members.forEach { member ->
                 val userDoc = firestore.collection("users").document(member.userId).get().await()
+                @Suppress("UNCHECKED_CAST")
                 val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
 
                 val updatedGroups = userGroups.map { group ->

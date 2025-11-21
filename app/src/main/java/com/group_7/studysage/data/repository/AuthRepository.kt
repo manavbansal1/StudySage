@@ -6,6 +6,10 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ListenerRegistration
+import com.group_7.studysage.utils.ResendEmailService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -49,6 +53,7 @@ class AuthRepository(
                 "level" to 1,
                 "xpPoints" to 0,
                 "streakDays" to 0,
+                "lastLoginDate" to System.currentTimeMillis(),
                 "quizStats" to mapOf(
                     "totalQuizzes" to 0,
                     "averageScore" to 0.0,
@@ -73,6 +78,18 @@ class AuthRepository(
                 "groupInvites" to listOf<Map<String, Any>>() // List of pending invites
             )
             firestore.collection("users").document(user.uid).set(userProfile).await()
+            //  Send welcome email via Resend (non-blocking)
+            CoroutineScope(Dispatchers.IO).launch {
+                Log.d(TAG, "📧 Attempting to send welcome email via Resend...")
+                ResendEmailService.sendWelcomeEmail(email, name)
+                    .onSuccess {
+                        Log.d(TAG, "✅ Welcome email sent successfully via Resend to $email")
+                    }
+                    .onFailure { error ->
+                        // Email failure doesn't affect signup
+                        Log.w(TAG, "⚠️ Welcome email failed (non-critical): ${error.message}")
+                    }
+            }
             Result.success(user)
         } catch (e: Exception) {
             Log.e(TAG, "Sign up failed for email=$email: ${e.message}", e)
@@ -237,6 +254,7 @@ class AuthRepository(
         return try {
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
             val updatedGroups = groups.map { group ->
                 if (group["groupId"] == groupId) {
@@ -267,6 +285,7 @@ class AuthRepository(
         return try {
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val groups = profile?.get("groups") as? List<Map<String, Any>> ?: emptyList()
             val updatedGroups = groups.filter { it["groupId"] != groupId }
             firestore.collection("users").document(userId)
@@ -286,6 +305,7 @@ class AuthRepository(
     suspend fun getUserGroups(): List<Map<String, Any>> {
         return try {
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             (profile?.get("groups") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch user groups: ${e.message}", e)
@@ -343,12 +363,14 @@ class AuthRepository(
             val recipientId = recipient["uid"] as? String
                 ?: return Result.failure(Exception("Invalid user data"))
             // Check if user is already a member
+            @Suppress("UNCHECKED_CAST")
             val recipientGroups = recipient["groups"] as? List<Map<String, Any>> ?: emptyList()
             val alreadyMember = recipientGroups.any { it["groupId"] == groupId }
             if (alreadyMember) {
                 return Result.failure(Exception("User is already a member of this group"))
             }
             // Check if invite already exists
+            @Suppress("UNCHECKED_CAST")
             val recipientInvites = recipient["groupInvites"] as? List<Map<String, Any>> ?: emptyList()
             val inviteExists = recipientInvites.any {
                 it["groupId"] == groupId && it["status"] == "pending"
@@ -389,6 +411,7 @@ class AuthRepository(
         return try {
             val userId = getCurrentUser()?.uid ?: return emptyList()
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
                 try {
@@ -439,6 +462,7 @@ class AuthRepository(
 
                 if (snapshot != null && snapshot.exists()) {
                     try {
+                        @Suppress("UNCHECKED_CAST")
                         val invites = snapshot.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
                         val pendingInvites = invites.filter { it["status"] == "pending" }.mapNotNull { invite ->
                             try {
@@ -477,6 +501,7 @@ class AuthRepository(
         return try {
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             // Find and update the invite
             val updatedInvites = invites.map { invite ->
@@ -507,6 +532,7 @@ class AuthRepository(
         return try {
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             // Remove the invite
             val updatedInvites = invites.filter { it["inviteId"] != inviteId }
@@ -529,6 +555,7 @@ class AuthRepository(
         return try {
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             val invites = profile?.get("groupInvites") as? List<Map<String, Any>> ?: emptyList()
             val updatedInvites = invites.filter { it["inviteId"] != inviteId }
             firestore.collection("users").document(userId)
@@ -613,8 +640,8 @@ class AuthRepository(
     }
 
     /**
-     * Add a recently opened PDF to user's profile
-     * Maintains a list of last 5 PDFs with most recent first
+     * Add a note to user's upload library (tracks uploads)
+     * This is separate from recently opened tracking
      */
     suspend fun addNoteToUserLibrary(
         noteId: String,
@@ -627,6 +654,7 @@ class AuthRepository(
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val profile = getUserProfile()
             // Get existing library
+            @Suppress("UNCHECKED_CAST")
             val userLibrary = (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
             // Create new note entry
             val noteEntry = mapOf(
@@ -650,11 +678,12 @@ class AuthRepository(
     }
 
     /**
-     * Get recently opened PDFs
+     * Get user's upload library
      */
     suspend fun getUserLibrary(): List<Map<String, Any>> {
         return try {
             val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
             (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch user library: ${e.message}", e)
@@ -663,9 +692,18 @@ class AuthRepository(
     }
 
     /**
-     * Initialize user profile with sample PDFs (for testing)
+     * Add a note to recently opened list
+     * Tracks when users actually open/view notes
+     * Updates timestamp if note already exists in the list
+     * Maintains a list of most recent 20 items
      */
-    suspend fun initializeSampleUserLibrary(): Result<Unit> {
+    suspend fun addToRecentlyOpened(
+        noteId: String,
+        title: String,
+        fileName: String,
+        fileUrl: String,
+        courseId: String
+    ): Result<Unit> {
         return try {
             val userId = getCurrentUser()?.uid ?: return Result.failure(Exception("No user logged in"))
             val sampleLibrary = listOf(
@@ -686,13 +724,140 @@ class AuthRepository(
                     "addedAt" to System.currentTimeMillis() - 7200000 // 2 hours ago
                 )
             )
+
+            // Remove existing entry if present and add new one at the front
+            val filteredList = recentlyOpened.filter { it["noteId"] != noteId }
+            val updatedList = listOf(noteEntry) + filteredList
+
+            // Keep only the 20 most recent items
+            val limitedList = updatedList.take(20)
+
             firestore.collection("users").document(userId)
-                .update("userLibrary", sampleLibrary)
+                .update("recentlyOpened", limitedList)
                 .await()
+
+            Log.d(TAG, "Added note $noteId to recently opened (open count: $openCount)")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize sample library: ${e.message}", e)
+            Log.e(TAG, "Failed to add note $noteId to recently opened: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * Get recently opened notes
+     * Returns list sorted by lastOpenedAt (most recent first)
+     */
+    suspend fun getRecentlyOpened(limit: Int = 10): Result<List<Map<String, Any>>> {
+        return try {
+            val profile = getUserProfile()
+            @Suppress("UNCHECKED_CAST")
+            val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
+
+            // Already sorted by most recent first, just limit the results
+            val limitedList = recentlyOpened.take(limit)
+
+            Log.d(TAG, "Retrieved ${limitedList.size} recently opened notes")
+            Result.success(limitedList)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch recently opened notes: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Clear all recently opened notes
+     * Useful for testing or user preference
+     */
+    suspend fun clearRecentlyOpened(): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            firestore.collection("users").document(userId)
+                .update("recentlyOpened", emptyList<Map<String, Any>>())
+                .await()
+            Log.d(TAG, "Cleared recently opened notes")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear recently opened notes: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Update user's daily streak based on app open
+     * Called when MainActivity is created
+     * - Increments streak if app opened on consecutive days
+     * - Maintains streak if app opened same day
+     * - Resets streak to 1 if missed days
+     *
+     * NOTE: Uses "lastLoginDate" field name for backward compatibility
+     * NOTE: This is called when app opens, not on login
+     */
+    suspend fun updateDailyStreak() {
+        try {
+            // Get current user ID
+            val userId = firebaseAuth.currentUser?.uid
+            if (userId == null) {
+                Log.d(TAG, "No user signed in, skipping streak update")
+                return
+            }
+
+            // Fetch user document from Firestore
+            val userDoc = firestore.collection("users").document(userId).get().await()
+
+            if (!userDoc.exists()) {
+                Log.w(TAG, "User document not found for streak update")
+                return
+            }
+
+            // Read current values
+            val currentStreak = (userDoc.getLong("streakDays") ?: 0L).toInt()
+            val lastLoginDate = userDoc.getLong("lastLoginDate") ?: 0L
+
+            // Calculate day start timestamps for comparison
+            val currentTime = System.currentTimeMillis()
+            val currentDayStart = getDayStartTimestamp(currentTime)
+            val lastOpenDayStart = getDayStartTimestamp(lastLoginDate)
+
+            // Calculate days difference
+            val daysDifference = ((currentDayStart - lastOpenDayStart) / (1000 * 60 * 60 * 24)).toInt()
+
+            // Determine new streak based on days difference
+            val newStreak = when (daysDifference) {
+                0 -> currentStreak // Same day, keep current streak
+                1 -> currentStreak + 1 // Consecutive day, increment streak
+                else -> 1 // Missed days, reset to 1
+            }
+
+            // Update Firestore with new streak and current timestamp
+            firestore.collection("users").document(userId)
+                .update(
+                    mapOf(
+                        "streakDays" to newStreak,
+                        "lastLoginDate" to currentTime
+                    )
+                )
+                .await()
+
+            Log.d(TAG, "✅ Streak updated: $currentStreak → $newStreak (days diff: $daysDifference)")
+        } catch (e: Exception) {
+            // Log error but don't throw - this is a non-critical operation
+            Log.e(TAG, "❌ Failed to update daily streak: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Get the start of day timestamp (midnight) for a given timestamp
+     * @param timestamp The timestamp to convert
+     * @return The timestamp at 00:00:00.000 of that day
+     */
+    private fun getDayStartTimestamp(timestamp: Long): Long {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 }

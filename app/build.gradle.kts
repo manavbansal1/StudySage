@@ -24,6 +24,9 @@ android {
         // Add Cloudinary credentials (replace with your actual values)
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"dczuk4cxa\"")
         buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"StduySage\"")
+
+        // Resend API Key
+        buildConfigField("String", "RESEND_API_KEY", "\"re_PKvJfniJ_CM5M7j7hqKTxpds3TfnJzHWS\"")
     }
 
     buildTypes {
@@ -72,6 +75,9 @@ dependencies {
 
     // Activity Compose
     implementation("androidx.activity:activity-compose:1.9.3")
+
+    // Accompanist - Pull-to-refresh
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
 
     // ViewModel Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
