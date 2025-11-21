@@ -2,7 +2,7 @@
 
 > AI-powered study companion for students to organize courses, process notes intelligently, and collaborate in study groups.
 
-** Website:** [studysage.vercel.app](https://studysage.vercel.app)
+**Website:** [studysage.vercel.app](https://studysage.vercel.app)
 
 ---
 
@@ -12,12 +12,12 @@ StudySage transforms how students manage their academic life by combining course
 
 ### Key Features
 
-- ** AI Note Processing** - Upload PDFs, Word docs, or text files and get instant AI-generated summaries, key points, and tags
-- ** Course Management** - Organize courses by semester with color-coded cards and semester/year filters
-- ** Study Groups** - Real-time messaging with image sharing, group invites, and role-based permissions
-- ** Modern UI** - Purple-gold theme with glass morphism effects and smooth animations
-- ** Cloud Sync** - All data synced across devices via Firebase
-- ** Secure Auth** - Email/password authentication with profile management
+- **AI Note Processing** - Upload PDFs, Word docs, or text files and get instant AI-generated summaries, key points, and tags
+- **Course Management** - Organize courses by semester with color-coded cards and semester/year filters
+- **Study Groups** - Real-time messaging with image sharing, group invites, and role-based permissions
+- **Modern UI** - Purple-gold theme with glass morphism effects and smooth animations
+- **Cloud Sync** - All data synced across devices via Firebase
+- **Secure Auth** - Email/password authentication with profile management
 
 ---
 
