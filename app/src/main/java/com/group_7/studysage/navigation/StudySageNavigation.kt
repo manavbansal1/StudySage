@@ -289,7 +289,7 @@ fun StudySageNavigation(
                         slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
                     }
                 ) {
-                    CoursesScreen()
+                    CoursesScreen(authViewModel = authViewModel)
                 }
                 composable(
                     Screen.Groups.route,

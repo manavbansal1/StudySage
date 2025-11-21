@@ -60,6 +60,6 @@ data class Quiz(
  * Response wrapper for quiz generation from Gemini AI
  */
 data class QuizGenerationResponse(
-    @SerializedName("quiz")
-    val quiz: List<QuizQuestion>
+    @SerializedName("questions")
+    val questions: List<QuizQuestion>
 )

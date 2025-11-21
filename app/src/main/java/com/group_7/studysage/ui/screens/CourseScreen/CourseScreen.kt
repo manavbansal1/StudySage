@@ -79,7 +79,8 @@ private fun GlassCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoursesScreen(
-    viewModel: CourseViewModel = viewModel()
+    viewModel: CourseViewModel = viewModel(),
+    authViewModel: com.group_7.studysage.viewmodels.AuthViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
@@ -87,7 +88,8 @@ fun CoursesScreen(
     if (uiState.selectedCourse != null) {
         CourseDetailScreen(
             courseWithNotes = uiState.selectedCourse!!,
-            onBack = { viewModel.clearSelectedCourse() }
+            onBack = { viewModel.clearSelectedCourse() },
+            authViewModel = authViewModel
         )
     } else {
         Scaffold(
@@ -683,13 +685,5 @@ fun ConfirmationOverlay(
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun CoursesScreenPreview() {
-    StudySageTheme {
-        CoursesScreen()
     }
 }
