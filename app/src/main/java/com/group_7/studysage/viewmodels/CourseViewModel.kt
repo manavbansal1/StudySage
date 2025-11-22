@@ -26,7 +26,9 @@ data class CourseUiState(
     val error: String? = null,
     val message: String? = null,
     val isCreatingCourse: Boolean = false,
-    val selectedCourse: CourseWithNotes? = null
+    val selectedCourse: CourseWithNotes? = null,
+    val pendingOpenNoteId: String? = null, // NEW: hold a noteId to open when course loads
+    val isShowingFullscreenOverlay: Boolean = false // NEW: track if quiz/NFC screens are showing
 )
 
 class CourseViewModel(
@@ -116,7 +118,9 @@ class CourseViewModel(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
+                android.util.Log.d("CourseViewModel", "Loading course with notes: $courseId")
                 val courseWithNotes = courseRepository.getCourseWithNotes(courseId)
+                android.util.Log.d("CourseViewModel", "Loaded course ${courseWithNotes?.course?.id ?: "null"} with ${courseWithNotes?.notes?.size ?: 0} notes")
                 _uiState.update {
                     it.copy(
                         selectedCourse = courseWithNotes,
@@ -132,6 +136,23 @@ class CourseViewModel(
                 }
             }
         }
+    }
+
+    // NEW: set a pending note id that should be opened when the course detail screen renders
+    fun setPendingOpenNote(noteId: String?) {
+        android.util.Log.d("CourseViewModel", "setPendingOpenNote: $noteId")
+        _uiState.update { it.copy(pendingOpenNoteId = noteId) }
+    }
+
+    // NEW: clear pending open note
+    fun clearPendingOpenNote() {
+        android.util.Log.d("CourseViewModel", "clearPendingOpenNote")
+        _uiState.update { it.copy(pendingOpenNoteId = null) }
+    }
+
+    // NEW: set fullscreen overlay showing state (for quiz/NFC screens)
+    fun setFullscreenOverlay(isShowing: Boolean) {
+        _uiState.update { it.copy(isShowingFullscreenOverlay = isShowing) }
     }
 
     fun createCourse(

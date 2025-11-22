@@ -505,8 +505,10 @@ fun HomeScreen(
                             lastOpenedAt = (pdf["lastOpenedAt"] as? Number)?.toLong() ?: 0L,
                             openCount = (pdf["openCount"] as? Number)?.toInt() ?: 0,
                             onClick = {
-                                if (courseId.isNotBlank()) {
-                                    homeViewModel.openCourse(courseId, courseViewModel, navController)
+                                val noteId = pdf["noteId"] as? String
+                                if (!courseId.isNullOrBlank()) {
+                                    // Open course and request opening this specific note
+                                    homeViewModel.openCourse(courseId, noteId, courseViewModel, navController)
                                 }
                             }
                         )

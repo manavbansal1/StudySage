@@ -28,6 +28,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -136,11 +137,16 @@ fun StudySageNavigation(
         val selectedIndex = screens.indexOfFirst { screen ->
             currentDestination?.hierarchy?.any { it.route == screen.route } == true
         }
+
+        // Collect fullscreen overlay state from courseViewModel
+        val courseUiState by courseViewModel.uiState.collectAsState()
+
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
                 currentDestination?.route == "notification_settings" ||
-                currentDestination?.route?.startsWith("game_") == true
+                currentDestination?.route?.startsWith("game_") == true ||
+                courseUiState.isShowingFullscreenOverlay // Hide nav when quiz/NFC screens are showing
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -187,12 +193,16 @@ fun StudySageNavigation(
                                         onClick = {
                                             // Only navigate if not already on this tab
                                             if (selectedIndex != index) {
-                                                navController.navigate(screen.route) {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        inclusive = false
+                                                try {
+                                                    navController.navigate(screen.route) {
+                                                        popUpTo(navController.graph.findStartDestination().id) {
+                                                            inclusive = false
+                                                        }
+                                                        launchSingleTop = false
+                                                        // Don't save or restore state to force refresh
                                                     }
-                                                    launchSingleTop = false
-                                                    // Don't save or restore state to force refresh
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("StudySageNavigation", "Navigation to ${screen.route} failed: ${e.message}", e)
                                                 }
                                             }
                                         },
@@ -228,7 +238,7 @@ fun StudySageNavigation(
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier
+                modifier = Modifier.padding(innerPadding)
             ) {
                 composable(
                     Screen.Home.route,
@@ -289,7 +299,50 @@ fun StudySageNavigation(
                         slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
                     }
                 ) {
-                    CoursesScreen(authViewModel = authViewModel)
+                    // Plain course route (no courseId) — show courses list
+                    CoursesScreen(courseViewModel, authViewModel)
+                }
+
+                composable(
+                    route = "${Screen.Course.route}/{courseId}?noteId={noteId}",
+                    arguments = listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("noteId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                            nullable = true
+                        }
+                    ),
+                    enterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popEnterTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) -1 else 1
+                        slideInHorizontally(initialOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        val initialIndex = screens.indexOfFirst { it.route == initialState.destination.route }
+                        val targetIndex = screens.indexOfFirst { it.route == targetState.destination.route }
+                        val direction = if (targetIndex > initialIndex) 1 else -1
+                        slideOutHorizontally(targetOffsetX = { fullWidth -> direction * fullWidth }, animationSpec = tween(300))
+                    }
+                ) { backStackEntry ->
+                    // Extract required courseId and optional noteId and forward to CoursesScreen
+                    val navCourseId = backStackEntry.arguments?.getString("courseId") ?: ""
+                    val navNoteId = backStackEntry.arguments?.getString("noteId")
+                    // Pass positional args: viewModel, authViewModel, navCourseId, navNoteId
+                    CoursesScreen(courseViewModel, authViewModel, navCourseId, navNoteId)
                 }
                 composable(
                     Screen.Groups.route,

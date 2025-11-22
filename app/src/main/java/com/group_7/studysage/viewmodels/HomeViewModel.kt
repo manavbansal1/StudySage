@@ -10,6 +10,7 @@ import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
 import com.group_7.studysage.data.repository.CourseRepository
+import java.net.URLEncoder
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
@@ -251,7 +252,7 @@ class HomeViewModel(
      * Navigate to the course screen for a given courseId
      * Opens the course detail view where the user can see all notes
      */
-    fun openCourse(courseId: String, courseViewModel: CourseViewModel, navController: androidx.navigation.NavController) {
+    fun openCourse(courseId: String, courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel, navController: androidx.navigation.NavController) {
         try {
             // Load the course with its notes
             courseViewModel.loadCourseWithNotes(courseId)
@@ -260,6 +261,28 @@ class HomeViewModel(
         } catch (e: Exception) {
             _errorMessage.value = "Unable to open course: ${e.message}"
             android.util.Log.e("HomeViewModel", "Failed to open course: ${e.message}")
+        }
+    }
+
+    // NEW overload: open course and specify a noteId to open inside that course
+    fun openCourse(courseId: String, noteId: String?, courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel, navController: androidx.navigation.NavController) {
+        try {
+            android.util.Log.d("HomeViewModel", "openCourse called: courseId=$courseId noteId=$noteId")
+            // Tell the CourseViewModel which note should be opened when the course loads
+            courseViewModel.setPendingOpenNote(noteId)
+            // Load the course with its notes
+            courseViewModel.loadCourseWithNotes(courseId)
+            // Navigate to the course screen with optional query parameter (URL-encode the noteId)
+            val route = if (noteId.isNullOrBlank()) {
+                "course/$courseId"
+            } else {
+                val encoded = URLEncoder.encode(noteId, "UTF-8")
+                "course/$courseId?noteId=$encoded"
+            }
+            navController.navigate(route)
+        } catch (e: Exception) {
+            _errorMessage.value = "Unable to open course: ${e.message}"
+            android.util.Log.e("HomeViewModel", "Failed to open course with note: ${e.message}")
         }
     }
 
