@@ -117,23 +117,366 @@ fun WaitingForPlayersScreen(
     onReadyClick: (Boolean) -> Unit,
     onStartClick: () -> Unit
 ) {
+    val session = gameUiState.currentSession
+    val players = session?.players?.values?.toList() ?: emptyList()
+    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    val currentPlayer = players.find { it.id == currentUserId }
+    val isReady = currentPlayer?.isReady ?: false
+    
+    var visible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        delay(100)
+        visible = true
+    }
+    
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Waiting for players...", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
-        gameUiState.currentSession?.players?.values?.forEach { player ->
-            Text(text = "${player.name} ${if (player.isReady) "(Ready)" else ""}")
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Game Info Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SportsEsports,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = session?.name ?: "Game Lobby",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Key,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = session?.gameCode ?: "------",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 4.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { onReadyClick(true) }) {
-            Text("Ready")
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Players Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Players",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${players.size}/${session?.maxPlayers ?: 8}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Player Cards
+        players.forEachIndexed { index, player ->
+            AnimatedVisibility(
+                visible = visible,
+                enter = slideInHorizontally(
+                    initialOffsetX = { 50 },
+                    animationSpec = tween(300, delayMillis = index * 80)
+                ) + fadeIn(tween(300, delayMillis = index * 80))
+            ) {
+                PlayerCard(
+                    player = player,
+                    isHost = player.id == session?.hostId,
+                    isCurrentUser = player.id == currentUserId
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        
+        if (players.isEmpty()) {
+            Text(
+                text = "Waiting for players to join...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(32.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Action Buttons
+        if (!isReady) {
+            Button(
+                onClick = { onReadyClick(true) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "I'm Ready!",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            OutlinedButton(
+                onClick = { onReadyClick(false) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Not Ready",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        
         if (gameUiState.isHost) {
-            Button(onClick = onStartClick) {
-                Text("Start Game")
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            val allReady = players.all { it.isReady }
+            val minPlayers = players.size >= 2
+            
+            Button(
+                onClick = onStartClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                enabled = allReady && minPlayers,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Start Game",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            if (!allReady || !minPlayers) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = when {
+                        !minPlayers -> "Need at least 2 players"
+                        !allReady -> "Waiting for all players to be ready"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun PlayerCard(
+    player: com.group_7.studysage.data.models.Player,
+    isHost: Boolean,
+    isCurrentUser: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCurrentUser) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isCurrentUser) 4.dp else 2.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // Avatar
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = if (player.isReady) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = if (player.isReady) 
+                                MaterialTheme.colorScheme.onPrimary 
+                            else 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = player.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (isHost) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.tertiary
+                            ) {
+                                Text(
+                                    text = "HOST",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        if (isCurrentUser) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "(You)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    
+                    Text(
+                        text = if (player.isReady) "Ready" else "Not ready",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (player.isReady) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+            
+            // Status Icon
+            if (player.isReady) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }
@@ -291,9 +634,9 @@ fun QuizGameScreen(
             }
         }
 
-        // Explanation (shown after selection)
+        // Explanation (shown after selection) - Always visible after answering
         AnimatedVisibility(
-            visible = isAnswered && question.explanation != null && question.explanation.isNotEmpty(),
+            visible = isAnswered,
             enter = slideInVertically(
                 initialOffsetY = { 50 },
                 animationSpec = tween(400, easing = EaseOut)
@@ -339,7 +682,12 @@ fun QuizGameScreen(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = question.explanation ?: "",
+                        text = question.explanation?.takeIf { it.isNotEmpty() } 
+                            ?: if (selectedAnswer == question.correctAnswer) {
+                                "Great job! The correct answer is \"${question.options[question.correctAnswer]}\"."
+                            } else {
+                                "The correct answer is \"${question.options[question.correctAnswer]}\"."
+                            },
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         lineHeight = 24.sp
@@ -348,7 +696,7 @@ fun QuizGameScreen(
             }
         }
 
-        // Result feedback card
+        // Result feedback card - Made more compact
         if (isAnswered && lastResult != null) {
             AnimatedVisibility(
                 visible = true,
@@ -367,19 +715,22 @@ fun QuizGameScreen(
                         else 
                             Color(0xFFF44336).copy(alpha = 0.15f)
                     ),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(
                         2.dp,
                         if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336)
                     )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 imageVector = if (lastResult.isCorrect) 
@@ -388,22 +739,22 @@ fun QuizGameScreen(
                                     Icons.Default.Cancel,
                                 contentDescription = null,
                                 tint = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                             Text(
                                 text = if (lastResult.isCorrect) "Correct!" else "Incorrect",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
+                                fontSize = 16.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "+${lastResult.points} points",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "+${lastResult.points} pts",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
