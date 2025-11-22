@@ -1,11 +1,14 @@
 package com.group_7.studysage.viewmodels
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.group_7.studysage.data.api.GameApiService
 import com.group_7.studysage.data.models.ContentSource
 import com.group_7.studysage.data.models.GameType
+import com.group_7.studysage.utils.CloudinaryUploader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +17,8 @@ import kotlinx.coroutines.launch
 data class StandaloneGameUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val gameCode: String? = null
+    val gameCode: String? = null,
+    val uploadProgress: String? = null
 )
 
 class StandaloneGameViewModel : ViewModel() {
@@ -28,6 +32,7 @@ class StandaloneGameViewModel : ViewModel() {
      * Host a new game
      */
     fun hostGame(
+        context: Context,
         gameType: GameType,
         contentSource: ContentSource,
         contentData: String?,
@@ -43,12 +48,40 @@ class StandaloneGameViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Handle PDF upload to Cloudinary if contentSource is PDF
+                val finalContentData = if (contentSource == ContentSource.PDF && contentData != null) {
+                    _uiState.value = StandaloneGameUiState(
+                        isLoading = true,
+                        uploadProgress = "Uploading PDF to cloud..."
+                    )
+
+                    val pdfUri = Uri.parse(contentData)
+                    val cloudinaryUrl = CloudinaryUploader.uploadPdfForGame(context, pdfUri)
+
+                    if (cloudinaryUrl == null) {
+                        _uiState.value = StandaloneGameUiState(
+                            isLoading = false,
+                            error = "Failed to upload PDF. Please try again."
+                        )
+                        return@launch
+                    }
+
+                    _uiState.value = StandaloneGameUiState(
+                        isLoading = true,
+                        uploadProgress = "Creating game session..."
+                    )
+
+                    cloudinaryUrl
+                } else {
+                    contentData
+                }
+
                 val response = apiService.hostGame(
                     hostId = currentUser.uid,
                     hostName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Player",
                     gameType = gameType,
                     contentSource = contentSource,
-                    contentData = contentData,
+                    contentData = finalContentData,
                     topicDescription = topicDescription
                 )
 
