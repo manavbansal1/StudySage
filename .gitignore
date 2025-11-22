@@ -14,3 +14,6 @@
 .cxx
 local.properties
 studysage-backend/
+
+# Environment variables - DO NOT COMMIT
+.env
