@@ -19,7 +19,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GEMINI_API_KEY", "\"AIzaSyCG36szBLzT8k6bUC0vtqhYmxw8wCJmeV0\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"AIzaSyA1ysuR6gsHh6IKNyw9xx42iTQEx6SjY2w\"")
 
         // Add Cloudinary credentials (replace with your actual values)
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"dczuk4cxa\"")
