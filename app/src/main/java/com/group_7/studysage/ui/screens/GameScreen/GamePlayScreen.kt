@@ -150,273 +150,261 @@ fun QuizGameScreen(
     val selectedAnswer = gameUiState.selectedAnswerIndex
     val lastResult = gameUiState.lastResult
 
-    AnimatedContent(
-        targetState = questionData.questionNumber,
-        transitionSpec = {
-            slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(300, easing = EaseOut)
-            ) + fadeIn(animationSpec = tween(300)) togetherWith
-                    slideOutHorizontally(
-                        targetOffsetX = { -it },
-                        animationSpec = tween(300, easing = EaseIn)
-                    ) + fadeOut(animationSpec = tween(300))
-        },
-        label = "question_transition"
-    ) { questionNumber ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Progress Indicator with animation
-            Column {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Progress Indicator with animation
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Question ${questionData.questionNumber} of ${questionData.totalQuestions}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                
+                // Timer with color change
+                val timerColor = when {
+                    gameUiState.timeRemaining <= 5 -> Color(0xFFF44336)
+                    gameUiState.timeRemaining <= 10 -> Color(0xFFFF9800)
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+                
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        tint = timerColor,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text(
-                        text = "Question $questionNumber of ${questionData.totalQuestions}",
+                        text = "${gameUiState.timeRemaining}s",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = timerColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
-                    
-                    // Timer with color change
-                    val timerColor = when {
-                        gameUiState.timeRemaining <= 5 -> Color(0xFFF44336)
-                        gameUiState.timeRemaining <= 10 -> Color(0xFFFF9800)
-                        else -> MaterialTheme.colorScheme.onSurface
-                    }
-                    
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Animated progress bar
+            val animatedProgress by animateFloatAsState(
+                targetValue = questionData.questionNumber.toFloat() / questionData.totalQuestions,
+                animationSpec = tween(500, easing = EaseInOut),
+                label = "progress_animation"
+            )
+            LinearProgressIndicator(
+                progress = { animatedProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Question Card with elevation animation
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(24.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                // Question number badge
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            tint = timerColor,
-                            modifier = Modifier.size(20.dp)
-                        )
                         Text(
-                            text = "${gameUiState.timeRemaining}s",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = timerColor,
+                            text = "${questionData.questionNumber}",
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
                 
-                // Animated progress bar
-                val animatedProgress by animateFloatAsState(
-                    targetValue = questionNumber.toFloat() / questionData.totalQuestions,
-                    animationSpec = tween(500, easing = EaseInOut),
-                    label = "progress_animation"
-                )
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    strokeCap = StrokeCap.Round
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Text(
+                    text = question.question,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontSize = 20.sp,
+                    lineHeight = 28.sp
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-            // Question Card with elevation animation
+        // Options with staggered animation
+        question.options.forEachIndexed { index, option ->
+            var isVisible by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(questionData.questionNumber) {
+                delay(index * 80L)
+                isVisible = true
+            }
+            
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInHorizontally(
+                    initialOffsetX = { 100 },
+                    animationSpec = tween(300, easing = EaseOut)
+                ) + fadeIn(tween(300))
+            ) {
+                GameQuizOptionButton(
+                    option = option,
+                    isSelected = selectedAnswer == index,
+                    isCorrect = index == question.correctAnswer,
+                    showFeedback = isAnswered,
+                    onClick = { if (!isAnswered) onAnswerClick(index) }
+                )
+            }
+        }
+
+        // Explanation (shown after selection)
+        AnimatedVisibility(
+            visible = isAnswered && question.explanation != null && question.explanation.isNotEmpty(),
+            enter = slideInVertically(
+                initialOffsetY = { 50 },
+                animationSpec = tween(400, easing = EaseOut)
+            ) + fadeIn(tween(400)),
+            exit = fadeOut()
+        ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(24.dp),
-                    verticalAlignment = Alignment.Top
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
-                    // Question number badge
-                    Surface(
-                        modifier = Modifier.size(40.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primary
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center
+                        Surface(
+                            modifier = Modifier.size(32.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiary
                         ) {
-                            Text(
-                                text = "$questionNumber",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Explanation",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontSize = 16.sp
+                        )
                     }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = question.question,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontSize = 20.sp,
-                        lineHeight = 28.sp
+                        text = question.explanation ?: "",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        lineHeight = 24.sp
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Options with staggered animation
-            question.options.forEachIndexed { index, option ->
-                var isVisible by remember { mutableStateOf(false) }
-                
-                LaunchedEffect(questionNumber) {
-                    delay(index * 80L)
-                    isVisible = true
-                }
-                
-                AnimatedVisibility(
-                    visible = isVisible,
-                    enter = slideInHorizontally(
-                        initialOffsetX = { 100 },
-                        animationSpec = tween(300, easing = EaseOut)
-                    ) + fadeIn(tween(300))
-                ) {
-                    GameQuizOptionButton(
-                        option = option,
-                        isSelected = selectedAnswer == index,
-                        isCorrect = index == question.correctAnswer,
-                        showFeedback = isAnswered,
-                        onClick = { if (!isAnswered) onAnswerClick(index) }
-                    )
-                }
-            }
-
-            // Explanation (shown after selection)
+        // Result feedback card
+        if (isAnswered && lastResult != null) {
             AnimatedVisibility(
-                visible = isAnswered && question.explanation != null,
-                enter = slideInVertically(
-                    initialOffsetY = { 50 },
-                    animationSpec = tween(400, easing = EaseOut)
-                ) + fadeIn(tween(400)),
-                exit = fadeOut()
+                visible = true,
+                enter = scaleIn(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeIn()
             ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        containerColor = if (lastResult.isCorrect) 
+                            Color(0xFF4CAF50).copy(alpha = 0.15f) 
+                        else 
+                            Color(0xFFF44336).copy(alpha = 0.15f)
                     ),
                     shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    border = BorderStroke(
+                        2.dp,
+                        if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    )
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Surface(
-                                modifier = Modifier.size(32.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.tertiary
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lightbulb,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onTertiary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Icon(
+                                imageVector = if (lastResult.isCorrect) 
+                                    Icons.Default.CheckCircle 
+                                else 
+                                    Icons.Default.Cancel,
+                                contentDescription = null,
+                                tint = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
+                                modifier = Modifier.size(32.dp)
+                            )
                             Text(
-                                text = "Explanation",
-                                style = MaterialTheme.typography.titleMedium,
+                                text = if (lastResult.isCorrect) "Correct!" else "Incorrect",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                fontSize = 16.sp
+                                fontSize = 24.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = question.explanation ?: "",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            lineHeight = 24.sp
+                            text = "+${lastResult.points} points",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp
                         )
-                    }
-                }
-            }
-
-            // Result feedback card
-            if (isAnswered && lastResult != null) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    ) + fadeIn()
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (lastResult.isCorrect) 
-                                Color(0xFF4CAF50).copy(alpha = 0.15f) 
-                            else 
-                                Color(0xFFF44336).copy(alpha = 0.15f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(
-                            2.dp,
-                            if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (lastResult.isCorrect) 
-                                        Icons.Default.CheckCircle 
-                                    else 
-                                        Icons.Default.Cancel,
-                                    contentDescription = null,
-                                    tint = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Text(
-                                    text = if (lastResult.isCorrect) "Correct!" else "Incorrect",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "+${lastResult.points} points",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 18.sp
-                            )
-                        }
                     }
                 }
             }

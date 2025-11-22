@@ -22,6 +22,9 @@ import com.group_7.studysage.data.models.GameType
 import com.group_7.studysage.viewmodels.StandaloneGameViewModel
 import com.google.firebase.auth.FirebaseAuth
 
+/**
+ * main screen that the user sees first
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameScreen(navController: NavController) {

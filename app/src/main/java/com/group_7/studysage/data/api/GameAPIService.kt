@@ -1,5 +1,6 @@
 package com.group_7.studysage.data.api
 
+import android.util.Log
 import com.group_7.studysage.data.models.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -85,6 +86,8 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
                 topicDescription = topicDescription,
                 settings = settings
             )
+
+            Log.d("KSS", "Hosting game with request: $requestBody")
 
             val jsonBody = json.encodeToString(HostGameRequest.serializer(), requestBody)
 
