@@ -155,6 +155,22 @@ object CloudinaryUploader {
         return fileName
     }
 
+    /**
+     * Upload a PDF file to Cloudinary specifically for game quiz generation
+     * @param context Android context
+     * @param pdfUri URI of the PDF file
+     * @return The secure URL of the uploaded PDF, or null if upload failed
+     */
+    suspend fun uploadPdfForGame(context: Context, pdfUri: Uri): String? {
+        return uploadFile(
+            context = context,
+            fileUri = pdfUri,
+            fileType = "raw",
+            folder = "studysage/game_pdfs",
+            resourceType = "raw"
+        )
+    }
+
     // Below is the function to Delete User pfp
     suspend fun deleteImage(publicId: String): Boolean = withContext(Dispatchers.IO) {
         false

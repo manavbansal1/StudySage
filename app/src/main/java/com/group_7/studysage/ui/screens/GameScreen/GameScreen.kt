@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import com.google.firebase.auth.FirebaseAuth
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameScreen(navController: NavController) {
+    val context = LocalContext.current
     val viewModel: StandaloneGameViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
 
@@ -113,6 +115,14 @@ fun GameScreen(navController: NavController) {
             if (uiState.isLoading) {
                 Spacer(modifier = Modifier.height(24.dp))
                 CircularProgressIndicator()
+                uiState.uploadProgress?.let { progress ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = progress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
             uiState.error?.let { error ->
@@ -146,7 +156,7 @@ fun GameScreen(navController: NavController) {
             HostGameDialog(
                 onDismiss = { showHostDialog = false },
                 onHostGame = { gameType, contentSource, contentData, topicDescription ->
-                    viewModel.hostGame(gameType, contentSource, contentData, topicDescription)
+                    viewModel.hostGame(context, gameType, contentSource, contentData, topicDescription)
                     showHostDialog = false
                 }
             )
