@@ -291,9 +291,9 @@ fun QuizGameScreen(
             }
         }
 
-        // Explanation (shown after selection)
+        // Explanation (shown after selection) - Always visible after answering
         AnimatedVisibility(
-            visible = isAnswered && question.explanation != null && question.explanation.isNotEmpty(),
+            visible = isAnswered,
             enter = slideInVertically(
                 initialOffsetY = { 50 },
                 animationSpec = tween(400, easing = EaseOut)
@@ -339,7 +339,12 @@ fun QuizGameScreen(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = question.explanation ?: "",
+                        text = question.explanation?.takeIf { it.isNotEmpty() } 
+                            ?: if (selectedAnswer == question.correctAnswer) {
+                                "Great job! The correct answer is \"${question.options[question.correctAnswer]}\"."
+                            } else {
+                                "The correct answer is \"${question.options[question.correctAnswer]}\"."
+                            },
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         lineHeight = 24.sp
@@ -348,7 +353,7 @@ fun QuizGameScreen(
             }
         }
 
-        // Result feedback card
+        // Result feedback card - Made more compact
         if (isAnswered && lastResult != null) {
             AnimatedVisibility(
                 visible = true,
@@ -367,19 +372,22 @@ fun QuizGameScreen(
                         else 
                             Color(0xFFF44336).copy(alpha = 0.15f)
                     ),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(
                         2.dp,
                         if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336)
                     )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 imageVector = if (lastResult.isCorrect) 
@@ -388,22 +396,22 @@ fun QuizGameScreen(
                                     Icons.Default.Cancel,
                                 contentDescription = null,
                                 tint = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                             Text(
                                 text = if (lastResult.isCorrect) "Correct!" else "Incorrect",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = if (lastResult.isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
+                                fontSize = 16.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "+${lastResult.points} points",
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "+${lastResult.points} pts",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
