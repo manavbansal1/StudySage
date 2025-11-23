@@ -49,6 +49,7 @@ android {
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${getEnvOrDefault("CLOUDINARY_CLOUD_NAME")}\"")
         buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${getEnvOrDefault("CLOUDINARY_UPLOAD_PRESET")}\"")
         buildConfigField("String", "RESEND_API_KEY", "\"${getEnvOrDefault("RESEND_API_KEY")}\"")
+        buildConfigField("String", "GOOGLE_CLOUD_TTS_API_KEY", "\"${getEnvOrDefault("GOOGLE_CLOUD_TTS_API_KEY")}\"")
     }
 
     buildTypes {

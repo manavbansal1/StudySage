@@ -674,11 +674,11 @@ class NotesRepository(
             val noteDoc = firestore.collection("notes").document(noteId).get().await()
             val currentStarred = noteDoc.getBoolean("isStarred") ?: false
             val newStarred = !currentStarred
-            
+
             firestore.collection("notes").document(noteId)
                 .update("isStarred", newStarred)
                 .await()
-            
+
             Log.d(TAG, "Note $noteId star toggled to $newStarred for user $userId")
             Result.success(newStarred)
         } catch (e: Exception) {
@@ -686,4 +686,5 @@ class NotesRepository(
             Result.failure(e)
         }
     }
+
 }
