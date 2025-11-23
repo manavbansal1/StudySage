@@ -402,6 +402,8 @@ class NotesViewModel(
         _podcastGenerationStatus.value = null
         _isPodcastGenerating.value = false
         _podcastScript.value = null
+    }
+
     // ============================================
     // TEMPORARY FLASHCARD GENERATION
     // ============================================

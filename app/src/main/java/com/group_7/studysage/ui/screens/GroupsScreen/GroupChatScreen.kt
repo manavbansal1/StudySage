@@ -1,7 +1,10 @@
 package com.group_7.studysage.ui.screens.GroupsScreen
 
 import android.util.Patterns
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,9 +22,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.ui.viewmodels.GroupChatViewModel
 import com.group_7.studysage.ui.viewmodels.GroupChatUiState
 import com.group_7.studysage.data.repository.GroupMessage
@@ -45,6 +51,9 @@ fun GroupChatScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Define custom easing for the "pop" effect
+    val BackOutEasing = CubicBezierEasing(0.175f, 0.885f, 0.32f, 1.275f)
     val messages by viewModel.messages.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     val inviteStatus by viewModel.inviteStatus.collectAsState()
@@ -82,6 +91,7 @@ fun GroupChatScreen(
                     // Header at top with status bar padding
                     GroupChatHeader(
                         groupName = state.groupName,
+                        groupPic = state.groupPic,
                         memberCount = state.memberCount,
                         isAdmin = state.isAdmin,
                         onBackClick = onNavigateBack,
@@ -107,7 +117,8 @@ fun GroupChatScreen(
                     MessageInputSection(
                         onSendMessage = { message ->
                             viewModel.sendMessage(groupId, message)
-                        }
+                        },
+                        backOutEasing = BackOutEasing
                     )
                 }
 
@@ -144,6 +155,8 @@ fun GroupChatScreen(
             is GroupChatUiState.Error -> {
                 ErrorState(
                     message = state.message,
+                    groupId = groupId,
+                    viewModel = viewModel,
                     onRetry = {
                         viewModel.loadGroupData(groupId)
                         viewModel.loadMessages(groupId)
@@ -193,6 +206,7 @@ fun GroupChatScreen(
 @Composable
 private fun GroupChatHeader(
     groupName: String,
+    groupPic: String,
     memberCount: Int,
     isAdmin: Boolean,
     onBackClick: () -> Unit,
@@ -202,85 +216,98 @@ private fun GroupChatHeader(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 4.dp
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        shadowElevation = 0.dp, // Removed heavy shadow for cleaner look
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(90.dp)
-                .padding(top = 20.dp, start = 12.dp, end = 12.dp),
+                .statusBarsPadding() // Handle status bar padding internally
+                .height(64.dp) // Standard toolbar height
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back Button
             IconButton(
-                onClick = onBackClick,
-                modifier = Modifier.size(40.dp)
+                onClick = onBackClick
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(24.dp)
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
 
-            // Group Avatar
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .clickable { onGroupClick() }
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Group,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Group Info
-            Column(
+            // Group Avatar & Info Clickable Area
+            Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onGroupClick() },
-                verticalArrangement = Arrangement.Center
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onGroupClick() }
+                    .padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = groupName,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "$memberCount members",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Normal
-                )
+                // Group Avatar
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (groupPic.isNotEmpty()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(groupPic),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Group Info
+                Column(
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = groupName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "$memberCount members",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // Invite Button (only for admins)
             if (isAdmin) {
                 IconButton(
-                    onClick = onInviteClick,
-                    modifier = Modifier.size(40.dp)
+                    onClick = onInviteClick
                 ) {
                     Icon(
                         imageVector = Icons.Default.PersonAdd,
                         contentDescription = "Invite Member",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -302,17 +329,29 @@ private fun MessagesList(
             .padding(horizontal = 16.dp),
         state = listState,
         reverseLayout = true,
-        contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
+        contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp) // Consistent spacing
     ) {
         items(
             items = messages.reversed(),
             key = { message -> message.messageId }
         ) { message ->
-            MessageBubble(
-                message = message,
-                isCurrentUser = message.senderId == currentUserId
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            // Animated entry for messages
+            var isVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { isVisible = true }
+
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { 50 },
+                    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(durationMillis = 300))
+            ) {
+                MessageBubble(
+                    message = message,
+                    isCurrentUser = message.senderId == currentUserId
+                )
+            }
         }
     }
 
@@ -331,57 +370,66 @@ private fun MessageBubble(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
     ) {
         // Sender name (only for other users)
         if (!isCurrentUser) {
             Text(
                 text = message.senderName,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
             )
         }
 
         // Message bubble
-        Surface(
-            shape = RoundedCornerShape(
-                topStart = if (isCurrentUser) 20.dp else 4.dp,
-                topEnd = if (isCurrentUser) 4.dp else 20.dp,
-                bottomStart = 20.dp,
-                bottomEnd = 20.dp
-            ),
-            color = if (isCurrentUser)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
-            shadowElevation = 2.dp,
-            modifier = Modifier.widthIn(max = 280.dp)
+        Box(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 20.dp,
+                        topEnd = 20.dp,
+                        bottomStart = if (isCurrentUser) 20.dp else 4.dp,
+                        bottomEnd = if (isCurrentUser) 4.dp else 20.dp
+                    )
+                )
+                .background(
+                    if (isCurrentUser) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
+                            )
+                        )
+                    } else {
+                        SolidColor(MaterialTheme.colorScheme.surfaceVariant)
+                    }
+                )
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 // Message text
                 Text(
                     text = message.message,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = if (isCurrentUser)
                         MaterialTheme.colorScheme.onPrimary
                     else
                         MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 20.sp
+                    lineHeight = 22.sp
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 // Timestamp
                 Text(
                     text = formatTimestamp(message.timestamp),
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
                     color = if (isCurrentUser)
                         MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                     else
@@ -396,91 +444,98 @@ private fun MessageBubble(
 @Composable
 private fun MessageInputSection(
     onSendMessage: (String) -> Unit,
+    backOutEasing: Easing,
     modifier: Modifier = Modifier
 ) {
     var messageText by remember { mutableStateOf("") }
 
+    // Floating pill container
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .navigationBarsPadding() // Handle nav bar padding
+            .imePadding(), // Handle keyboard
+        shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
             // Message input field
-            Surface(
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 48.dp, max = 120.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
+                if (messageText.isEmpty()) {
+                    Text(
+                        text = "Type a message...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
                 BasicTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    textStyle = TextStyle(
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        lineHeight = 20.sp
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
                     ),
                     maxLines = 5,
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (messageText.isEmpty()) {
-                                Text(
-                                    text = "Type a message...",
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                            innerTextField()
-                        }
-                    }
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            // Animated Send button
+            val isSendVisible = messageText.isNotBlank()
+            val buttonScale by animateFloatAsState(
+                targetValue = if (isSendVisible) 1f else 0f,
+                animationSpec = tween(durationMillis = 300, easing = backOutEasing),
+                label = "scale"
+            )
+            val buttonWidth by animateDpAsState(
+                targetValue = if (isSendVisible) 52.dp else 0.dp, // 44dp size + 8dp padding
+                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                label = "width"
+            )
 
-            // Send button
-            IconButton(
-                onClick = {
-                    if (messageText.isNotBlank()) {
-                        onSendMessage(messageText.trim())
-                        messageText = ""
-                    }
-                },
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (messageText.isNotBlank())
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                enabled = messageText.isNotBlank()
+            Box(
+                modifier = Modifier.width(buttonWidth),
+                contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
-                    tint = if (messageText.isNotBlank())
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(22.dp)
-                )
+                IconButton(
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            onSendMessage(messageText.trim())
+                            messageText = ""
+                        }
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .scale(buttonScale) // Scale from center
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -554,63 +609,106 @@ private fun EmptyChatState(
 @Composable
 private fun ErrorState(
     message: String,
+    groupId: String,
+    viewModel: GroupChatViewModel,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    // Check if this is a "removed from group" error
+    val isRemovedError = message.contains("no longer a member", ignoreCase = true) ||
+                         message.contains("removed from this group", ignoreCase = true)
+
+    Box(modifier = modifier.fillMaxSize()) {
+        // Back arrow in top left
+        if (isRemovedError) {
+            IconButton(
+                onClick = {
+                    // Remove group from user's profile before navigating back
+                    viewModel.removeGroupFromUserProfile(groupId)
+                    onBackClick()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        // Center content
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Error,
                 contentDescription = null,
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.error
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Error",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
                 text = message,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onBackClick,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Go Back")
-                }
-
+            if (isRemovedError) {
+                // Show "Remove Group" button for removed users
                 Button(
-                    onClick = onRetry,
+                    onClick = {
+                        // Remove group from user's profile before navigating back
+                        viewModel.removeGroupFromUserProfile(groupId)
+                        onBackClick()
+                    },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.error
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Retry")
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Remove Group from List")
+                }
+            } else {
+                // Show both buttons for other errors
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onBackClick,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Go Back")
+                    }
+
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Retry")
+                    }
                 }
             }
         }
