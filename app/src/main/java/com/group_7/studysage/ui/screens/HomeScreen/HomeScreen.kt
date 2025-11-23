@@ -499,7 +499,7 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    TextButton(onClick = { /* TODO: Navigate to all notes */ }) {
+                    TextButton(onClick = { navController.navigate("recently_opened") }) {
                         Text(
                             text = "See All",
                             fontSize = 14.sp,
