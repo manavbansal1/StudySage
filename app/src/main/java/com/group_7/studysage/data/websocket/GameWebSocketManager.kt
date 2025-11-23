@@ -7,6 +7,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -84,6 +87,9 @@ class GameWebSocketManager(
 
     private val _turnUpdate = MutableStateFlow<String?>(null)
     val turnUpdate: StateFlow<String?> = _turnUpdate
+
+    private val _boardUpdate = MutableStateFlow<List<String>?>(null)
+    val boardUpdate: StateFlow<List<String>?> = _boardUpdate
 
     /**
      * Connect to game session WebSocket
@@ -212,6 +218,13 @@ class GameWebSocketManager(
                         println("🔄 Turn update: ${turnData["currentTurn"]} (${turnData["currentPlayerName"]})")
                     }
                 }
+                MessageType.BOARD_UPDATE -> {
+                    message.data?.let {
+                        val boardData = json.decodeFromString<Map<String, List<String>>>(it)
+                        _boardUpdate.value = boardData["boardState"]
+                        println("🎮 Board update received: ${boardData["boardState"]}")
+                    }
+                }
                 MessageType.ERROR -> {
                     message.data?.let {
                         _errorMessage.value = json.decodeFromString(it)
@@ -295,6 +308,22 @@ class GameWebSocketManager(
 
         sendMessage(WebSocketMessage(
             type = MessageType.SUBMIT_ANSWER,
+            data = dataString
+        ))
+    }
+
+    /**
+     * Send board update for STUDY_TAC_TOE
+     */
+    fun sendBoardUpdate(boardState: List<String>) {
+        val boardData = mapOf("boardState" to boardState)
+        val dataString = json.encodeToString(
+            MapSerializer(String.serializer(), ListSerializer(String.serializer())),
+            boardData
+        )
+
+        sendMessage(WebSocketMessage(
+            type = MessageType.BOARD_UPDATE,
             data = dataString
         ))
     }

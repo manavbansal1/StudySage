@@ -52,6 +52,7 @@ enum class MessageType {
     NEXT_QUESTION,
     QUESTION_TIMEOUT,
     TURN_UPDATE, // For turn-based games like STUDY_TAC_TOE
+    BOARD_UPDATE, // For syncing board state in STUDY_TAC_TOE
     GAME_FINISHED,
 
     // Answers
@@ -182,6 +183,7 @@ data class GameSessionData(
     val status: GameStatus = GameStatus.WAITING,
     val currentQuestionIndex: Int = 0,
     val currentTurn: String? = null, // Player ID whose turn it is (for turn-based games)
+    val boardState: List<String>? = null, // For STUDY_TAC_TOE: 9 elements, empty string or "X" or "O"
     val questions: List<QuizQuestion> = emptyList(),
     val flashcards: List<Flashcard> = emptyList(),
     val matchPairs: List<MatchPair> = emptyList(),

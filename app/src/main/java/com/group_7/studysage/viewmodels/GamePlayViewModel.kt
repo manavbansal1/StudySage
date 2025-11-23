@@ -107,6 +107,27 @@ class GamePlayViewModel(
         }
     }
 
+    fun submitTacToeMove(squareIndex: Int, answerIndex: Int, boardState: List<String>) {
+        val state = _gameUiState.value
+        val player = authViewModel.currentUser.value
+
+        if (player != null) {
+            android.util.Log.d("GamePlayViewModel", "Submitting TacToe move: square=$squareIndex, answer=$answerIndex, boardState=$boardState")
+            
+            // Submit the answer with square index as question ID
+            webSocketManager.submitAnswer(
+                playerId = player.uid,
+                questionId = "square_$squareIndex",
+                answerIndex = answerIndex,
+                timeElapsed = 0
+            )
+            // Send board update to sync with other players
+            webSocketManager.sendBoardUpdate(boardState)
+            
+            android.util.Log.d("GamePlayViewModel", "Board update sent to server")
+        }
+    }
+
     private fun observeWebSocket() {
         webSocketManager.connectionState
             .onEach { state ->
@@ -118,6 +139,19 @@ class GamePlayViewModel(
             .launchIn(viewModelScope)
 
         webSocketManager.roomUpdate
+            .onEach { session ->
+                session?.let {
+                    val currentUser = authViewModel.currentUser.value
+                    val isHost = currentUser?.uid == it.hostId
+                    _gameUiState.value = _gameUiState.value.copy(
+                        currentSession = it,
+                        isHost = isHost
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.gameStarted
             .onEach { session ->
                 session?.let {
                     val currentUser = authViewModel.currentUser.value
@@ -202,6 +236,35 @@ class GamePlayViewModel(
                 message?.let {
                     val updatedMessages = _gameUiState.value.chatMessages + it
                     _gameUiState.value = _gameUiState.value.copy(chatMessages = updatedMessages)
+                }
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.boardUpdate
+            .onEach { boardState ->
+                boardState?.let {
+                    android.util.Log.d("GamePlayViewModel", "Received board update: $it")
+                    // Update the session with new board state
+                    _gameUiState.value.currentSession?.let { session ->
+                        android.util.Log.d("GamePlayViewModel", "Updating session with new board state")
+                        _gameUiState.value = _gameUiState.value.copy(
+                            currentSession = session.copy(boardState = it)
+                        )
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.turnUpdate
+            .onEach { newTurnPlayerId ->
+                newTurnPlayerId?.let {
+                    // Update the session with new current turn
+                    _gameUiState.value.currentSession?.let { session ->
+                        _gameUiState.value = _gameUiState.value.copy(
+                            currentSession = session.copy(currentTurn = it)
+                        )
+                        android.util.Log.d("GamePlayViewModel", "Turn updated to: $it")
+                    }
                 }
             }
             .launchIn(viewModelScope)

@@ -36,16 +36,43 @@ import kotlinx.coroutines.delay
 fun StudyTacToeScreen(
     gameUiState: GameUiState,
     onSquareClick: (Int) -> Unit,
-    onAnswerSubmit: (Int, Int) -> Unit // (squareIndex, answerIndex)
+    onAnswerSubmit: (Int, Int, List<String>) -> Unit // (squareIndex, answerIndex, boardState)
 ) {
     val session = gameUiState.currentSession
     val players = session?.players?.values?.toList() ?: emptyList()
     val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
     val questions = session?.questions ?: emptyList()
 
+    // Limit to 2 players
+    if (players.size > 2) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Study-Tac-Toe only supports 2 players",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        return
+    }
+
     // Game board state (0-8 for 9 squares)
     // Empty string = empty, "X" = player 1, "O" = player 2
+    // Sync from backend if available, otherwise use local state
     var boardState by remember { mutableStateOf(Array(9) { "" }) }
+    
+    // Update local board state when backend sends updates
+    LaunchedEffect(session?.boardState) {
+        session?.boardState?.let { backendBoard ->
+            if (backendBoard.size == 9) {
+                android.util.Log.d("StudyTacToe", "Backend board update received: $backendBoard")
+                boardState = backendBoard.toTypedArray()
+                android.util.Log.d("StudyTacToe", "Local board state updated")
+            }
+        }
+    }
     var selectedSquare by remember { mutableStateOf<Int?>(null) }
     var currentQuestion by remember { mutableStateOf<QuizQuestion?>(null) }
     var showQuestionDialog by remember { mutableStateOf(false) }
@@ -86,6 +113,13 @@ fun StudyTacToeScreen(
     // Debug: Show questions count
     LaunchedEffect(questions.size) {
         android.util.Log.d("StudyTacToe", "Questions loaded: ${questions.size}")
+    }
+
+    // Debug: Log turn changes
+    LaunchedEffect(currentTurnPlayerId) {
+        android.util.Log.d("StudyTacToe", "Current turn changed to: $currentTurnPlayerId")
+        android.util.Log.d("StudyTacToe", "Current user ID: $currentUserId")
+        android.util.Log.d("StudyTacToe", "Is current player turn: $isCurrentPlayerTurn")
     }
 
     // Show loading state if no questions
@@ -273,23 +307,27 @@ fun StudyTacToeScreen(
                 val isCorrect = answerIndex == currentQuestion!!.correctAnswer
 
                 selectedSquare?.let { square ->
-                    // Submit answer to backend
-                    onAnswerSubmit(square, answerIndex)
-
                     if (isCorrect) {
                         // Correct answer - claim the square
                         val newBoard = boardState.copyOf()
                         newBoard[square] = currentPlayer
+                        
+                        // Update local state
                         boardState = newBoard
                         attemptedSquares = attemptedSquares + square
 
                         // Check for winner
-                        val winResult = checkWinner(boardState)
+                        val winResult = checkWinner(newBoard)
                         winner = winResult
-                        isDraw = winResult == null && boardState.all { it.isNotEmpty() }
+                        isDraw = winResult == null && newBoard.all { it.isNotEmpty() }
+
+                        // Submit answer and NEW board state to backend
+                        onAnswerSubmit(square, answerIndex, newBoard.toList())
                     } else {
                         // Incorrect answer - track attempted square
                         attemptedSquares = attemptedSquares + square
+                        // Still submit answer to backend (wrong answer) with current board
+                        onAnswerSubmit(square, answerIndex, boardState.toList())
                     }
 
                     // Backend will handle turn switching via TURN_UPDATE message
