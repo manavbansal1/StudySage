@@ -189,10 +189,14 @@ fun HomeScreen(
     // We use theme colors directly here.
     val quickActions = listOf(
         QuickAction(
-            title = "Take Quiz",
+            title = "Quick Quiz",
             icon = Icons.Default.Book,
             color = MaterialTheme.colorScheme.primary,
-            onClick = { /* Navigate to quiz */ }
+            onClick = {
+                // Navigate to temporary quiz generation screen
+                // User can upload PDF, generate quiz, and play without saving to database
+                navController.navigate("temp_quiz")
+            }
         ),
         QuickAction(
             title = "Flashcards",
