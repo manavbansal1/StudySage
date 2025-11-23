@@ -73,6 +73,21 @@ fun RecentlyOpenedScreen(
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.align(Alignment.Center)
                 )
+
+                // Clear All button (only show if there are items)
+                if (recentPdfs.isNotEmpty()) {
+                    TextButton(
+                        onClick = { homeViewModel.clearAllRecentlyOpened() },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Text(
+                            text = "Clear All",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
 
             if (recentPdfs.isEmpty()) {
