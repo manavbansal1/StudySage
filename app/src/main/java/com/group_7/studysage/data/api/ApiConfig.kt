@@ -34,16 +34,4 @@ object ApiConfig {
         } else {
             LOCAL_WS_URL
         }
-
-    /**
-     * Get current configuration info for debugging
-     */
-    fun getConfigInfo(): String {
-        return """
-            API Configuration:
-            - Mode: ${if (USE_NGROK) "NGROK" else "LOCAL"}
-            - HTTP URL: $BASE_HTTP_URL
-            - WebSocket URL: $BASE_WS_URL
-        """.trimIndent()
-    }
 }

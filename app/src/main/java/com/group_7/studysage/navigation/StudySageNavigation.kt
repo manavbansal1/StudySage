@@ -152,7 +152,8 @@ fun StudySageNavigation(
                 currentDestination?.route == "temp_flashcards" || // Hide nav on temp flashcard screen
                 currentDestination?.route == "recently_opened" ||
                 currentDestination?.route?.startsWith("game_") == true ||
-                courseUiState.isShowingFullscreenOverlay // Hide nav when quiz/NFC screens are showing
+                courseUiState.isShowingFullscreenOverlay || // Hide nav when quiz/NFC screens are showing
+                courseUiState.selectedCourse != null // Hide nav when viewing course details
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,

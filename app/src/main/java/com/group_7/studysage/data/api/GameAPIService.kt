@@ -172,31 +172,6 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
         }
     }
 
-    /**
-     * Get global leaderboard
-     * GET /api/games/leaderboard
-     */
-    suspend fun getGlobalLeaderboard(limit: Int = 100): ApiResponse<LeaderboardResponse> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/leaderboard?limit=$limit")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val apiResponse = json.decodeFromString<ApiResponse<LeaderboardResponse>>(body)
-                apiResponse
-            } else {
-                ApiResponse(success = false, message = "Failed to get leaderboard")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
-
     // ============================================
     // GAME SESSION MANAGEMENT
     // ============================================

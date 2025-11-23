@@ -371,20 +371,4 @@ class PodcastRepository(
             false
         }
     }
-
-    /**
-     * Check if a podcast already exists for a note
-     */
-    fun podcastExists(noteId: String): Boolean {
-        val audioFile = File(context.cacheDir, "podcast_${noteId}.wav")
-        return audioFile.exists()
-    }
-
-    /**
-     * Get podcast file path if it exists
-     */
-    fun getPodcastPath(noteId: String): String? {
-        val audioFile = File(context.cacheDir, "podcast_${noteId}.wav")
-        return if (audioFile.exists()) audioFile.absolutePath else null
-    }
 }
