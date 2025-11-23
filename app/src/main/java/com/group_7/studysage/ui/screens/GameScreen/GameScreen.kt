@@ -48,7 +48,8 @@ fun GameScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header
@@ -151,6 +152,7 @@ fun GameScreen(navController: NavController) {
                         navController.navigate("game_play/$code")
                     }
                 )
+                Spacer(modifier = Modifier.height(30.dp))
             }
         }
 
