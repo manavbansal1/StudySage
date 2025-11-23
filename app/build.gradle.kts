@@ -1,9 +1,35 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
     alias(libs.plugins.kotlin.serialization)
+}
+
+
+// Load .env file
+val envFile = rootProject.file(".env")
+val envProperties = Properties()
+if (envFile.exists()) {
+    FileInputStream(envFile).use { stream ->
+        envProperties.load(stream)
+    }
+    println("✓ .env file loaded successfully")
+    println("✓ GEMINI_API_KEY: ${if (envProperties.getProperty("GEMINI_API_KEY")?.isNotEmpty() == true) "Found" else "Missing"}")
+    println("✓ CLOUDINARY_CLOUD_NAME: ${if (envProperties.getProperty("CLOUDINARY_CLOUD_NAME")?.isNotEmpty() == true) "Found" else "Missing"}")
+} else {
+    println("⚠ .env file not found at: ${envFile.absolutePath}")
+}
+
+fun getEnvOrDefault(key: String, default: String = ""): String {
+    val value = envProperties.getProperty(key)?.trim() ?: System.getenv(key)?.trim() ?: default
+    if (value.isEmpty() && default.isEmpty()) {
+        println("⚠ Warning: $key is empty or not found")
+    }
+    return value
 }
 
 android {
@@ -19,14 +45,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GEMINI_API_KEY", "\"AIzaSyBUCYArNLIohOdrW71Dbx7ihA-n7f0ojjg\"")
-
-        // Add Cloudinary credentials (replace with your actual values)
-        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"dczuk4cxa\"")
-        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"StduySage\"")
-
-        // Resend API Key
-        buildConfigField("String", "RESEND_API_KEY", "\"re_PKvJfniJ_CM5M7j7hqKTxpds3TfnJzHWS\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"${getEnvOrDefault("GEMINI_API_KEY")}\"")
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${getEnvOrDefault("CLOUDINARY_CLOUD_NAME")}\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${getEnvOrDefault("CLOUDINARY_UPLOAD_PRESET")}\"")
+        buildConfigField("String", "RESEND_API_KEY", "\"${getEnvOrDefault("RESEND_API_KEY")}\"")
     }
 
     buildTypes {
@@ -42,8 +64,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         compose = true

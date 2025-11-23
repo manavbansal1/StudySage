@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.models.*
 import com.group_7.studysage.data.websocket.ConnectionState
 import com.group_7.studysage.data.websocket.GameWebSocketManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 class GamePlayViewModel(
     private val webSocketManager: GameWebSocketManager,
@@ -18,6 +21,9 @@ class GamePlayViewModel(
 
     private val _gameUiState = MutableStateFlow(GameUiState())
     val gameUiState: StateFlow<GameUiState> = _gameUiState.asStateFlow()
+
+    private var timerJob: Job? = null
+    private var questionStartTime: Long = 0L
 
     init {
         observeWebSocket()
@@ -71,7 +77,10 @@ class GamePlayViewModel(
         val question = state.currentQuestion?.question
         val player = authViewModel.currentUser.value
 
-        if (question != null && player != null) {
+        if (question != null && player != null && !state.isAnswered) {
+            // Stop the timer
+            stopTimer()
+            
             webSocketManager.submitAnswer(
                 playerId = player.uid,
                 questionId = question.id,
@@ -123,6 +132,9 @@ class GamePlayViewModel(
 
         webSocketManager.nextQuestion
             .onEach { questionData ->
+                // Stop any existing timer
+                stopTimer()
+                
                 _gameUiState.value = _gameUiState.value.copy(
                     currentQuestion = questionData,
                     currentFlashcard = null, // Clear flashcard when question comes
@@ -130,11 +142,20 @@ class GamePlayViewModel(
                     selectedAnswerIndex = null,
                     timeRemaining = questionData?.timeLimit ?: 0
                 )
+                
+                // Start countdown timer if question exists
+                if (questionData != null) {
+                    questionStartTime = System.currentTimeMillis()
+                    startTimer(questionData.timeLimit)
+                }
             }
             .launchIn(viewModelScope)
 
         webSocketManager.nextFlashcard
             .onEach { flashcardData ->
+                // Stop timer for flashcards too
+                stopTimer()
+                
                 _gameUiState.value = _gameUiState.value.copy(
                     currentFlashcard = flashcardData,
                     currentQuestion = null, // Clear question when flashcard comes
@@ -142,6 +163,12 @@ class GamePlayViewModel(
                     selectedAnswerIndex = null,
                     timeRemaining = flashcardData?.timeLimit ?: 0
                 )
+                
+                // Start timer for flashcards if needed
+                if (flashcardData != null) {
+                    questionStartTime = System.currentTimeMillis()
+                    startTimer(flashcardData.timeLimit)
+                }
             }
             .launchIn(viewModelScope)
 
@@ -180,8 +207,65 @@ class GamePlayViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Start countdown timer for a question
+     */
+    private fun startTimer(initialTime: Int) {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            var timeLeft = initialTime
+            while (timeLeft > 0 && !_gameUiState.value.isAnswered) {
+                delay(1000)
+                timeLeft--
+                _gameUiState.value = _gameUiState.value.copy(timeRemaining = timeLeft)
+            }
+            
+            // If timer reached 0 and user hasn't answered, auto-submit wrong answer
+            if (timeLeft == 0 && !_gameUiState.value.isAnswered) {
+                autoSubmitWrongAnswer()
+            }
+        }
+    }
+
+    /**
+     * Stop the countdown timer
+     */
+    private fun stopTimer() {
+        timerJob?.cancel()
+        timerJob = null
+    }
+
+    /**
+     * Auto-submit a wrong answer when time runs out
+     */
+    private fun autoSubmitWrongAnswer() {
+        val state = _gameUiState.value
+        val question = state.currentQuestion?.question
+        val player = authViewModel.currentUser.value
+
+        if (question != null && player != null && !state.isAnswered) {
+            // Find a wrong answer index (any index that's not the correct answer)
+            val wrongAnswerIndex = if (question.correctAnswer == 0) 1 else 0
+            val timeElapsed = System.currentTimeMillis() - questionStartTime
+            
+            webSocketManager.submitAnswer(
+                playerId = player.uid,
+                questionId = question.id,
+                answerIndex = wrongAnswerIndex,
+                timeElapsed = timeElapsed
+            )
+            
+            _gameUiState.value = state.copy(
+                isAnswered = true, 
+                selectedAnswerIndex = wrongAnswerIndex,
+                timeRemaining = 0
+            )
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        stopTimer()
         webSocketManager.disconnect()
     }
 }
