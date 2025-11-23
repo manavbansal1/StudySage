@@ -684,20 +684,6 @@ class AuthRepository(
     }
 
     /**
-     * Get user's upload library
-     */
-    suspend fun getUserLibrary(): List<Map<String, Any>> {
-        return try {
-            val profile = getUserProfile()
-            @Suppress("UNCHECKED_CAST")
-            (profile?.get("userLibrary") as? List<Map<String, Any>>) ?: emptyList()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch user library: ${e.message}", e)
-            emptyList()
-        }
-    }
-
-    /**
      * Add a note to recently opened list
      * Tracks when users actually open/view notes
      * Updates timestamp if note already exists in the list

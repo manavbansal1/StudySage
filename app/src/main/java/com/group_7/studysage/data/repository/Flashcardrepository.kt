@@ -20,7 +20,6 @@ class FlashcardRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
 
-    // Note: If you don't have BuildConfig access, replace BuildConfig.GEMINI_API_KEY with your API Key string.
     private val generativeModel = GenerativeModel(
         modelName = "gemini-2.5-flash",
         apiKey = BuildConfig.GEMINI_API_KEY,
@@ -45,12 +44,10 @@ class FlashcardRepository {
         return try {
             onProgress(20)
 
-            // Content limit for prompt safety
             val contentToUse = if (noteContent.length > 6000)
                 noteContent.take(6000) + "..."
             else noteContent
 
-            // --- UNIVERSAL PROMPT (STRENGTHENED FOR PURE JSON OUTPUT) ---
             val prompt = """
                 You are an AI tutor generating educational flashcards.
 
@@ -303,38 +300,6 @@ class FlashcardRepository {
             .replace("..", ".")
     }
 
-    /**
-     * Load, save, and delete functions for Firestore storage (unchanged)
-     */
-    suspend fun loadFlashcardsForNote(noteId: String): Result<List<Flashcard>> {
-        return try {
-            val snapshot = firestore.collection(COLLECTION_FLASHCARDS)
-                .whereEqualTo("noteId", noteId)
-                .get()
-                .await()
-
-            if (snapshot.isEmpty) Result.success(emptyList())
-            else {
-                val list = snapshot.documents.mapNotNull { doc ->
-                    try {
-                        Flashcard(
-                            id = doc.id,
-                            question = doc.getString("question") ?: "",
-                            answer = doc.getString("answer") ?: "",
-                            difficulty = doc.getString("difficulty") ?: "medium"
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing flashcard", e)
-                        null
-                    }
-                }
-                Result.success(list)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load flashcards", e)
-            Result.failure(e)
-        }
-    }
 
     suspend fun saveFlashcards(noteId: String, flashcards: List<Flashcard>): Result<Unit> {
         return try {
@@ -361,24 +326,6 @@ class FlashcardRepository {
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save flashcards", e)
-            Result.failure(e)
-        }
-    }
-
-    suspend fun deleteFlashcardsForNote(noteId: String): Result<Unit> {
-        return try {
-            val snapshot = firestore.collection(COLLECTION_FLASHCARDS)
-                .whereEqualTo("noteId", noteId)
-                .get()
-                .await()
-
-            val batch = firestore.batch()
-            snapshot.documents.forEach { batch.delete(it.reference) }
-            batch.commit().await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete flashcards", e)
             Result.failure(e)
         }
     }

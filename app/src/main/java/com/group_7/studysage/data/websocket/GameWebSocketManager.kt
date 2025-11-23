@@ -353,31 +353,6 @@ class GameWebSocketManager(
     }
 
     /**
-     * Send chat message
-     */
-    fun sendChatMessage(
-        senderId: String,
-        senderName: String,
-        message: String,
-        teamOnly: Boolean = false
-    ) {
-        val chatData = ChatMessageData(
-            senderId = senderId,
-            senderName = senderName,
-            message = message,
-            timestamp = System.currentTimeMillis(),
-            teamOnly = teamOnly
-        )
-
-        val dataString = json.encodeToString(ChatMessageData.serializer(), chatData)
-
-        sendMessage(WebSocketMessage(
-            type = MessageType.CHAT_MESSAGE,
-            data = dataString
-        ))
-    }
-
-    /**
      * Generic message sender
      */
     private fun sendMessage(message: WebSocketMessage) {
