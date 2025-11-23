@@ -144,6 +144,13 @@ fun StudySageNavigation(
         // Collect fullscreen overlay state from courseViewModel
         val courseUiState by courseViewModel.uiState.collectAsState()
 
+        // Clear selected course when navigating away from course screen
+        androidx.compose.runtime.LaunchedEffect(currentDestination?.route) {
+            if (currentDestination?.route != Screen.Course.route && courseUiState.selectedCourse != null) {
+                courseViewModel.clearSelectedCourse()
+            }
+        }
+
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
