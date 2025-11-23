@@ -1,10 +1,11 @@
 package com.group_7.studysage.viewmodels
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.Note
@@ -15,10 +16,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    private val notesRepository: NotesRepository = NotesRepository(),
-    private val authRepository: AuthRepository = AuthRepository(),
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val notesRepository: NotesRepository = NotesRepository(application.applicationContext)
+    private val authRepository: AuthRepository = AuthRepository()
     private val courseRepository: CourseRepository = CourseRepository()
-) : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading

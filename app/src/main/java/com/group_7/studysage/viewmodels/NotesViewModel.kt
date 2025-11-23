@@ -1,9 +1,10 @@
 package com.group_7.studysage.viewmodels
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
@@ -14,12 +15,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class NotesViewModel(
-    private val notesRepository: NotesRepository = NotesRepository()
-) : ViewModel() {
+    application: Application
+) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "NotesViewModel"
     }
+
+    private val notesRepository: NotesRepository = NotesRepository(application.applicationContext)
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()

@@ -1,18 +1,22 @@
 package com.group_7.studysage
 
-import android.app.PendingIntent
-import android.content.Intent
+import android.Manifest
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.AuthRepository
@@ -22,6 +26,9 @@ import com.group_7.studysage.viewmodels.AuthViewModel
 import com.group_7.studysage.viewmodels.AuthViewModelFactory
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.group_7.studysage.utils.PermissionHandler
+import com.group_7.studysage.utils.NotificationPermissionHelper
+import com.group_7.studysage.utils.StudySageNotificationManager
+import com.group_7.studysage.utils.ReminderScheduler
 import com.group_7.studysage.services.NfcHostApduService
 import com.group_7.studysage.data.nfc.NFCPayload
 import kotlinx.coroutines.launch
@@ -45,6 +52,12 @@ class MainActivity : ComponentActivity() {
 
         Log.d("NFC_MAIN", "NFC Available: ${nfcAdapter != null}")
         Log.d("NFC_MAIN", "NFC Enabled: ${nfcAdapter?.isEnabled}")
+
+        // Initialize notification manager
+        StudySageNotificationManager.init(this)
+
+        // Schedule daily study reminders (9 AM by default)
+        ReminderScheduler.scheduleDailyReminder(this, hourOfDay = 9)
 
         PermissionHandler.init(this)
         PermissionHandler.requestAllPermissions(this)
@@ -168,15 +181,51 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private fun PermissionHandler.init(activity: MainActivity) {}
 
 @Composable
 fun StudySageApp() {
+    val context = LocalContext.current
     val authRepository = remember { AuthRepository() }
 
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(authRepository)
     )
+
+    // Permission launcher for notifications (Android 13+)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted
+            Toast.makeText(context, "Notifications enabled!", Toast.LENGTH_SHORT).show()
+            Log.d("NotificationPermission", "Permission GRANTED")
+        } else {
+            // Permission denied
+            Toast.makeText(context, "Notifications disabled", Toast.LENGTH_SHORT).show()
+            Log.d("NotificationPermission", "Permission DENIED")
+        }
+    }
+
+    // Request permission on launch if needed
+    LaunchedEffect(Unit) {
+        Log.d("NotificationPermission", "LaunchedEffect triggered")
+        Log.d("NotificationPermission", "Android version: ${Build.VERSION.SDK_INT}")
+        Log.d("NotificationPermission", "TIRAMISU: ${Build.VERSION_CODES.TIRAMISU}")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val isGranted = NotificationPermissionHelper.isNotificationPermissionGranted(context)
+            Log.d("NotificationPermission", "Permission already granted: $isGranted")
+
+            if (!isGranted) {
+                Log.d("NotificationPermission", "Requesting permission...")
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                Log.d("NotificationPermission", "Permission already granted, skipping request")
+            }
+        } else {
+            Log.d("NotificationPermission", "Android version < 13, no permission needed")
+        }
+    }
 
     StudySageNavigation(
         authViewModel = authViewModel,

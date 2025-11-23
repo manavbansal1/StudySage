@@ -11,6 +11,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.group_7.studysage.BuildConfig
 import com.group_7.studysage.utils.CloudinaryUploader
+import com.group_7.studysage.utils.NotificationHelper
+import com.group_7.studysage.utils.StudySageNotificationManager
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -38,6 +40,7 @@ data class Note(
 )
 
 class NotesRepository(
+    private val context: Context? = null,
     private val cloudinaryUploader: CloudinaryUploader = CloudinaryUploader,
     private val authRepository: AuthRepository = AuthRepository()
 ) {
@@ -165,6 +168,47 @@ class NotesRepository(
                 courseId = note.courseId
             )
 
+            // Notify user of successful upload
+            try {
+                Log.d(TAG, "Preparing to send upload notification...")
+
+                // Check if notifications are enabled in Firestore
+                val notificationsEnabled = try {
+                    val doc = firestore.collection("users")
+                        .document(userId)
+                        .get()
+                        .await()
+                    doc.getBoolean("settings.notificationsEnabled") ?: false
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error checking notification settings: ${e.message}")
+                    false
+                }
+
+                Log.d(TAG, "Notifications enabled in Firestore: $notificationsEnabled")
+
+                // Send notification if user has notifications enabled
+                // Note: We send even when app is in foreground for document uploads
+                if (notificationsEnabled) {
+                    val courseName = if (!courseId.isNullOrEmpty()) {
+                        getCourseNameById(courseId)
+                    } else {
+                        "your library"
+                    }
+
+                    StudySageNotificationManager.showNoteUploaded(
+                        context = context,
+                        noteTitle = note.title,
+                        courseTitle = courseName
+                    )
+                    Log.d(TAG, "✅ Upload notification sent for note: ${note.title}")
+                } else {
+                    Log.d(TAG, "❌ Notification NOT sent - notifications disabled in user settings")
+                }
+            } catch (e: Exception) {
+                // Don't fail the upload if notification fails
+                Log.e(TAG, "Error sending upload notification: ${e.message}", e)
+            }
+
             Log.d(TAG, "Note saved successfully with ID: $noteId")
             onProgress("Note processed successfully!")
             Result.success(note)
@@ -185,6 +229,23 @@ class NotesRepository(
             }
 
             Result.failure(Exception(errorMessage))
+        }
+    }
+
+    /**
+     * Get course name by ID from Firestore.
+     * Helper method for notification messages.
+     */
+    private suspend fun getCourseNameById(courseId: String): String {
+        return try {
+            val doc = firestore.collection("courses")
+                .document(courseId)
+                .get()
+                .await()
+            doc.getString("title") ?: "Unknown Course"
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching course name: ${e.message}")
+            "Unknown Course"
         }
     }
 
@@ -580,6 +641,26 @@ class NotesRepository(
     suspend fun updateNoteSummary(noteId: String, content: String, userPreferences: String): String {
         val summary = generateAISummary(content, true, userPreferences)
         firestore.collection("notes").document(noteId).update("summary", summary).await()
+
+        // Notify that summary is ready
+        try {
+            val userId = auth.currentUser?.uid
+            if (userId != null && context != null && NotificationHelper.shouldNotifyUser(context, userId)) {
+                val note = getNoteById(noteId)
+                val noteTitle = note?.title ?: "Your note"
+
+                StudySageNotificationManager.showNoteUploaded(
+                    context = context,
+                    noteTitle = noteTitle,
+                    courseTitle = "Summary ready!"
+                )
+                Log.d(TAG, "Summary ready notification sent for note: $noteTitle")
+            }
+        } catch (e: Exception) {
+            // Don't fail the summary update if notification fails
+            Log.e(TAG, "Error sending summary notification: ${e.message}", e)
+        }
+
         return summary
     }
 
