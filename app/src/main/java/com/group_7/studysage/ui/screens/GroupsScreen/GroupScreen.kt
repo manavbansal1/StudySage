@@ -73,14 +73,16 @@ fun GroupScreen(
                     contentColor = Color.White
                 )
             }
-        }
+        },
+        containerColor = Color.Transparent,
+        modifier = Modifier.fillMaxSize() // Removed negative offset
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
-                .padding(top = 16.dp, bottom = 16.dp)
+                .padding(bottom = 16.dp) // Removed top padding
         ) {
             // Pull-to-refresh wrapper
             val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -104,13 +106,12 @@ fun GroupScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp)
                 ) {
-                Spacer(modifier = Modifier.height(18.dp))
-
                 // Header Section
                 GroupsHeader(
                     pendingInviteCount = pendingInviteCount,
                     onNotificationClick = { viewModel.toggleInviteOverlay() },
-                    onAddClick = { showCreateGroupDialog = true }
+                    onAddClick = { showCreateGroupDialog = true },
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -231,66 +232,66 @@ fun GroupsHeader(
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Connect and collaborate",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = "Groups",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Text(
-                text = "Connect and collaborate",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Notification icon with badge
-            Box {
-                IconButton(
-                    onClick = onNotificationClick,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (pendingInviteCount > 0) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 8.dp, end = 8.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Notification icon with badge
+                Box {
+                    IconButton(
+                        onClick = onNotificationClick,
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Text(
-                            text = if (pendingInviteCount > 9) "9+" else pendingInviteCount.toString(),
-                            fontSize = 10.sp
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (pendingInviteCount > 0) {
+                        Badge(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 8.dp, end = 8.dp)
+                        ) {
+                            Text(
+                                text = if (pendingInviteCount > 9) "9+" else pendingInviteCount.toString(),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
                 }
-            }
 
-            // Add group button
-            IconButton(
-                onClick = onAddClick,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Create Group",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                // Add group button
+                IconButton(
+                    onClick = onAddClick,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Create Group",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
     }

@@ -128,8 +128,8 @@ fun CoursesScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = paddingValues, // Apply insets
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp) // Page horizontal padding
@@ -298,128 +298,110 @@ fun FilterSection(
     onSemesterChange: (String) -> Unit,
     onYearChange: (String) -> Unit
 ) {
-    // Use the GlassCard style
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Filter Courses",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            Row(
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Semester Filter
+        var semesterExpanded by remember { mutableStateOf(false) }
+        Box(modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = { semesterExpanded = true },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
-                // Re-styled "glassy" text field
-                val glassTextFieldColors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text = selectedSemester.ifEmpty { "Semester" },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                // Semester Filter
-                var semesterExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = semesterExpanded,
-                    onExpandedChange = { semesterExpanded = !semesterExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    TextField(
-                        value = selectedSemester,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Semester") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = semesterExpanded)
+            DropdownMenu(
+                expanded = semesterExpanded,
+                onDismissRequest = { semesterExpanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+            ) {
+                Semester.values().forEach { semester ->
+                    DropdownMenuItem(
+                        text = { Text(semester.displayName) },
+                        onClick = {
+                            onSemesterChange(semester.displayName)
+                            semesterExpanded = false
                         },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = glassTextFieldColors
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = semesterExpanded,
-                        onDismissRequest = { semesterExpanded = false }
-                    ) {
-                        Semester.values().forEach { semester ->
-                            DropdownMenuItem(
-                                text = { Text(semester.displayName) },
-                                onClick = {
-                                    onSemesterChange(semester.displayName)
-                                    semesterExpanded = false
-                                },
-                                leadingIcon = {
-                                    if (selectedSemester == semester.displayName) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            )
+                        leadingIcon = {
+                            if (selectedSemester == semester.displayName) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                    }
+                    )
                 }
+            }
+        }
 
-                // Year Filter
-                var yearExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = yearExpanded,
-                    onExpandedChange = { yearExpanded = !yearExpanded },
+        // Year Filter
+        var yearExpanded by remember { mutableStateOf(false) }
+        Box(modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = { yearExpanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Text(
+                    text = selectedYear.ifEmpty { "Year" },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
-                ) {
-                    TextField(
-                        value = selectedYear,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Year") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = glassTextFieldColors
-                    )
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                    ExposedDropdownMenu(
-                        expanded = yearExpanded,
-                        onDismissRequest = { yearExpanded = false }
-                    ) {
-                        availableYears.forEach { year ->
-                            DropdownMenuItem(
-                                text = { Text(year) },
-                                onClick = {
-                                    onYearChange(year)
-                                    yearExpanded = false
-                                },
-                                leadingIcon = {
-                                    if (selectedYear == year) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            )
+            DropdownMenu(
+                expanded = yearExpanded,
+                onDismissRequest = { yearExpanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+            ) {
+                availableYears.forEach { year ->
+                    DropdownMenuItem(
+                        text = { Text(year) },
+                        onClick = {
+                            onYearChange(year)
+                            yearExpanded = false
+                        },
+                        leadingIcon = {
+                            if (selectedYear == year) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                    }
+                    )
                 }
             }
         }
@@ -441,7 +423,7 @@ fun CourseGridCard(
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f), // Perfect square cards
+            .aspectRatio(0.85f), // Slightly taller for better proportions
         onClick = onClick
     ) {
         Column(
@@ -451,11 +433,10 @@ fun CourseGridCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // Takes up half the height
+                    .weight(1.2f) // Give more space to the visual part
                     .background(
-                        // Consistent, theme-aware background
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                        // Use a light tint of the course color
+                        tintColor.copy(alpha = 0.15f)
                     )
             ) {
                 // Course icon/image placeholder
@@ -463,30 +444,19 @@ fun CourseGridCard(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    Surface(
-                        // Use the user's color with alpha
-                        color = tintColor.copy(alpha = 0.2f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(60.dp)
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Icon(
-                                Icons.Default.School,
-                                contentDescription = "Course Icon",
-                                tint = tintColor, // Use the user's color
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
+                    // Just the icon, larger and cleaner
+                    Icon(
+                        Icons.Default.School,
+                        contentDescription = "Course Icon",
+                        tint = tintColor,
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
 
                 // Credits badge in top-right corner
                 if (course.credits > 0) {
                     Surface(
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -495,7 +465,7 @@ fun CourseGridCard(
                         Text(
                             text = "${course.credits} CR",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
@@ -507,7 +477,7 @@ fun CourseGridCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // Takes up the other half
+                    .weight(1f)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -516,11 +486,12 @@ fun CourseGridCard(
                     // Course code
                     Text(
                         text = course.code,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = tintColor, // Use the user's color
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = tintColor,
+                        fontWeight = FontWeight.ExtraBold, // Bolder
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        letterSpacing = 0.5.sp
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -528,17 +499,17 @@ fun CourseGridCard(
                     // Course title
                     Text(
                         text = course.title,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleMedium, // Larger title
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        lineHeight = MaterialTheme.typography.titleSmall.lineHeight
+                        lineHeight = 20.sp
                     )
 
                     // Instructor (if available)
                     if (course.instructor.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -546,7 +517,7 @@ fun CourseGridCard(
                                 Icons.Default.Person,
                                 contentDescription = "Instructor",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(12.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
@@ -558,19 +529,6 @@ fun CourseGridCard(
                             )
                         }
                     }
-                }
-
-                // Action indicator at bottom
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "View Course",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.size(16.dp)
-                    )
                 }
             }
         }
