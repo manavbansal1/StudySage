@@ -80,15 +80,26 @@ private fun GlassCard(
 @Composable
 fun CoursesScreen(
     viewModel: CourseViewModel = viewModel(),
-    authViewModel: com.group_7.studysage.viewmodels.AuthViewModel
+    authViewModel: com.group_7.studysage.viewmodels.AuthViewModel,
+    navCourseId: String? = null,
+    navNoteId: String? = null // NEW optional nav params
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
+
+    // If navigation provided a courseId, load it and set pendingNote
+    LaunchedEffect(navCourseId, navNoteId) {
+        if (!navCourseId.isNullOrBlank()) {
+            viewModel.setPendingOpenNote(navNoteId)
+            viewModel.loadCourseWithNotes(navCourseId)
+        }
+    }
 
     if (uiState.selectedCourse != null) {
         CourseDetailScreen(
             courseWithNotes = uiState.selectedCourse!!,
             onBack = { viewModel.clearSelectedCourse() },
+            courseViewModel = viewModel,
             authViewModel = authViewModel
         )
     } else {

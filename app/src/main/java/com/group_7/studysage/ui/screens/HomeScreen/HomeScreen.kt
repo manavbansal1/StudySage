@@ -78,6 +78,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.request.CachePolicy
+import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
@@ -150,6 +153,7 @@ fun HomeScreen(
     courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val userFullName by homeViewModel.userFullName
     val userProfile by homeViewModel.userProfile
     val isLoadingProfile by homeViewModel.isLoadingProfile
@@ -160,6 +164,11 @@ fun HomeScreen(
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
 
     val tasksState = remember { mutableStateListOf<DailyTask>() }
+
+    // Reload profile data when navigating back to Home
+    LaunchedEffect(key1 = true) {
+        homeViewModel.refreshHomeData()
+    }
 
     LaunchedEffect(Unit) {
         val sample = listOf(
@@ -273,13 +282,20 @@ fun HomeScreen(
                     val firstInitial = userFullName.firstOrNull()?.uppercaseChar() ?: 'U'
 
                     if (!profileImage.isNullOrBlank()) {
+                        // Disable cache to always show latest profile image
+                        val imageRequest = ImageRequest.Builder(context)
+                            .data(profileImage)
+                            .memoryCachePolicy(CachePolicy.DISABLED)
+                            .diskCachePolicy(CachePolicy.DISABLED)
+                            .build()
+
                         Image(
-                            painter = rememberAsyncImagePainter(profileImage),
+                            painter = rememberAsyncImagePainter(imageRequest),
                             contentDescription = "Profile Picture",
                             modifier = Modifier
-                                .size(64.dp) // <-- CHANGED
+                                .size(64.dp)
                                 .clip(CircleShape)
-                                .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape), // Optional: slightly smaller border
+                                .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -505,8 +521,10 @@ fun HomeScreen(
                             lastOpenedAt = (pdf["lastOpenedAt"] as? Number)?.toLong() ?: 0L,
                             openCount = (pdf["openCount"] as? Number)?.toInt() ?: 0,
                             onClick = {
-                                if (courseId.isNotBlank()) {
-                                    homeViewModel.openCourse(courseId, courseViewModel, navController)
+                                val noteId = pdf["noteId"] as? String
+                                if (!courseId.isNullOrBlank()) {
+                                    // Open course and request opening this specific note
+                                    homeViewModel.openCourse(courseId, noteId, courseViewModel, navController)
                                 }
                             }
                         )

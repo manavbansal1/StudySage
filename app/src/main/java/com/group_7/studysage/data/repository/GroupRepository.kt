@@ -1,10 +1,13 @@
 package com.group_7.studysage.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.FieldValue
+import com.group_7.studysage.utils.NotificationHelper
+import com.group_7.studysage.utils.StudySageNotificationManager
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -50,6 +53,7 @@ data class GroupMember(
 )
 
 class GroupRepository(
+    private val context: Context,
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
@@ -285,10 +289,112 @@ class GroupRepository(
                 )
                 .await()
 
+            // Notify group members about the new message
+            notifyGroupMembers(
+                groupId = groupId,
+                senderId = currentUser.uid,
+                senderName = currentUser.displayName ?: "User",
+                messageText = message
+            )
+
             Result.success(messageId)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send message to group $groupId: ${e.message}", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Notify group members about a new message.
+     * This method runs asynchronously and doesn't block message sending.
+     * Errors are logged but don't affect the message sending operation.
+     *
+     * @param groupId The ID of the group
+     * @param senderId The ID of the user who sent the message
+     * @param senderName The name of the user who sent the message
+     * @param messageText The message content
+     */
+    private suspend fun notifyGroupMembers(
+        groupId: String,
+        senderId: String,
+        senderName: String,
+        messageText: String
+    ) {
+        try {
+            Log.d(TAG, "Notifying group members for group: $groupId")
+
+            // Get group details
+            val groupDoc = firestore.collection("groups")
+                .document(groupId)
+                .get()
+                .await()
+
+            if (!groupDoc.exists()) {
+                Log.w(TAG, "Group not found: $groupId")
+                return
+            }
+
+            val groupName = groupDoc.getString("name") ?: "Group"
+
+            // Get members list
+            @Suppress("UNCHECKED_CAST")
+            val membersList = groupDoc.get("members") as? List<Map<String, Any>> ?: emptyList()
+
+            // Extract member IDs (exclude sender)
+            val memberIds = membersList.mapNotNull { member ->
+                val memberId = member["userId"] as? String
+                if (memberId != null && memberId != senderId) {
+                    memberId
+                } else {
+                    null
+                }
+            }
+
+            Log.d(TAG, "Found ${memberIds.size} members to notify")
+
+            // Truncate message for notification
+            val truncatedMessage = NotificationHelper.truncateMessage(messageText, 100)
+
+            // Send notification to each member
+            memberIds.forEach { memberId ->
+                try {
+                    // Check if notifications are enabled for this user
+                    val notificationsEnabled = try {
+                        val userDoc = firestore.collection("users")
+                            .document(memberId)
+                            .get()
+                            .await()
+                        userDoc.getBoolean("settings.notificationsEnabled") ?: false
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error checking notification settings for $memberId: ${e.message}")
+                        false
+                    }
+
+                    // Send notification if user has notifications enabled
+                    // Note: We send even when app is in foreground for group messages
+                    if (notificationsEnabled) {
+                        StudySageNotificationManager.showGroupMessage(
+                            context = context,
+                            groupName = groupName,
+                            senderName = senderName,
+                            message = truncatedMessage
+                        )
+                        Log.d(TAG, "✅ Notification sent to member: $memberId")
+                    } else {
+                        Log.d(TAG, "❌ Skipping notification for member: $memberId (notifications disabled in settings)")
+                    }
+                } catch (e: Exception) {
+                    // Log but continue with other members
+                    Log.e(TAG, "Error sending notification to member $memberId", e)
+                }
+            }
+
+            Log.d(TAG, "Finished notifying group members")
+
+        } catch (e: Exception) {
+            // Don't throw - just log the error
+            // This ensures message sending isn't affected by notification failures
+            Log.e(TAG, "Error notifying group members: ${e.message}", e)
         }
     }
 

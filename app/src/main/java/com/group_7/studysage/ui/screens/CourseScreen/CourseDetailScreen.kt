@@ -113,6 +113,56 @@ fun CourseDetailScreen(
     val isSummaryLoading by notesViewModel.isNoteDetailsLoading.collectAsState()
     val quizGenerationState by gameViewModel.quizGenerationState.collectAsState()
 
+    // Observe pending note id from CourseViewModel
+    val pendingNoteId = courseViewModel.uiState.collectAsState().value.pendingOpenNoteId
+
+    // When course notes are loaded and there's a pending note id, auto-open it
+    LaunchedEffect(courseWithNotes, pendingNoteId) {
+        android.util.Log.d("CourseDetailScreen", "LaunchedEffect: pendingNoteId=$pendingNoteId, courseNotes=${courseWithNotes.notes.size}, libraryNotes=${libraryNotes.size}")
+        if (!pendingNoteId.isNullOrBlank()) {
+            // Search in courseWithNotes.notes first, then in libraryNotes
+            val foundInCourse = courseWithNotes.notes.find { it.id == pendingNoteId }
+            val foundInLibrary = libraryNotes.find { it.id == pendingNoteId }
+            android.util.Log.d("CourseDetailScreen", "Found in course: ${foundInCourse != null}, found in library: ${foundInLibrary != null}")
+            val toOpen = foundInCourse ?: foundInLibrary
+            toOpen?.let { note ->
+                // Track that the note was opened
+                homeViewModel.markNoteAsOpened(
+                    noteId = note.id,
+                    title = if (note.title.isNotBlank()) note.title else note.originalFileName,
+                    fileName = note.originalFileName,
+                    fileUrl = note.fileUrl,
+                    courseId = course.id
+                )
+
+                // Ensure NotesViewModel has the selected note details
+                try {
+                    if (note.id.isNotBlank()) {
+                        android.util.Log.d("CourseDetailScreen", "Auto-opening note id=${note.id}")
+                        notesViewModel.selectNote(note)
+                        // Kick off full load if content or summary isn't present
+                        if (note.summary.isBlank() || note.content.isBlank()) {
+                            notesViewModel.loadNoteById(note.id)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CourseDetailScreen", "Error selecting/loading note: ${e.message}", e)
+                }
+
+                selectedNote = note
+                showNoteOptions = true
+            }
+            // Clear the pending request so it doesn't re-open
+            courseViewModel.clearPendingOpenNote()
+        }
+    }
+
+    // Notify navigation when fullscreen overlay screens are showing (quiz/NFC) so navbar can hide
+    LaunchedEffect(showShareNFCScreen, showReceiveNFCScreen, showPlayQuizScreen) {
+        val isShowingOverlay = showShareNFCScreen || showReceiveNFCScreen || showPlayQuizScreen
+        courseViewModel.setFullscreenOverlay(isShowingOverlay)
+    }
+
     if (showShareNFCScreen && noteToShare != null) {
         ShareNFCScreen(
             note = noteToShare!!,

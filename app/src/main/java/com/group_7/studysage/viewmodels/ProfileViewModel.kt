@@ -100,23 +100,33 @@ class ProfileViewModel(
                 )
 
                 if (imageUrl != null) {
-                    // Update Firebase with the new image URL
-                    val result = authRepository.updateProfileImage(imageUrl)
+                    // ✨ INSTANT UPDATE: Immediately update UI state with new image URL
+                    // This provides instant visual feedback to the user
+                    val currentProfile = _uiState.value.userProfile?.toMutableMap() ?: mutableMapOf()
+                    currentProfile["profileImageUrl"] = imageUrl  // Use correct key that matches ProfileScreen!
 
-                    result.onSuccess {
-                        loadUserProfile()
-                        _uiState.update {
-                            it.copy(
-                                isUploadingImage = false,
-                                message = "Profile picture updated successfully"
-                            )
-                        }
-                    }.onFailure { exception ->
-                        _uiState.update {
-                            it.copy(
-                                isUploadingImage = false,
-                                error = "Failed to update profile picture: ${exception.message}"
-                            )
+                    _uiState.update {
+                        it.copy(
+                            userProfile = currentProfile,
+                            isUploadingImage = false,
+                            message = "Profile picture updated successfully"
+                        )
+                    }
+
+                    // Update Firebase in the background (non-blocking)
+                    // This ensures the change persists across app restarts
+                    launch {
+                        val result = authRepository.updateProfileImage(imageUrl)
+
+                        result.onFailure { exception ->
+                            // If Firebase update fails, revert the optimistic update
+                            _uiState.update {
+                                it.copy(
+                                    error = "Failed to save profile picture: ${exception.message}"
+                                )
+                            }
+                            // Reload profile to get the correct state
+                            loadUserProfile()
                         }
                     }
                 } else {

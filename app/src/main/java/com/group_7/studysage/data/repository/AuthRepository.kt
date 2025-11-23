@@ -610,14 +610,17 @@ class AuthRepository(
      */
     suspend fun updateNotificationsEnabled(enabled: Boolean): Result<Unit> {
         return try {
-            val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
+            val userId = currentUser?.uid
+                ?: return Result.failure(Exception("Not authenticated"))
+
             firestore.collection("users")
                 .document(userId)
-                .update("notifications.enabled", enabled)
+                .update("settings.notificationsEnabled", enabled)
                 .await()
+
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to update notifications preference: ${e.message}", e)
+            Log.e(TAG, "Error updating notification settings: ${e.message}")
             Result.failure(e)
         }
     }
@@ -625,17 +628,20 @@ class AuthRepository(
     /**
      * Get notifications enabled/disabled setting
      * Returns true if enabled, false if disabled
-     * Defaults to true if not set or on error
+     * Defaults to false if not set or on error
      */
     suspend fun getNotificationsEnabled(): Boolean {
         return try {
-            val userId = currentUser?.uid ?: return true
-            val doc = firestore.collection("users").document(userId).get().await()
-            val notifications = doc.get("notifications") as? Map<*, *>
-            (notifications?.get("enabled") as? Boolean) ?: true
+            val userId = currentUser?.uid ?: return false
+            val doc = firestore.collection("users")
+                .document(userId)
+                .get()
+                .await()
+
+            doc.getBoolean("settings.notificationsEnabled") ?: false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch notifications preference: ${e.message}", e)
-            true
+            Log.e(TAG, "Error getting notification settings: ${e.message}")
+            false
         }
     }
 
@@ -861,5 +867,51 @@ class AuthRepository(
         calendar.set(java.util.Calendar.SECOND, 0)
         calendar.set(java.util.Calendar.MILLISECOND, 0)
         return calendar.timeInMillis
+    }
+
+    /**
+     * Get reminder time setting from Firestore
+     * Returns time in HH:mm format, defaults to "18:00" if not set or on error
+     */
+    suspend fun getReminderTime(): String {
+        return try {
+            val userId = currentUser?.uid ?: return "18:00"
+            val doc = firestore.collection("users")
+                .document(userId)
+                .get()
+                .await()
+
+            doc.getString("settings.reminderTime") ?: "18:00"
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting reminder time: ${e.message}")
+            "18:00"
+        }
+    }
+
+    /**
+     * Update reminder time setting in Firestore
+     * @param time Time in HH:mm format (e.g., "18:00")
+     * Returns Result<Unit> indicating success or failure
+     */
+    suspend fun updateReminderTime(time: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid
+                ?: return Result.failure(Exception("Not authenticated"))
+
+            // Validate time format HH:mm
+            if (!time.matches(Regex("^([01]?[0-9]|2[0-3]):[0-5][0-9]$"))) {
+                return Result.failure(Exception("Invalid time format"))
+            }
+
+            firestore.collection("users")
+                .document(userId)
+                .update("settings.reminderTime", time)
+                .await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating reminder time: ${e.message}")
+            Result.failure(e)
+        }
     }
 }

@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import com.group_7.studysage.viewmodels.AuthViewModel
 import androidx.navigation.NavController
 import com.group_7.studysage.viewmodels.ProfileViewModel
@@ -63,8 +65,10 @@ fun ProfileScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    // Reload profile every time we navigate to this screen
+    LaunchedEffect(key1 = true) {
         viewModel.loadUserProfile()
+        authViewModel.loadUserProfile() // Also refresh AuthViewModel
     }
 
     // Snackbar for messages (Instead of Toast)
@@ -129,8 +133,15 @@ fun ProfileScreen(
                                     ) {
                                         val profileImage = profile["profileImageUrl"] as? String
                                         if (!profileImage.isNullOrBlank()) {
+                                            // Disable cache to always show latest image
+                                            val imageRequest = ImageRequest.Builder(context)
+                                                .data(profileImage)
+                                                .memoryCachePolicy(CachePolicy.DISABLED)
+                                                .diskCachePolicy(CachePolicy.DISABLED)
+                                                .build()
+
                                             Image(
-                                                painter = rememberAsyncImagePainter(profileImage),
+                                                painter = rememberAsyncImagePainter(imageRequest),
                                                 contentDescription = "Profile Picture",
                                                 modifier = Modifier
                                                     .size(120.dp)

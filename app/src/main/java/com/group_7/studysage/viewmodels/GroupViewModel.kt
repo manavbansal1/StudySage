@@ -1,7 +1,8 @@
 package com.group_7.studysage.ui.viewmodels
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.ListenerRegistration
 import com.group_7.studysage.data.repository.AuthRepository
@@ -33,13 +34,15 @@ sealed class GroupUiState {
 }
 
 class GroupViewModel(
-    private val groupRepository: GroupRepository = GroupRepository(),
-    private val authRepository: AuthRepository = AuthRepository()
-) : ViewModel() {
+    application: Application
+) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "GroupViewModel"
     }
+
+    private val groupRepository: GroupRepository = GroupRepository(application.applicationContext)
+    private val authRepository: AuthRepository = AuthRepository()
 
     private val _uiState = MutableStateFlow<GroupUiState>(GroupUiState.Loading)
     val uiState: StateFlow<GroupUiState> = _uiState.asStateFlow()

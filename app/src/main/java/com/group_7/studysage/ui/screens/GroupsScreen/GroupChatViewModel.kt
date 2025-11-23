@@ -1,6 +1,7 @@
 package com.group_7.studysage.ui.viewmodels
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.GroupRepository
@@ -24,9 +25,11 @@ sealed class GroupChatUiState {
 }
 
 class GroupChatViewModel(
-    private val groupRepository: GroupRepository = GroupRepository(),
+    application: Application
+) : AndroidViewModel(application) {
+
+    private val groupRepository: GroupRepository = GroupRepository(application.applicationContext)
     private val authRepository: AuthRepository = AuthRepository()
-) : ViewModel() {
 
     private val _uiState = MutableStateFlow<GroupChatUiState>(GroupChatUiState.Loading)
     val uiState: StateFlow<GroupChatUiState> = _uiState.asStateFlow()
