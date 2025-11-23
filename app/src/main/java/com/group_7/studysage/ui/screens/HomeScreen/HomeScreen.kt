@@ -202,7 +202,11 @@ fun HomeScreen(
             title = "Flashcards",
             icon = Icons.Default.Style,
             color = MaterialTheme.colorScheme.secondary,
-            onClick = { /* Navigate to flashcards */ }
+            onClick = {
+                // Navigate to temporary flashcard generation screen
+                // User can upload PDF, generate flashcards with AI, and study without saving
+                navController.navigate("temp_flashcards")
+            }
         ),
         QuickAction(
             title = "Study Groups",
