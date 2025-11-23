@@ -55,6 +55,9 @@ import com.group_7.studysage.ui.screens.HomeScreen.HomeScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.NotificationsScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
+import com.group_7.studysage.ui.screens.RecentlyOpened.RecentlyOpenedScreen
+import com.group_7.studysage.ui.screens.TempQuiz.TempQuizGenerationScreen
+import com.group_7.studysage.ui.screens.TempFlashcards.TempFlashcardsGenerationScreen
 import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.viewmodels.AuthViewModel
@@ -145,6 +148,9 @@ fun StudySageNavigation(
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
                 currentDestination?.route == "notification_settings" ||
+                currentDestination?.route == "temp_quiz" || // Hide nav on temp quiz screen
+                currentDestination?.route == "temp_flashcards" || // Hide nav on temp flashcard screen
+                currentDestination?.route == "recently_opened" ||
                 currentDestination?.route?.startsWith("game_") == true ||
                 courseUiState.isShowingFullscreenOverlay // Hide nav when quiz/NFC screens are showing
 
@@ -416,6 +422,23 @@ fun StudySageNavigation(
                 composable("notification_settings") {
                     NotificationsScreen(navController = navController)
                 }
+                composable("recently_opened") {
+                    RecentlyOpenedScreen(navController = navController)
+                }
+
+                // Temporary Quiz Generation Screen
+                composable("temp_quiz") {
+                    TempQuizGenerationScreen(
+                        navController = navController,
+                        authViewModel = authViewModel
+                    )
+                }
+
+                // Temporary Flashcards Generation Screen (for quick action feature)
+                composable("temp_flashcards") {
+                    TempFlashcardsGenerationScreen(navController = navController)
+                }
+
                 composable(
                     Screen.Games.route,
                     enterTransition = {
