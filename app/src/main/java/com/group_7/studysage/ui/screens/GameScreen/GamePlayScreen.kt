@@ -30,6 +30,7 @@ import com.group_7.studysage.viewmodels.GamePlayViewModel
 import com.group_7.studysage.viewmodels.GamePlayViewModelFactory
 import com.group_7.studysage.data.websocket.GameWebSocketManager
 import com.group_7.studysage.viewmodels.AuthViewModel
+import com.group_7.studysage.data.models.GameType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +81,18 @@ fun GamePlayScreen(
                     GameResultsScreen(
                         gameUiState = gameUiState,
                         onBackClick = { navController.popBackStack() }
+                    )
+                }
+                gameUiState.currentSession?.gameType == GameType.STUDY_TAC_TOE &&
+                gameUiState.currentSession?.status == com.group_7.studysage.data.models.GameStatus.IN_PROGRESS -> {
+                    StudyTacToeScreen(
+                        gameUiState = gameUiState,
+                        onSquareClick = { squareIndex ->
+                            // Square clicked, waiting for question to appear
+                        },
+                        onAnswerSubmit = { squareIndex, answerIndex ->
+                            gamePlayViewModel.submitAnswer(answerIndex, 0)
+                        }
                     )
                 }
                 gameUiState.currentQuestion != null -> {

@@ -82,6 +82,9 @@ class GameWebSocketManager(
     private val _errorMessage = MutableStateFlow<ErrorData?>(null)
     val errorMessage: StateFlow<ErrorData?> = _errorMessage
 
+    private val _turnUpdate = MutableStateFlow<String?>(null)
+    val turnUpdate: StateFlow<String?> = _turnUpdate
+
     /**
      * Connect to game session WebSocket
      */
@@ -200,6 +203,13 @@ class GameWebSocketManager(
                 MessageType.CHAT_MESSAGE -> {
                     message.data?.let {
                         _chatMessage.value = json.decodeFromString(it)
+                    }
+                }
+                MessageType.TURN_UPDATE -> {
+                    message.data?.let {
+                        val turnData = json.decodeFromString<Map<String, String?>>(it)
+                        _turnUpdate.value = turnData["currentTurn"]
+                        println("🔄 Turn update: ${turnData["currentTurn"]} (${turnData["currentPlayerName"]})")
                     }
                 }
                 MessageType.ERROR -> {
