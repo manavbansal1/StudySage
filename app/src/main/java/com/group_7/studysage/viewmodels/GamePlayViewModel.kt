@@ -141,14 +141,24 @@ class GamePlayViewModel(
         webSocketManager.roomUpdate
             .onEach { session ->
                 session?.let {
-                    android.util.Log.d("GamePlayViewModel", "ROOM_UPDATE received - boardState: ${it.boardState}")
+                    android.util.Log.d("GamePlayViewModel", "============ ROOM_UPDATE RECEIVED ============")
+                    android.util.Log.d("GamePlayViewModel", "Session ID: ${it.id}")
+                    android.util.Log.d("GamePlayViewModel", "Game Type: ${it.gameType}")
+                    android.util.Log.d("GamePlayViewModel", "Game Status: ${it.status}")
+                    android.util.Log.d("GamePlayViewModel", "Board State: ${it.boardState}")
+                    android.util.Log.d("GamePlayViewModel", "Board State Size: ${it.boardState?.size ?: 0}")
+                    android.util.Log.d("GamePlayViewModel", "Current Turn: ${it.currentTurn}")
+                    android.util.Log.d("GamePlayViewModel", "Players: ${it.players.keys}")
+                    android.util.Log.d("GamePlayViewModel", "Questions Count: ${it.questions.size}")
+                    android.util.Log.d("GamePlayViewModel", "=========================================")
+
                     val currentUser = authViewModel.currentUser.value
                     val isHost = currentUser?.uid == it.hostId
                     _gameUiState.value = _gameUiState.value.copy(
                         currentSession = it,
                         isHost = isHost
                     )
-                    android.util.Log.d("GamePlayViewModel", "Session updated in UI state - boardState: ${_gameUiState.value.currentSession?.boardState}")
+                    android.util.Log.d("GamePlayViewModel", "GameUiState updated - new boardState: ${_gameUiState.value.currentSession?.boardState}")
                 }
             }
             .launchIn(viewModelScope)

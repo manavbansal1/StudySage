@@ -22,11 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.group_7.studysage.data.models.GameUiState
 import com.group_7.studysage.data.models.QuizQuestion
-import kotlinx.coroutines.delay
 
 /**
  * Study-Tac-Toe Game Screen
@@ -60,31 +57,44 @@ fun StudyTacToeScreen(
 
     // Game board state (0-8 for 9 squares)
     // Empty string = empty, "X" = player 1, "O" = player 2
-    // Sync from backend if available, otherwise use local state
-    var boardState by remember { mutableStateOf(Array(9) { "" }) }
-    
-    // Update local board state when backend sends updates
+    // ALWAYS sync from backend - don't maintain local state separately
+    // Use remember with derivedStateOf to properly track board state changes
+    val boardState = remember(session?.boardState) {
+        session?.boardState?.toTypedArray() ?: Array(9) { "" }
+    }
+
+    // Convert to list for better change detection
+    val boardStateList = remember(session?.boardState) {
+        session?.boardState ?: List(9) { "" }
+    }
+
+    // Debug: Log session and board state on every recomposition
+    LaunchedEffect(Unit) {
+        android.util.Log.d("StudyTacToe", "Screen recomposed - session ID: ${session?.id}")
+        android.util.Log.d("StudyTacToe", "Session status: ${session?.status}")
+        android.util.Log.d("StudyTacToe", "Current turn: ${session?.currentTurn}")
+    }
+
+    // Debug logging for board state changes
     LaunchedEffect(session?.boardState) {
-        android.util.Log.d("StudyTacToe", "LaunchedEffect triggered - session boardState: ${session?.boardState}")
-        session?.boardState?.let { backendBoard ->
-            android.util.Log.d("StudyTacToe", "Backend board size: ${backendBoard.size}, content: $backendBoard")
-            if (backendBoard.size == 9) {
-                android.util.Log.d("StudyTacToe", "Updating local board state from backend")
-                val oldBoard = boardState.joinToString()
-                boardState = backendBoard.toTypedArray()
-                android.util.Log.d("StudyTacToe", "Board state updated - Old: [$oldBoard] -> New: [${boardState.joinToString()}]")
-            } else {
-                android.util.Log.e("StudyTacToe", "ERROR: Backend board size is ${backendBoard.size}, expected 9")
-            }
-        } ?: android.util.Log.d("StudyTacToe", "Session boardState is null")
+        android.util.Log.d("StudyTacToe", "LaunchedEffect: Board state updated")
+        android.util.Log.d("StudyTacToe", "boardState value: ${session?.boardState}")
+        android.util.Log.d("StudyTacToe", "boardState size: ${session?.boardState?.size ?: 0}")
+        android.util.Log.d("StudyTacToe", "boardState content: ${session?.boardState?.joinToString(",")}")
     }
     var selectedSquare by remember { mutableStateOf<Int?>(null) }
     var currentQuestion by remember { mutableStateOf<QuizQuestion?>(null) }
     var showQuestionDialog by remember { mutableStateOf(false) }
-    var winner by remember { mutableStateOf<String?>(null) }
-    var isDraw by remember { mutableStateOf(false) }
     var attemptedSquares by remember { mutableStateOf(setOf<Int>()) }
     var waitingForAnswer by remember { mutableStateOf(false) }
+
+    // Compute winner and draw status from current board state
+    // Use boardStateList for better change detection
+    val winResult = remember(boardStateList) { checkWinner(boardState) }
+    val isDraw = remember(boardStateList) { winResult == null && boardState.all { it.isNotEmpty() } }
+
+    // Expose winner and draw as val instead of var for reactive updates
+    val winner = winResult
 
     // Map each square (0-8) to a question index
     // Use at least 9 questions for the 9 squares
@@ -99,7 +109,6 @@ fun StudyTacToeScreen(
 
     // Determine if current user is Player 1 (X) or Player 2 (O)
     val isPlayerX = players.getOrNull(0)?.id == currentUserId
-    val isPlayerO = players.getOrNull(1)?.id == currentUserId
 
     // Get current turn from backend (player ID)
     val currentTurnPlayerId = session?.currentTurn
@@ -194,19 +203,21 @@ fun StudyTacToeScreen(
         )
 
         // Game Board
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            TicTacToeGrid(
-                boardState = boardState,
-                onSquareClick = { index ->
+        // Use key to force recomposition when board state changes
+        key(boardStateList) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                TicTacToeGrid(
+                    boardState = boardState,
+                    onSquareClick = { index ->
                     android.util.Log.d("StudyTacToe", "Square clicked: $index")
                     android.util.Log.d("StudyTacToe", "Board empty: ${boardState[index].isEmpty()}")
                     android.util.Log.d("StudyTacToe", "Is turn: $isCurrentPlayerTurn")
@@ -232,6 +243,7 @@ fun StudyTacToeScreen(
                 },
                 enabled = winner == null && !isDraw && isCurrentPlayerTurn && !waitingForAnswer
             )
+        }
         }
 
         // Turn indicator
@@ -313,29 +325,27 @@ fun StudyTacToeScreen(
 
                 selectedSquare?.let { square ->
                     if (isCorrect) {
-                        // Correct answer - claim the square
+                        // Correct answer - build new board with this player's move
                         val newBoard = boardState.copyOf()
                         newBoard[square] = currentPlayer
                         
-                        // Update local state
-                        boardState = newBoard
+                        // Track the attempt locally
                         attemptedSquares = attemptedSquares + square
 
-                        // Check for winner
-                        val winResult = checkWinner(newBoard)
-                        winner = winResult
-                        isDraw = winResult == null && newBoard.all { it.isNotEmpty() }
-
-                        // Submit answer and NEW board state to backend
+                        // Submit answer and new board state to backend
+                        // Backend will validate, update Firebase, switch turn, and broadcast ROOM_UPDATE
                         onAnswerSubmit(square, answerIndex, newBoard.toList())
+
+                        // DON'T update local state here - wait for backend ROOM_UPDATE
+                        // This ensures both players see the same board state
                     } else {
-                        // Incorrect answer - track attempted square
+                        // Incorrect answer - still submit but board won't change
                         attemptedSquares = attemptedSquares + square
-                        // Still submit answer to backend (wrong answer) with current board
+                        // Submit answer to backend with current board (unchanged)
                         onAnswerSubmit(square, answerIndex, boardState.toList())
                     }
 
-                    // Backend will handle turn switching via TURN_UPDATE message
+                    // Backend ROOM_UPDATE will handle board state sync and turn switching
                 }
 
                 showQuestionDialog = false
@@ -353,6 +363,14 @@ fun TicTacToeGrid(
     onSquareClick: (Int) -> Unit,
     enabled: Boolean
 ) {
+    // Debug logging for grid
+    LaunchedEffect(boardState.contentToString()) {
+        android.util.Log.d("TicTacToeGrid", "Grid rendering with board: ${boardState.contentToString()}")
+        boardState.forEachIndexed { index, value ->
+            android.util.Log.d("TicTacToeGrid", "Square $index: '$value' (empty=${value.isEmpty()})")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -368,15 +386,18 @@ fun TicTacToeGrid(
             ) {
                 for (col in 0..2) {
                     val index = row * 3 + col
-                    GridSquare(
-                        value = boardState[index],
-                        onClick = { onSquareClick(index) },
-                        enabled = enabled && boardState[index].isEmpty(),
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(4.dp)
-                    )
+                    // Use key to ensure each square recomposes when its value changes
+                    key(index, boardState[index]) {
+                        GridSquare(
+                            value = boardState[index],
+                            onClick = { onSquareClick(index) },
+                            enabled = enabled && boardState[index].isEmpty(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -390,6 +411,11 @@ fun GridSquare(
     enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // Debug logging
+    LaunchedEffect(value) {
+        android.util.Log.d("GridSquare", "Square value changed to: '$value' (isEmpty=${value.isEmpty()}, length=${value.length})")
+    }
+
     val scale by animateFloatAsState(
         targetValue = if (value.isNotEmpty()) 1f else 0f,
         animationSpec = spring(
