@@ -141,12 +141,14 @@ class GamePlayViewModel(
         webSocketManager.roomUpdate
             .onEach { session ->
                 session?.let {
+                    android.util.Log.d("GamePlayViewModel", "ROOM_UPDATE received - boardState: ${it.boardState}")
                     val currentUser = authViewModel.currentUser.value
                     val isHost = currentUser?.uid == it.hostId
                     _gameUiState.value = _gameUiState.value.copy(
                         currentSession = it,
                         isHost = isHost
                     )
+                    android.util.Log.d("GamePlayViewModel", "Session updated in UI state - boardState: ${_gameUiState.value.currentSession?.boardState}")
                 }
             }
             .launchIn(viewModelScope)
@@ -243,15 +245,17 @@ class GamePlayViewModel(
         webSocketManager.boardUpdate
             .onEach { boardState ->
                 boardState?.let {
-                    android.util.Log.d("GamePlayViewModel", "Received board update: $it")
+                    android.util.Log.d("GamePlayViewModel", "BOARD_UPDATE received: $it")
                     // Update the session with new board state
                     _gameUiState.value.currentSession?.let { session ->
-                        android.util.Log.d("GamePlayViewModel", "Updating session with new board state")
+                        android.util.Log.d("GamePlayViewModel", "Current session exists, updating with new board state")
+                        val updatedSession = session.copy(boardState = it)
                         _gameUiState.value = _gameUiState.value.copy(
-                            currentSession = session.copy(boardState = it)
+                            currentSession = updatedSession
                         )
-                    }
-                }
+                        android.util.Log.d("GamePlayViewModel", "Session updated with board state: ${updatedSession.boardState}")
+                    } ?: android.util.Log.e("GamePlayViewModel", "ERROR: Current session is null, cannot update board state!")
+                } ?: android.util.Log.e("GamePlayViewModel", "ERROR: Board state in update is null!")
             }
             .launchIn(viewModelScope)
 

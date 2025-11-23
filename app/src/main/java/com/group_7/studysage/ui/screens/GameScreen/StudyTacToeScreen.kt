@@ -65,13 +65,18 @@ fun StudyTacToeScreen(
     
     // Update local board state when backend sends updates
     LaunchedEffect(session?.boardState) {
+        android.util.Log.d("StudyTacToe", "LaunchedEffect triggered - session boardState: ${session?.boardState}")
         session?.boardState?.let { backendBoard ->
+            android.util.Log.d("StudyTacToe", "Backend board size: ${backendBoard.size}, content: $backendBoard")
             if (backendBoard.size == 9) {
-                android.util.Log.d("StudyTacToe", "Backend board update received: $backendBoard")
+                android.util.Log.d("StudyTacToe", "Updating local board state from backend")
+                val oldBoard = boardState.joinToString()
                 boardState = backendBoard.toTypedArray()
-                android.util.Log.d("StudyTacToe", "Local board state updated")
+                android.util.Log.d("StudyTacToe", "Board state updated - Old: [$oldBoard] -> New: [${boardState.joinToString()}]")
+            } else {
+                android.util.Log.e("StudyTacToe", "ERROR: Backend board size is ${backendBoard.size}, expected 9")
             }
-        }
+        } ?: android.util.Log.d("StudyTacToe", "Session boardState is null")
     }
     var selectedSquare by remember { mutableStateOf<Int?>(null) }
     var currentQuestion by remember { mutableStateOf<QuizQuestion?>(null) }
