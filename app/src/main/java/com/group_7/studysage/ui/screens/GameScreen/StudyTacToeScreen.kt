@@ -82,11 +82,18 @@ fun StudyTacToeScreen(
         android.util.Log.d("StudyTacToe", "boardState size: ${session?.boardState?.size ?: 0}")
         android.util.Log.d("StudyTacToe", "boardState content: ${session?.boardState?.joinToString(",")}")
     }
+
+    // Get current turn from backend (player ID) - define early so it can be used as a key
+    val currentTurnPlayerId = session?.currentTurn
+    val isCurrentPlayerTurn = currentTurnPlayerId == currentUserId
+
     var selectedSquare by remember { mutableStateOf<Int?>(null) }
     var currentQuestion by remember { mutableStateOf<QuizQuestion?>(null) }
     var showQuestionDialog by remember { mutableStateOf(false) }
-    var attemptedSquares by remember { mutableStateOf(setOf<Int>()) }
     var waitingForAnswer by remember { mutableStateOf(false) }
+
+    // Track attempted squares per player - reset when turn changes
+    var attemptedSquares by remember(currentTurnPlayerId) { mutableStateOf(setOf<Int>()) }
 
     // Compute winner and draw status from current board state
     // Use boardStateList for better change detection
@@ -110,9 +117,6 @@ fun StudyTacToeScreen(
     // Determine if current user is Player 1 (X) or Player 2 (O)
     val isPlayerX = players.getOrNull(0)?.id == currentUserId
 
-    // Get current turn from backend (player ID)
-    val currentTurnPlayerId = session?.currentTurn
-    val isCurrentPlayerTurn = currentTurnPlayerId == currentUserId
 
     // Map player ID to X/O symbol for display
     val currentPlayer = when (currentTurnPlayerId) {
@@ -224,6 +228,7 @@ fun StudyTacToeScreen(
                     android.util.Log.d("StudyTacToe", "Questions size: ${questions.size}")
 
                     if (boardState[index].isEmpty() &&
+                        !attemptedSquares.contains(index) &&  // Prevent re-attempting same square
                         winner == null &&
                         !isDraw &&
                         isCurrentPlayerTurn &&
@@ -239,6 +244,8 @@ fun StudyTacToeScreen(
 
                         showQuestionDialog = true
                         waitingForAnswer = true
+                    } else if (attemptedSquares.contains(index)) {
+                        android.util.Log.d("StudyTacToe", "Square $index already attempted, cannot retry")
                     }
                 },
                 enabled = winner == null && !isDraw && isCurrentPlayerTurn && !waitingForAnswer
