@@ -56,16 +56,27 @@ fun GroupDetailsOverlay(
 
     val isUploadingImage by groupChatViewModel.isUploadingImage.collectAsState()
     val uploadError by groupChatViewModel.uploadError.collectAsState()
+    val uploadSuccess by groupChatViewModel.uploadSuccess.collectAsState()
 
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var showLeaveConfirmation by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Auto-dismiss success message
+    LaunchedEffect(uploadSuccess) {
+        if (uploadSuccess != null) {
+            kotlinx.coroutines.delay(3000)
+            groupChatViewModel.clearUploadSuccess()
+        }
+    }
 
     // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            pendingImageUri = it
             scope.launch {
                 groupChatViewModel.uploadGroupProfilePicture(
                     context = context,
@@ -148,30 +159,122 @@ fun GroupDetailsOverlay(
                         )
                     }
 
-                    // Upload Error
+                    // Upload Error with Retry
                     uploadError?.let { error ->
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Error,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Upload Failed",
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.error,
+                                                fontSize = 14.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = error,
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                fontSize = 13.sp
+                                            )
+                                        }
+                                    }
+
+                                    // Retry button if we have a pending image
+                                    pendingImageUri?.let { uri ->
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(
+                                                onClick = { groupChatViewModel.clearUploadError() }
+                                            ) {
+                                                Text("Dismiss")
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Button(
+                                                onClick = {
+                                                    scope.launch {
+                                                        groupChatViewModel.uploadGroupProfilePicture(
+                                                            context = context,
+                                                            imageUri = uri,
+                                                            groupId = groupId
+                                                        )
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.error
+                                                )
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Refresh,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Retry")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Upload Success
+                    uploadSuccess?.let { message ->
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    Color(0xFF4CAF50).copy(alpha = 0.5f)
+                                )
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(12.dp),
+                                    modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        Icons.Default.Error,
+                                        Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = Color(0xFF4CAF50),
+                                        modifier = Modifier.size(20.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        text = error,
-                                        color = MaterialTheme.colorScheme.error,
-                                        fontSize = 14.sp
+                                        text = message,
+                                        color = Color(0xFF1B5E20),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
                             }

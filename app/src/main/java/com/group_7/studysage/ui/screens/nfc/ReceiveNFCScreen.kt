@@ -22,11 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.group_7.studysage.MainActivity
 import com.group_7.studysage.data.nfc.NFCPayload
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.utils.NFCManager
 import com.group_7.studysage.viewmodels.NotesViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +115,7 @@ fun ReceiveNFCScreen(
     }
 
     val receivedData by activity.nfcDataReceived
+    var noteAdded by remember { mutableStateOf(false) }
 
     LaunchedEffect(receivedData) {
         if (receivedData == null || !isListening) return@LaunchedEffect
@@ -121,40 +126,9 @@ fun ReceiveNFCScreen(
 
         if (payload != null) {
             Log.d("NFC_RECEIVE", "Successfully received: ${payload.noteTitle}")
-
             receivedPayload = payload
-            isProcessing = true
-
-            try {
-                val note = Note(
-                    id = "",
-                    title = payload.noteTitle,
-                    fileUrl = payload.fileUrl,
-                    courseId = courseId,
-                    originalFileName = payload.originalFileName,
-                    fileType = payload.fileType,
-                    createdAt = System.currentTimeMillis(),
-                    updatedAt = System.currentTimeMillis()
-                )
-
-                // TODO: Save to Firestore
-                // notesViewModel.addReceivedNote(note)
-
-                Toast.makeText(
-                    context,
-                    "Note received: ${payload.noteTitle}",
-                    Toast.LENGTH_LONG
-                ).show()
-
-                Log.d("NFC_RECEIVE", "Note created and will be saved to course: $courseId")
-
-            } catch (e: Exception) {
-                Log.e("NFC_RECEIVE", "Error processing received note", e)
-                errorMessage = "Failed to save received note: ${e.message}"
-            } finally {
-                isProcessing = false
-                activity.consumeNfcData()
-            }
+            isProcessing = false
+            activity.consumeNfcData()
         } else {
             Log.e("NFC_RECEIVE", "Received null payload")
             errorMessage = "Failed to read NFC data"
@@ -254,8 +228,9 @@ fun ReceiveNFCScreen(
             Text(
                 text = when {
                     errorMessage != null -> errorMessage!!
-                    receivedPayload != null -> "Note has been added to your course"
-                    isProcessing -> "Adding note to your course..."
+                    noteAdded -> "Note has been added to your course"
+                    receivedPayload != null -> "Tap 'Add to Course' to save this note"
+                    isProcessing -> "Receiving note..."
                     isListening -> "Hold your device back-to-back with the sending device.\n\nThis device is ready to receive data."
                     else -> "Setting up NFC..."
                 },
@@ -268,7 +243,10 @@ fun ReceiveNFCScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        containerColor = if (noteAdded) 
+                            Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
@@ -281,22 +259,25 @@ fun ReceiveNFCScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
+                                imageVector = if (noteAdded) Icons.Default.CheckCircle else Icons.Default.Nfc,
                                 contentDescription = null,
-                                tint = Color(0xFF4CAF50),
+                                tint = if (noteAdded) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Received Successfully",
+                                text = if (noteAdded) "Added Successfully" else "Received Note",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFF4CAF50),
+                                color = if (noteAdded) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
 
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 4.dp),
-                            color = Color(0xFF4CAF50).copy(alpha = 0.3f)
+                            color = if (noteAdded) 
+                                Color(0xFF4CAF50).copy(alpha = 0.3f)
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         )
 
                         Row(
@@ -354,7 +335,10 @@ fun ReceiveNFCScreen(
                                     )
                                 },
                                 colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                    containerColor = if (noteAdded)
+                                        Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                    else
+                                        MaterialTheme.colorScheme.primaryContainer
                                 )
                             )
                         }
@@ -389,14 +373,89 @@ fun ReceiveNFCScreen(
                 }
             }
 
-            if (errorMessage != null || receivedPayload != null) {
+            // Show Add to Course button when note is received but not yet added
+            if (receivedPayload != null && !noteAdded) {
+                val scope = rememberCoroutineScope()
+                
+                Button(
+                    onClick = {
+                        isProcessing = true
+                        scope.launch {
+                            try {
+                                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                                    ?: throw Exception("User not logged in")
+                                
+                                val firestore = FirebaseFirestore.getInstance()
+                                val noteId = firestore.collection("notes").document().id
+                                
+                                val note = Note(
+                                    id = noteId,
+                                    title = receivedPayload!!.noteTitle,
+                                    originalFileName = receivedPayload!!.originalFileName,
+                                    content = "",
+                                    summary = "",
+                                    keyPoints = emptyList(),
+                                    tags = emptyList(),
+                                    userId = userId,
+                                    fileUrl = receivedPayload!!.fileUrl,
+                                    fileType = receivedPayload!!.fileType,
+                                    courseId = courseId
+                                )
+
+                                // Save to Firestore
+                                firestore.collection("notes")
+                                    .document(noteId)
+                                    .set(note)
+                                    .await()
+
+                                noteAdded = true
+
+                                Toast.makeText(
+                                    context,
+                                    "Note added to course!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                                Log.d("NFC_RECEIVE", "Note added to course: $courseId")
+                            } catch (e: Exception) {
+                                Log.e("NFC_RECEIVE", "Error adding note", e)
+                                Toast.makeText(
+                                    context,
+                                    "Failed to add note: ${e.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } finally {
+                                isProcessing = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isProcessing,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    if (isProcessing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(if (isProcessing) "Adding..." else "Add to Course")
+                }
+            }
+
+            // Show Done button after note is added or if there's an error
+            if (errorMessage != null || noteAdded) {
                 Button(
                     onClick = {
                         activity.exitNfcMode()
                         onBack()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = if (receivedPayload != null) {
+                    colors = if (noteAdded) {
                         ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         )
@@ -404,7 +463,7 @@ fun ReceiveNFCScreen(
                         ButtonDefaults.buttonColors()
                     }
                 ) {
-                    Text(if (receivedPayload != null) "Done" else "Go Back")
+                    Text(if (noteAdded) "Done" else "Go Back")
                 }
             }
         }

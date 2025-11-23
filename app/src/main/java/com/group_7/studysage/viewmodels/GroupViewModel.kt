@@ -63,6 +63,10 @@ class GroupViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    // Operation status for user feedback
+    private val _operationStatus = MutableStateFlow<String?>(null)
+    val operationStatus: StateFlow<String?> = _operationStatus.asStateFlow()
+
     // Real-time listener for group invites
     private var inviteListener: ListenerRegistration? = null
 
@@ -95,11 +99,12 @@ class GroupViewModel(
 
                     GroupItem(
                         groupId = groupId,
-                        groupName = groupSummary["groupName"] as? String ?: "",
-                        groupPic = groupSummary["groupPic"] as? String ?: "",
-                        lastMessage = groupSummary["lastMessage"] as? String ?: "",
-                        lastMessageTime = (groupSummary["lastMessageTime"] as? Long) ?: 0L,
-                        lastMessageSender = groupSummary["lastMessageSender"] as? String ?: "",
+                        // Read from GLOBAL groupProfile instead of local groupSummary
+                        groupName = groupProfile?.get("name") as? String ?: "",
+                        groupPic = groupProfile?.get("profilePic") as? String ?: "",
+                        lastMessage = groupProfile?.get("lastMessage") as? String ?: "",
+                        lastMessageTime = (groupProfile?.get("lastMessageTime") as? Long) ?: 0L,
+                        lastMessageSender = groupProfile?.get("lastMessageSender") as? String ?: "",
                         memberCount = (groupProfile?.get("memberCount") as? Long)?.toInt() ?: 0,
                         unreadCount = 0,
                         isAdmin = checkIfAdminSync(groupId)
@@ -107,9 +112,9 @@ class GroupViewModel(
                 }.sortedByDescending { it.lastMessageTime }
 
                 _uiState.value = GroupUiState.Success(groupItems)
-                Log.d(TAG, "Successfully loaded ${'$'}{groupItems.size} groups")
+                Log.d(TAG, "Successfully loaded ${groupItems.size} groups")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load groups: ${'$'}{e.message}", e)
+                Log.e(TAG, "Failed to load groups: ${e.message}", e)
                 _uiState.value = GroupUiState.Error(e.message ?: "Failed to load groups")
             }
         }
@@ -228,7 +233,8 @@ class GroupViewModel(
     fun createGroup(name: String, description: String) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Creating group: ${'$'}name")
+                Log.d(TAG, "Creating group: $name")
+                _operationStatus.value = "Creating group..."
 
                 val result = groupRepository.createGroup(name, description)
 
@@ -240,17 +246,34 @@ class GroupViewModel(
                     )
 
                     loadGroups()
+                    _operationStatus.value = "Group '$name' created successfully"
 
-                    Log.d(TAG, "Successfully created group: ${'$'}name with ID: ${'$'}groupId")
+                    Log.d(TAG, "Successfully created group: $name with ID: $groupId")
+                    
+                    // Clear success message after delay
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(3000)
+                        _operationStatus.value = null
+                    }
                 }
 
                 result.onFailure { error ->
-                    Log.e(TAG, "Failed to create group: ${'$'}{error.message}", error)
-                    _uiState.value = GroupUiState.Error(error.message ?: "Failed to create group")
+                    Log.e(TAG, "Failed to create group: ${error.message}", error)
+                    val errorMsg = when {
+                        error.message?.contains("network", ignoreCase = true) == true ->
+                            "Network error. Please check your connection"
+                        error.message?.contains("permission", ignoreCase = true) == true ->
+                            "Permission denied. Please sign in again"
+                        else -> "Failed to create group: ${error.message}"
+                    }
+                    _uiState.value = GroupUiState.Error(errorMsg)
+                    _operationStatus.value = errorMsg
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error creating group: ${'$'}{e.message}", e)
-                _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
+                Log.e(TAG, "Error creating group: ${e.message}", e)
+                val errorMsg = "An error occurred: ${e.message}"
+                _uiState.value = GroupUiState.Error(errorMsg)
+                _operationStatus.value = errorMsg
             }
         }
     }
@@ -258,23 +281,35 @@ class GroupViewModel(
     fun deleteGroup(groupId: String) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Deleting group: ${'$'}groupId")
+                Log.d(TAG, "Deleting group: $groupId")
+                _operationStatus.value = "Deleting group..."
 
                 val result = groupRepository.deleteGroup(groupId)
 
                 result.onSuccess {
                     authRepository.removeGroupFromUserProfile(groupId)
                     loadGroups()
-                    Log.d(TAG, "Successfully deleted group: ${'$'}groupId")
+                    _operationStatus.value = "Group deleted successfully"
+                    Log.d(TAG, "Successfully deleted group: $groupId")
+                    
+                    // Clear success message after delay
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(3000)
+                        _operationStatus.value = null
+                    }
                 }
 
                 result.onFailure { error ->
-                    Log.e(TAG, "Failed to delete group: ${'$'}{error.message}", error)
-                    _uiState.value = GroupUiState.Error(error.message ?: "Failed to delete group")
+                    Log.e(TAG, "Failed to delete group: ${error.message}", error)
+                    val errorMsg = "Failed to delete group: ${error.message}"
+                    _uiState.value = GroupUiState.Error(errorMsg)
+                    _operationStatus.value = errorMsg
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error deleting group: ${'$'}{e.message}", e)
-                _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
+                Log.e(TAG, "Error deleting group: ${e.message}", e)
+                val errorMsg = "An error occurred: ${e.message}"
+                _uiState.value = GroupUiState.Error(errorMsg)
+                _operationStatus.value = errorMsg
             }
         }
     }
@@ -284,23 +319,35 @@ class GroupViewModel(
             try {
                 val userId = authRepository.currentUser?.uid ?: return@launch
 
-                Log.d(TAG, "User ${'$'}userId leaving group: ${'$'}groupId")
+                Log.d(TAG, "User $userId leaving group: $groupId")
+                _operationStatus.value = "Leaving group..."
 
                 val result = groupRepository.removeMemberFromGroup(groupId, userId)
 
                 result.onSuccess {
                     authRepository.removeGroupFromUserProfile(groupId)
                     loadGroups()
-                    Log.d(TAG, "Successfully left group: ${'$'}groupId")
+                    _operationStatus.value = "Left group successfully"
+                    Log.d(TAG, "Successfully left group: $groupId")
+                    
+                    // Clear success message after delay
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(3000)
+                        _operationStatus.value = null
+                    }
                 }
 
                 result.onFailure { error ->
-                    Log.e(TAG, "Failed to leave group: ${'$'}{error.message}", error)
-                    _uiState.value = GroupUiState.Error(error.message ?: "Failed to leave group")
+                    Log.e(TAG, "Failed to leave group: ${error.message}", error)
+                    val errorMsg = "Failed to leave group: ${error.message}"
+                    _uiState.value = GroupUiState.Error(errorMsg)
+                    _operationStatus.value = errorMsg
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error leaving group: ${'$'}{e.message}", e)
-                _uiState.value = GroupUiState.Error(e.message ?: "An error occurred")
+                Log.e(TAG, "Error leaving group: ${e.message}", e)
+                val errorMsg = "An error occurred: ${e.message}"
+                _uiState.value = GroupUiState.Error(errorMsg)
+                _operationStatus.value = errorMsg
             }
         }
     }
@@ -320,6 +367,10 @@ class GroupViewModel(
         return currentState.groups.filter {
             it.groupName.contains(query, ignoreCase = true)
         }
+    }
+
+    fun clearOperationStatus() {
+        _operationStatus.value = null
     }
 
     override fun onCleared() {

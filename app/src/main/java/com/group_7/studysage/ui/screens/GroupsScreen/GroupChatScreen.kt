@@ -2,6 +2,7 @@ package com.group_7.studysage.ui.screens.GroupsScreen
 
 import android.util.Patterns
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.ui.viewmodels.GroupChatViewModel
 import com.group_7.studysage.ui.viewmodels.GroupChatUiState
 import com.group_7.studysage.data.repository.GroupMessage
@@ -82,6 +85,7 @@ fun GroupChatScreen(
                     // Header at top with status bar padding
                     GroupChatHeader(
                         groupName = state.groupName,
+                        groupPic = state.groupPic,
                         memberCount = state.memberCount,
                         isAdmin = state.isAdmin,
                         onBackClick = onNavigateBack,
@@ -144,6 +148,8 @@ fun GroupChatScreen(
             is GroupChatUiState.Error -> {
                 ErrorState(
                     message = state.message,
+                    groupId = groupId,
+                    viewModel = viewModel,
                     onRetry = {
                         viewModel.loadGroupData(groupId)
                         viewModel.loadMessages(groupId)
@@ -193,6 +199,7 @@ fun GroupChatScreen(
 @Composable
 private fun GroupChatHeader(
     groupName: String,
+    groupPic: String,
     memberCount: Int,
     isAdmin: Boolean,
     onBackClick: () -> Unit,
@@ -227,7 +234,7 @@ private fun GroupChatHeader(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Group Avatar
+            // Group Avatar with profile picture
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -236,12 +243,23 @@ private fun GroupChatHeader(
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Group,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
+                if (groupPic.isNotEmpty()) {
+                    Image(
+                        painter = rememberAsyncImagePainter(groupPic),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -554,63 +572,106 @@ private fun EmptyChatState(
 @Composable
 private fun ErrorState(
     message: String,
+    groupId: String,
+    viewModel: GroupChatViewModel,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    // Check if this is a "removed from group" error
+    val isRemovedError = message.contains("no longer a member", ignoreCase = true) ||
+                         message.contains("removed from this group", ignoreCase = true)
+
+    Box(modifier = modifier.fillMaxSize()) {
+        // Back arrow in top left
+        if (isRemovedError) {
+            IconButton(
+                onClick = {
+                    // Remove group from user's profile before navigating back
+                    viewModel.removeGroupFromUserProfile(groupId)
+                    onBackClick()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        // Center content
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Error,
                 contentDescription = null,
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.error
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Error",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
                 text = message,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onBackClick,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Go Back")
-                }
-
+            if (isRemovedError) {
+                // Show "Remove Group" button for removed users
                 Button(
-                    onClick = onRetry,
+                    onClick = {
+                        // Remove group from user's profile before navigating back
+                        viewModel.removeGroupFromUserProfile(groupId)
+                        onBackClick()
+                    },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.error
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Retry")
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Remove Group from List")
+                }
+            } else {
+                // Show both buttons for other errors
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onBackClick,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Go Back")
+                    }
+
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Retry")
+                    }
                 }
             }
         }

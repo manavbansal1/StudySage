@@ -1,6 +1,7 @@
 package com.group_7.studysage.ui.viewmodels
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
@@ -49,6 +50,9 @@ class GroupChatViewModel(
     private val _uploadError = MutableStateFlow<String?>(null)
     val uploadError: StateFlow<String?> = _uploadError.asStateFlow()
 
+    private val _uploadSuccess = MutableStateFlow<String?>(null)
+    val uploadSuccess: StateFlow<String?> = _uploadSuccess.asStateFlow()
+
     init {
         _currentUserId.value = authRepository.currentUser?.uid ?: ""
     }
@@ -58,6 +62,8 @@ class GroupChatViewModel(
             _uiState.value = GroupChatUiState.Loading
 
             try {
+                val currentUserId = authRepository.currentUser?.uid ?: ""
+                
                 // Set up real-time listener instead of one-time read
                 groupRepository.observeGroupProfile(groupId).collect { groupProfile ->
                     if (groupProfile == null) {
@@ -65,13 +71,19 @@ class GroupChatViewModel(
                         return@collect
                     }
 
+                    // CHECK: Is user still a member?
+                    val isMember = groupRepository.isUserMember(groupId, currentUserId)
+                    if (!isMember) {
+                        _uiState.value = GroupChatUiState.Error("You are no longer a member of this group")
+                        return@collect
+                    }
+
                     val groupName = groupProfile["name"] as? String ?: "Unknown Group"
                     val groupPic = groupProfile["profilePic"] as? String ?: ""
-                    val memberCount = (groupProfile["memberCount"] as? Long)?.toInt() ?: 0
                     @Suppress("UNCHECKED_CAST")
                     val members = groupProfile["members"] as? List<Map<String, Any>> ?: emptyList()
+                    val memberCount = members.size
 
-                    val currentUserId = authRepository.currentUser?.uid ?: ""
                     val isAdmin = groupRepository.isUserAdmin(groupId, currentUserId)
 
                     _uiState.value = GroupChatUiState.Success(
@@ -108,25 +120,25 @@ class GroupChatViewModel(
                 val result = groupRepository.sendMessage(groupId, message, images)
 
                 result.onSuccess {
-                    // Update last message in user's group summary
-                    val currentUser = authRepository.currentUser
-                    val userName = currentUser?.displayName ?: "You"
-
-                    authRepository.updateGroupLastMessage(
-                        groupId = groupId,
-                        message = message,
-                        senderName = userName,
-                        timestamp = System.currentTimeMillis()
-                    )
-
-                    // Update all group members' summaries
-                    updateAllMembersGroupSummary(groupId, message, userName)
-
+                    // Last message is now updated globally in GroupRepository.sendMessage()
+                    // All members will see the update via real-time listener
+                    // No need to update individual user documents
+                    
                     // Reload messages
                     loadMessages(groupId)
                 }
+                
+                result.onFailure { error ->
+                    // Handle error - user might have been removed
+                    if (error.message?.contains("not a member", ignoreCase = true) == true) {
+                        // User was removed, update UI state
+                        _uiState.value = GroupChatUiState.Error("You are no longer a member of this group")
+                    }
+                    Log.e("GroupChatViewModel", "Failed to send message: ${error.message}")
+                }
             } catch (e: Exception) {
                 // Handle error
+                Log.e("GroupChatViewModel", "Error sending message: ${e.message}", e)
             }
         }
     }
@@ -176,22 +188,19 @@ class GroupChatViewModel(
                 val result = groupRepository.removeMemberFromGroup(groupId, userId)
 
                 result.onSuccess {
-                    // Remove group from user's profile
-                    val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    val userDoc = firestore.collection("users").document(userId).get().await()
-                    @Suppress("UNCHECKED_CAST")
-                    val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
-
-                    val updatedGroups = userGroups.filter { it["groupId"] != groupId }
-                    firestore.collection("users").document(userId)
-                        .update("groups", updatedGroups)
-                        .await()
-
-                    // Reload group data
-                    loadGroupData(groupId)
+                    // Check if the removed user is the current user
+                    val currentUserId = authRepository.currentUser?.uid
+                    if (userId == currentUserId) {
+                        // Current user was removed, show error
+                        _uiState.value = GroupChatUiState.Error("You have been removed from this group")
+                    } else {
+                        // Reload group data for remaining members
+                        loadGroupData(groupId)
+                    }
                 }
             } catch (e: Exception) {
                 // Handle error
+                Log.e("GroupChatViewModel", "Error removing member: ${e.message}", e)
             }
         }
     }
@@ -223,6 +232,21 @@ class GroupChatViewModel(
                 authRepository.removeGroupFromUserProfile(groupId)
             } catch (e: Exception) {
                 // Handle error
+            }
+        }
+    }
+
+    /**
+     * Remove group from current user's profile
+     * Used when user is removed from group and wants to clean up their local list
+     */
+    fun removeGroupFromUserProfile(groupId: String) {
+        viewModelScope.launch {
+            try {
+                authRepository.removeGroupFromUserProfile(groupId)
+                Log.d("GroupChatViewModel", "Removed group $groupId from user profile")
+            } catch (e: Exception) {
+                Log.e("GroupChatViewModel", "Error removing group from profile: ${e.message}", e)
             }
         }
     }
@@ -266,6 +290,26 @@ class GroupChatViewModel(
             try {
                 _isUploadingImage.value = true
                 _uploadError.value = null
+                _uploadSuccess.value = null
+
+                // Validate file size before upload (max 5MB for better UX)
+                val fileSize = try {
+                    context.contentResolver.openInputStream(imageUri)?.use { it.available() } ?: 0
+                } catch (e: Exception) {
+                    0
+                }
+
+                if (fileSize > 5 * 1024 * 1024) {
+                    _isUploadingImage.value = false
+                    _uploadError.value = "Image too large. Please select an image under 5MB"
+                    return@launch
+                }
+
+                if (fileSize == 0) {
+                    _isUploadingImage.value = false
+                    _uploadError.value = "Unable to read image file. Please try another image"
+                    return@launch
+                }
 
                 // Upload to Cloudinary
                 val imageUrl = com.group_7.studysage.utils.CloudinaryUploader.uploadFile(
@@ -281,52 +325,32 @@ class GroupChatViewModel(
                     val updateResult = groupRepository.updateGroupProfilePic(groupId, imageUrl)
 
                     updateResult.onSuccess {
-                        // Update all members' group summaries with new pic
-                        updateAllMembersGroupPicture(groupId, imageUrl)
+                        // Profile pic is now global in groups collection
+                        // All members will see the update via real-time listener
                         _isUploadingImage.value = false
+                        _uploadSuccess.value = "Group picture updated successfully"
                     }
 
                     updateResult.onFailure { error ->
                         _isUploadingImage.value = false
-                        _uploadError.value = error.message
+                        _uploadError.value = "Failed to update group: ${error.message}"
                     }
                 } else {
                     _isUploadingImage.value = false
-                    _uploadError.value = "Failed to upload image"
-                }
-            } catch (e: Exception) {
-                _isUploadingImage.value = false
-                _uploadError.value = e.message
-            }
-        }
-    }
-
-    private suspend fun updateAllMembersGroupPicture(groupId: String, newPicUrl: String) {
-        try {
-            val members = groupRepository.getGroupMembers(groupId)
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-
-            members.forEach { member ->
-                val userDoc = firestore.collection("users").document(member.userId).get().await()
-                @Suppress("UNCHECKED_CAST")
-                val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
-
-                val updatedGroups = userGroups.map { group ->
-                    if (group["groupId"] == groupId) {
-                        group.toMutableMap().apply {
-                            put("groupPic", newPicUrl)
-                        }
-                    } else {
-                        group
+                    // Check for common Cloudinary errors
+                    _uploadError.value = when {
+                        com.group_7.studysage.BuildConfig.CLOUDINARY_CLOUD_NAME.isBlank() -> 
+                            "Image upload not configured. Please contact support"
+                        else -> "Failed to upload image. Please check your internet connection and try again"
                     }
                 }
-
-                firestore.collection("users").document(member.userId)
-                    .update("groups", updatedGroups)
-                    .await()
+            } catch (e: java.net.UnknownHostException) {
+                _isUploadingImage.value = false
+                _uploadError.value = "No internet connection. Please check your network and try again"
+            } catch (e: Exception) {
+                _isUploadingImage.value = false
+                _uploadError.value = "Upload failed: ${e.message ?: "Unknown error"}"
             }
-        } catch (e: Exception) {
-            // Handle error silently
         }
     }
 
@@ -334,35 +358,7 @@ class GroupChatViewModel(
         _uploadError.value = null
     }
 
-    private suspend fun updateAllMembersGroupSummary(groupId: String, message: String, senderName: String) {
-        try {
-            val members = groupRepository.getGroupMembers(groupId)
-            val timestamp = System.currentTimeMillis()
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-
-            members.forEach { member ->
-                val userDoc = firestore.collection("users").document(member.userId).get().await()
-                @Suppress("UNCHECKED_CAST")
-                val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
-
-                val updatedGroups = userGroups.map { group ->
-                    if (group["groupId"] == groupId) {
-                        group.toMutableMap().apply {
-                            put("lastMessage", message)
-                            put("lastMessageTime", timestamp)
-                            put("lastMessageSender", senderName)
-                        }
-                    } else {
-                        group
-                    }
-                }
-
-                firestore.collection("users").document(member.userId)
-                    .update("groups", updatedGroups)
-                    .await()
-            }
-        } catch (e: Exception) {
-            // Handle error silently
-        }
+    fun clearUploadSuccess() {
+        _uploadSuccess.value = null
     }
 }
