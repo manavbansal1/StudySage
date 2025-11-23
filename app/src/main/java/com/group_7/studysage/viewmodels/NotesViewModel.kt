@@ -6,14 +6,25 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.generationConfig
+import com.group_7.studysage.BuildConfig
+import com.group_7.studysage.data.models.Flashcard
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
 import com.group_7.studysage.data.repository.PodcastRepository
 import com.group_7.studysage.utils.FileDownloader
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
 
 class NotesViewModel(
     application: Application
@@ -61,6 +72,15 @@ class NotesViewModel(
 
     private val _podcastScript = MutableStateFlow<String?>(null)
     val podcastScript: StateFlow<String?> = _podcastScript.asStateFlow()
+    // Temporary flashcard generation state (for quick action feature)
+    data class TempFlashcardState(
+        val isGenerating: Boolean = false,
+        val generatedFlashcards: List<Flashcard> = emptyList(),
+        val error: String? = null
+    )
+
+    private val _tempFlashcardState = MutableStateFlow(TempFlashcardState())
+    val tempFlashcardState: StateFlow<TempFlashcardState> = _tempFlashcardState.asStateFlow()
 
     init {
         // Initial load is handled by LaunchedEffect in the UI, which can provide courseId
@@ -382,5 +402,170 @@ class NotesViewModel(
         _podcastGenerationStatus.value = null
         _isPodcastGenerating.value = false
         _podcastScript.value = null
+    // ============================================
+    // TEMPORARY FLASHCARD GENERATION
+    // ============================================
+
+    fun generateTempFlashcardsFromPdf(
+        context: Context,
+        pdfUri: Uri,
+        fileName: String,
+        numberOfCards: Int,
+        userPreferences: String
+    ) {
+        viewModelScope.launch {
+            try {
+                _tempFlashcardState.update { it.copy(isGenerating = true, error = null) }
+
+                Log.d(TAG, "📚 Generating $numberOfCards flashcards from: $fileName")
+
+                // Extract text from PDF
+                val pdfText = withContext(Dispatchers.IO) {
+                    extractTextFromPdf(context, pdfUri)
+                }
+
+                if (pdfText.isBlank()) {
+                    throw Exception("Could not extract text from PDF")
+                }
+
+                Log.d(TAG, "✅ Extracted ${pdfText.length} characters")
+
+                // Generate flashcards using AI
+                val flashcards = generateFlashcardsWithAI(pdfText, numberOfCards, userPreferences)
+
+                if (flashcards.isEmpty()) {
+                    throw Exception("Could not generate flashcards from this content")
+                }
+
+                Log.d(TAG, "✅ Generated ${flashcards.size} flashcards")
+
+                _tempFlashcardState.update {
+                    it.copy(
+                        isGenerating = false,
+                        generatedFlashcards = flashcards,
+                        error = null
+                    )
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error generating flashcards: ${e.message}", e)
+                _tempFlashcardState.update {
+                    it.copy(
+                        isGenerating = false,
+                        error = "Failed to generate flashcards: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun extractTextFromPdf(context: Context, uri: Uri): String {
+        return try {
+            PDFBoxResourceLoader.init(context)
+
+            withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    PDDocument.load(inputStream).use { document ->
+                        val stripper = PDFTextStripper().apply {
+                            sortByPosition = true
+                        }
+                        stripper.getText(document)
+                    }
+                } ?: ""
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "PDF extraction error: ${e.message}", e)
+            throw Exception("Failed to read PDF: ${e.message}")
+        }
+    }
+
+    private suspend fun generateFlashcardsWithAI(
+        text: String,
+        numberOfCards: Int,
+        userPreferences: String
+    ): List<Flashcard> {
+        return try {
+            // Limit text to avoid API limits (around 8000 characters)
+            val limitedText = if (text.length > 8000) text.take(8000) else text
+
+            val prompt = """
+                Generate exactly $numberOfCards flashcards from the following text.
+                Create question-answer pairs that test key concepts, definitions, and important facts.
+                
+                ${if (userPreferences.isNotBlank()) "Focus on: $userPreferences" else ""}
+                
+                Return ONLY a valid JSON array with this exact format:
+                [
+                  {"question": "What is...", "answer": "It is..."},
+                  {"question": "Define...", "answer": "..."}
+                ]
+                
+                Text:
+                $limitedText
+            """.trimIndent()
+
+            // Use Gemini API (use stable model instead of experimental)
+            val generativeModel = GenerativeModel(
+                modelName = "gemini-2.5-flash",
+                apiKey = BuildConfig.GEMINI_API_KEY,
+                generationConfig = generationConfig {
+                    temperature = 0.7f
+                    topK = 32
+                    topP = 1f
+                    maxOutputTokens = 8192 // Sufficient token limit for flashcard generation
+                }
+            )
+
+            val response = generativeModel.generateContent(prompt)
+            val jsonText = response.text ?: throw Exception("Empty response from AI")
+
+            // Parse JSON response
+            parseFlashcardsFromJson(jsonText)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "AI generation error: ${e.message}", e)
+            throw Exception("Failed to generate flashcards: ${e.message}")
+        }
+    }
+
+    private fun parseFlashcardsFromJson(jsonText: String): List<Flashcard> {
+        return try {
+            // Remove markdown code blocks if present
+            val cleanJson = jsonText
+                .replace("```json", "")
+                .replace("```", "")
+                .trim()
+
+            // Parse JSON array
+            val jsonArray = JSONArray(cleanJson)
+            val flashcards = mutableListOf<Flashcard>()
+
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                val question = obj.getString("question")
+                val answer = obj.getString("answer")
+
+                flashcards.add(
+                    Flashcard(
+                        id = "temp_$i",
+                        question = question,
+                        answer = answer,
+                        category = null,
+                        difficulty = "medium"
+                    )
+                )
+            }
+
+            flashcards
+        } catch (e: Exception) {
+            Log.e(TAG, "JSON parse error: ${e.message}", e)
+            throw Exception("Failed to parse flashcards: ${e.message}")
+        }
+    }
+
+    fun clearTempFlashcardState() {
+        _tempFlashcardState.update {
+            TempFlashcardState()
+        }
     }
 }

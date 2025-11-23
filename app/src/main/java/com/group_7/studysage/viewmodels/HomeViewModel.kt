@@ -249,6 +249,29 @@ class HomeViewModel(
     }
 
     /**
+     * Clear all recently opened PDFs
+     * Removes all items from both Firestore and local state
+     */
+    fun clearAllRecentlyOpened() {
+        viewModelScope.launch {
+            try {
+                val result = authRepository.clearRecentlyOpened()
+                result.onSuccess {
+                    // Update local state immediately
+                    _recentlyOpenedPdfs.value = emptyList()
+                    android.util.Log.d("HomeViewModel", "Successfully cleared all recently opened PDFs")
+                }.onFailure { exception ->
+                    android.util.Log.e("HomeViewModel", "Failed to clear recently opened: ${exception.message}")
+                    _errorMessage.value = "Failed to clear recent PDFs: ${exception.message}"
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Error clearing recently opened: ${e.message}")
+                _errorMessage.value = "Error clearing recent PDFs: ${e.message}"
+            }
+        }
+    }
+
+    /**
      * Open a PDF URL in an external app (browser or PDF viewer)
      */
     /**

@@ -338,7 +338,7 @@ fun HostGameDialog(
     val gameTypes = listOf(
         GameType.QUIZ_RACE to "Quiz Race",
         GameType.FLASHCARD_BATTLE to "Flashcard Battle",
-        GameType.TEAM_TRIVIA to "Team Trivia",
+        GameType.STUDY_TAC_TOE to "Study-Tac-Toe",
         GameType.SPEED_MATCH to "Speed Match"
     )
 

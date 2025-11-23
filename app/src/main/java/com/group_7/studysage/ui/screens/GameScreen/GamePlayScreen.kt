@@ -30,6 +30,7 @@ import com.group_7.studysage.viewmodels.GamePlayViewModel
 import com.group_7.studysage.viewmodels.GamePlayViewModelFactory
 import com.group_7.studysage.data.websocket.GameWebSocketManager
 import com.group_7.studysage.viewmodels.AuthViewModel
+import com.group_7.studysage.data.models.GameType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +81,18 @@ fun GamePlayScreen(
                     GameResultsScreen(
                         gameUiState = gameUiState,
                         onBackClick = { navController.popBackStack() }
+                    )
+                }
+                gameUiState.currentSession?.gameType == GameType.STUDY_TAC_TOE &&
+                gameUiState.currentSession?.status == com.group_7.studysage.data.models.GameStatus.IN_PROGRESS -> {
+                    StudyTacToeScreen(
+                        gameUiState = gameUiState,
+                        onSquareClick = { squareIndex ->
+                            // Square clicked, waiting for question to appear
+                        },
+                        onAnswerSubmit = { squareIndex, answerIndex, boardState ->
+                            gamePlayViewModel.submitTacToeMove(squareIndex, answerIndex, boardState)
+                        }
                     )
                 }
                 gameUiState.currentQuestion != null -> {
@@ -320,14 +333,19 @@ fun WaitingForPlayersScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             val allReady = players.all { it.isReady }
-            val minPlayers = players.size >= 2
+            val isStudyTacToe = session?.gameType == com.group_7.studysage.data.models.GameType.STUDY_TAC_TOE
+            val hasCorrectPlayers = if (isStudyTacToe) {
+                players.size == 2  // Study Tac Toe requires exactly 2 players
+            } else {
+                players.size >= 2  // Other games need at least 2 players
+            }
             
             Button(
                 onClick = onStartClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = allReady && minPlayers,
+                enabled = allReady && hasCorrectPlayers,
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.tertiary
@@ -345,11 +363,13 @@ fun WaitingForPlayersScreen(
                 )
             }
             
-            if (!allReady || !minPlayers) {
+            if (!allReady || !hasCorrectPlayers) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = when {
-                        !minPlayers -> "Need at least 2 players"
+                        !hasCorrectPlayers && isStudyTacToe && players.size < 2 -> "Study Tac Toe requires exactly 2 players"
+                        !hasCorrectPlayers && isStudyTacToe && players.size > 2 -> "Study Tac Toe is limited to 2 players only"
+                        !hasCorrectPlayers -> "Need at least 2 players"
                         !allReady -> "Waiting for all players to be ready"
                         else -> ""
                     },
