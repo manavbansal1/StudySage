@@ -51,6 +51,7 @@ import com.group_7.studysage.data.websocket.GameWebSocketManager
 import com.group_7.studysage.ui.screens.nfc.ReceiveNFCScreen
 import com.group_7.studysage.ui.screens.nfc.ShareNFCScreen
 import com.group_7.studysage.ui.screens.GameScreen.PlayQuizScreen
+import com.group_7.studysage.ui.screens.podcast.PodcastScreen
 import com.group_7.studysage.utils.FileUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -104,6 +105,7 @@ fun CourseDetailScreen(
     var showReceiveNFCScreen by remember { mutableStateOf(false) }
     var showPlayQuizScreen by remember { mutableStateOf(false) }
     var showQuizGeneratingDialog by remember { mutableStateOf(false) }
+    var showPodcastScreen by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -198,6 +200,18 @@ fun CourseDetailScreen(
                 }
             )
         }
+        return
+    }
+
+    if (showPodcastScreen && selectedNote != null) {
+        PodcastScreen(
+            note = selectedNote!!,
+            notesViewModel = notesViewModel,
+            onBack = {
+                showPodcastScreen = false
+                selectedNote = null
+            }
+        )
         return
     }
 
@@ -675,6 +689,27 @@ fun CourseDetailScreen(
                         noteToShare = selectedNote
                         selectedNote = null
                         showShareNFCScreen = true
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Listen to podcast") },
+                    supportingContent = {
+                        Text(
+                            text = "Generate and listen to an AI podcast about this note",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Headphones,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        showNoteOptions = false
+                        selectedNote = note
+                        showPodcastScreen = true
                     }
                 )
 

@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.data.repository.NotesRepository
+import com.group_7.studysage.data.repository.PodcastRepository
 import com.group_7.studysage.utils.FileDownloader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ class NotesViewModel(
     }
 
     private val notesRepository: NotesRepository = NotesRepository(application.applicationContext)
+    private val podcastRepository: PodcastRepository = PodcastRepository(application.applicationContext)
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -47,6 +49,18 @@ class NotesViewModel(
 
     private val _courseNotes = MutableStateFlow<List<Note>>(emptyList())
     val courseNotes: StateFlow<List<Note>> = _courseNotes.asStateFlow()
+
+    private val _podcastGenerationStatus = MutableStateFlow<String?>(null)
+    val podcastGenerationStatus: StateFlow<String?> = _podcastGenerationStatus.asStateFlow()
+
+    private val _podcastAudioPath = MutableStateFlow<String?>(null)
+    val podcastAudioPath: StateFlow<String?> = _podcastAudioPath.asStateFlow()
+
+    private val _isPodcastGenerating = MutableStateFlow(false)
+    val isPodcastGenerating: StateFlow<Boolean> = _isPodcastGenerating.asStateFlow()
+
+    private val _podcastScript = MutableStateFlow<String?>(null)
+    val podcastScript: StateFlow<String?> = _podcastScript.asStateFlow()
 
     init {
         // Initial load is handled by LaunchedEffect in the UI, which can provide courseId
@@ -284,7 +298,7 @@ class NotesViewModel(
                     .onSuccess { newStarredState ->
                         // Update selected note
                         _selectedNote.value = _selectedNote.value?.copy(isStarred = newStarredState)
-                        
+
                         // Update in course notes list
                         val currentNotes = _courseNotes.value.toMutableList()
                         val index = currentNotes.indexOfFirst { it.id == noteId }
@@ -292,7 +306,7 @@ class NotesViewModel(
                             currentNotes[index] = currentNotes[index].copy(isStarred = newStarredState)
                             _courseNotes.value = currentNotes
                         }
-                        
+
                         Log.d(TAG, "Note star toggled: $newStarredState")
                     }
                     .onFailure { exception ->
@@ -304,5 +318,69 @@ class NotesViewModel(
                 Log.e(TAG, "Failed to toggle star: ${e.message}", e)
             }
         }
+    }
+
+    fun generatePodcast(
+        noteId: String,
+        content: String,
+        noteTitle: String = ""
+    ) {
+        Log.d(TAG, "Generating podcast for note $noteId based on content length")
+        viewModelScope.launch {
+            _isPodcastGenerating.value = true
+            _podcastGenerationStatus.value = "Initializing..."
+            _errorMessage.value = null
+
+            try {
+                // Always generate fresh podcast
+                // Delete any existing cached podcast first
+                podcastRepository.deletePodcast(noteId)
+
+                val result = podcastRepository.generatePodcast(
+                    noteId = noteId,
+                    content = content,
+                    noteTitle = noteTitle,
+                    onProgress = { status ->
+                        _podcastGenerationStatus.value = status
+                    },
+                    onScriptGenerated = { script ->
+                        _podcastScript.value = script
+                    }
+                )
+
+                result.onSuccess { audioPath ->
+                    _podcastAudioPath.value = audioPath
+                    _podcastGenerationStatus.value = "Podcast ready!"
+                    Log.d(TAG, "Podcast generated successfully: $audioPath")
+                }.onFailure { exception ->
+                    val errorMsg = when {
+                        exception.message?.contains("API key not configured") == true ->
+                            "Please configure Google Cloud TTS API key in .env file"
+                        exception.message?.contains("network", ignoreCase = true) == true ->
+                            "Network error. Please check your connection"
+                        exception.message?.contains("timeout", ignoreCase = true) == true ->
+                            "Request timeout. Please try again with a shorter note"
+                        else -> "Failed to generate podcast: ${exception.message}"
+                    }
+                    _errorMessage.value = errorMsg
+                    _podcastGenerationStatus.value = null
+                    Log.e(TAG, "Podcast generation failed: ${exception.message}", exception)
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Unexpected error: ${e.message}"
+                _podcastGenerationStatus.value = null
+                Log.e(TAG, "Podcast generation error: ${e.message}", e)
+            }
+
+            _isPodcastGenerating.value = false
+        }
+    }
+
+    fun clearPodcastData() {
+        Log.d(TAG, "Clearing podcast data")
+        _podcastAudioPath.value = null
+        _podcastGenerationStatus.value = null
+        _isPodcastGenerating.value = false
+        _podcastScript.value = null
     }
 }
