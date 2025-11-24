@@ -25,7 +25,8 @@ data class ProfileUiState(
 )
 
 class ProfileViewModel(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val authViewModel: AuthViewModel? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -117,6 +118,11 @@ class ProfileViewModel(
                     // This ensures the change persists across app restarts
                     launch {
                         val result = authRepository.updateProfileImage(imageUrl)
+
+                        result.onSuccess {
+                            // Notify AuthViewModel that profile was updated
+                            authViewModel?.notifyProfileUpdated()
+                        }
 
                         result.onFailure { exception ->
                             // If Firebase update fails, revert the optimistic update

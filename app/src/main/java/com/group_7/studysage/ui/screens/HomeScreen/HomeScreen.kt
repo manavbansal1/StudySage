@@ -58,8 +58,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -151,6 +153,7 @@ fun HomeScreen(
     navController: NavController,
     homeViewModel: HomeViewModel = viewModel(),
     courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel = viewModel(),
+    authViewModel: com.group_7.studysage.viewmodels.AuthViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -165,9 +168,16 @@ fun HomeScreen(
 
     val tasksState = remember { mutableStateListOf<DailyTask>() }
 
-    // Reload profile data when navigating back to Home
-    LaunchedEffect(key1 = true) {
-        homeViewModel.refreshHomeData()
+    // Only refresh when profile is actually updated (e.g., profile picture changed)
+    val profileUpdateCounter by authViewModel.profileUpdated.collectAsState()
+    val previousCounter = remember { mutableStateOf<Int?>(null) }
+    
+    LaunchedEffect(profileUpdateCounter) {
+        // Only refresh if counter has changed from a previous value (not initial load)
+        if (previousCounter.value != null && profileUpdateCounter > previousCounter.value!!) {
+            homeViewModel.refreshHomeData()
+        }
+        previousCounter.value = profileUpdateCounter
     }
 
     LaunchedEffect(Unit) {

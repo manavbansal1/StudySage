@@ -283,7 +283,8 @@ fun StudySageNavigation(
                 ) {
                     HomeScreen(
                         navController = navController,
-                        courseViewModel = courseViewModel
+                        courseViewModel = courseViewModel,
+                        authViewModel = authViewModel
                     )
                 }
                 composable(

@@ -42,7 +42,7 @@ import com.group_7.studysage.viewmodels.ProfileViewModel
 fun ProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController,
-    viewModel: ProfileViewModel = viewModel { ProfileViewModel(authViewModel.authRepository) }
+    viewModel: ProfileViewModel = viewModel { ProfileViewModel(authViewModel.authRepository, authViewModel) }
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
