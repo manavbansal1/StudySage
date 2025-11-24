@@ -168,16 +168,19 @@ fun HomeScreen(
 
     val tasksState = remember { mutableStateListOf<DailyTask>() }
 
-    // Only refresh when profile is actually updated (e.g., profile picture changed)
+    // Track the last seen profile update counter to detect changes
     val profileUpdateCounter by authViewModel.profileUpdated.collectAsState()
-    val previousCounter = remember { mutableStateOf<Int?>(null) }
+    val lastSeenCounter = remember { mutableStateOf(profileUpdateCounter) }
     
+    // Refresh home data when profile counter changes OR on first load
     LaunchedEffect(profileUpdateCounter) {
-        // Only refresh if counter has changed from a previous value (not initial load)
-        if (previousCounter.value != null && profileUpdateCounter > previousCounter.value!!) {
+        if (profileUpdateCounter != lastSeenCounter.value) {
+            homeViewModel.refreshHomeData()
+            lastSeenCounter.value = profileUpdateCounter
+        } else if (lastSeenCounter.value == 0) {
+            // Initial load when counter is 0
             homeViewModel.refreshHomeData()
         }
-        previousCounter.value = profileUpdateCounter
     }
 
     LaunchedEffect(Unit) {

@@ -80,15 +80,7 @@ class AuthRepository(
             firestore.collection("users").document(user.uid).set(userProfile).await()
             //  Send welcome email via Resend (non-blocking)
             CoroutineScope(Dispatchers.IO).launch {
-                Log.d(TAG, "📧 Attempting to send welcome email via Resend...")
                 ResendEmailService.sendWelcomeEmail(email, name)
-                    .onSuccess {
-                        Log.d(TAG, "✅ Welcome email sent successfully via Resend to $email")
-                    }
-                    .onFailure { error ->
-                        // Email failure doesn't affect signup
-                        Log.w(TAG, "⚠️ Welcome email failed (non-critical): ${error.message}")
-                    }
             }
             Result.success(user)
         } catch (e: Exception) {
@@ -836,7 +828,7 @@ class AuthRepository(
             Log.d(TAG, "✅ Streak updated: $currentStreak → $newStreak (days diff: $daysDifference)")
         } catch (e: Exception) {
             // Log error but don't throw - this is a non-critical operation
-            Log.e(TAG, "❌ Failed to update daily streak: ${e.message}", e)
+            Log.e(TAG, "Failed to update daily streak: ${e.message}", e)
         }
     }
 

@@ -87,8 +87,6 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
                 settings = settings
             )
 
-            Log.d("KSS", "Hosting game with request: $requestBody")
-
             val jsonBody = json.encodeToString(HostGameRequest.serializer(), requestBody)
 
             val request = Request.Builder()
