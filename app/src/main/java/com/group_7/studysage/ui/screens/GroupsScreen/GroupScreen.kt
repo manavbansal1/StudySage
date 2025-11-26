@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -41,44 +42,76 @@ fun GroupScreen(
     val pendingInviteCount by viewModel.pendingInviteCount.collectAsState()
     val showInviteOverlay by viewModel.showInviteOverlay.collectAsState()
     val pendingInvites by viewModel.pendingInvites.collectAsState()
+    val operationStatus by viewModel.operationStatus.collectAsState()
 
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(top = 16.dp, bottom = 16.dp),
-    ) {
-        // Pull-to-refresh wrapper
-        val isRefreshing by viewModel.isRefreshing.collectAsState()
-        val swipeState = rememberSwipeRefreshState(isRefreshing)
+    // Show operation status in snackbar
+    LaunchedEffect(operationStatus) {
+        operationStatus?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
 
-        SwipeRefresh(
-            state = swipeState,
-            onRefresh = { viewModel.refreshGroups() },
-            indicator = { state, trigger ->
-                SwipeRefreshIndicator(
-                    state = state,
-                    refreshTriggerDistance = trigger,
-                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = if (data.visuals.message.contains("success", ignoreCase = true) || 
+                                         data.visuals.message.contains("created", ignoreCase = true))
+                        Color(0xFF4CAF50)
+                    else if (data.visuals.message.contains("fail", ignoreCase = true) || 
+                             data.visuals.message.contains("error", ignoreCase = true))
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.inverseSurface,
+                    contentColor = Color.White
                 )
             }
+        },
+        containerColor = Color.Transparent,
+        modifier = Modifier.fillMaxSize() // Removed negative offset
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(paddingValues)
+                .padding(bottom = 16.dp) // Removed top padding
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-            ) {
-                Spacer(modifier = Modifier.height(18.dp))
+            // Pull-to-refresh wrapper
+            val isRefreshing by viewModel.isRefreshing.collectAsState()
+            val swipeState = rememberSwipeRefreshState(isRefreshing)
 
+            SwipeRefresh(
+                state = swipeState,
+                onRefresh = { viewModel.refreshGroups() },
+                indicator = { state, trigger ->
+                    SwipeRefreshIndicator(
+                        state = state,
+                        refreshTriggerDistance = trigger,
+                        backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                ) {
                 // Header Section
                 GroupsHeader(
                     pendingInviteCount = pendingInviteCount,
                     onNotificationClick = { viewModel.toggleInviteOverlay() },
-                    onAddClick = { showCreateGroupDialog = true }
+                    onAddClick = { showCreateGroupDialog = true },
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -177,6 +210,7 @@ fun GroupScreen(
                 onDismiss = { viewModel.toggleInviteOverlay() }
             )
         }
+        }
     }
 
     // Create group dialog
@@ -200,9 +234,8 @@ fun GroupsHeader(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Collaborate and learn together",
+            text = "Connect and collaborate",
             fontSize = 14.sp,
-
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -212,57 +245,52 @@ fun GroupsHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Study Groups",
+                text = "Groups",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            // Action buttons
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Add button
+                // Notification icon with badge
+                Box {
+                    IconButton(
+                        onClick = onNotificationClick,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (pendingInviteCount > 0) {
+                        Badge(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 8.dp, end = 8.dp)
+                        ) {
+                            Text(
+                                text = if (pendingInviteCount > 9) "9+" else pendingInviteCount.toString(),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
+
+                // Add group button
                 IconButton(
                     onClick = onAddClick,
                     modifier = Modifier.size(44.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Add Group",
+                        contentDescription = "Create Group",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(26.dp)
                     )
-                }
-
-                // Notification bell with badge
-                IconButton(
-                    onClick = onNotificationClick,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    BadgedBox(
-                        badge = {
-                            if (pendingInviteCount > 0) {
-                                Badge(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                ) {
-                                    Text(
-                                        pendingInviteCount.toString(),
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onError
-                                    )
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
                 }
             }
         }

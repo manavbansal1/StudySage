@@ -107,6 +107,27 @@ class GamePlayViewModel(
         }
     }
 
+    fun submitTacToeMove(squareIndex: Int, answerIndex: Int, boardState: List<String>) {
+        val state = _gameUiState.value
+        val player = authViewModel.currentUser.value
+
+        if (player != null) {
+            android.util.Log.d("GamePlayViewModel", "Submitting TacToe move: square=$squareIndex, answer=$answerIndex, boardState=$boardState")
+            
+            // Submit the answer with square index as question ID
+            webSocketManager.submitAnswer(
+                playerId = player.uid,
+                questionId = "square_$squareIndex",
+                answerIndex = answerIndex,
+                timeElapsed = 0
+            )
+            // Send board update to sync with other players
+            webSocketManager.sendBoardUpdate(boardState)
+            
+            android.util.Log.d("GamePlayViewModel", "Board update sent to server")
+        }
+    }
+
     private fun observeWebSocket() {
         webSocketManager.connectionState
             .onEach { state ->
@@ -118,6 +139,31 @@ class GamePlayViewModel(
             .launchIn(viewModelScope)
 
         webSocketManager.roomUpdate
+            .onEach { session ->
+                session?.let {
+                    android.util.Log.d("GamePlayViewModel", "============ ROOM_UPDATE RECEIVED ============")
+                    android.util.Log.d("GamePlayViewModel", "Session ID: ${it.id}")
+                    android.util.Log.d("GamePlayViewModel", "Game Type: ${it.gameType}")
+                    android.util.Log.d("GamePlayViewModel", "Game Status: ${it.status}")
+                    android.util.Log.d("GamePlayViewModel", "Board State: ${it.boardState}")
+                    android.util.Log.d("GamePlayViewModel", "Board State Size: ${it.boardState?.size ?: 0}")
+                    android.util.Log.d("GamePlayViewModel", "Current Turn: ${it.currentTurn}")
+                    android.util.Log.d("GamePlayViewModel", "Players: ${it.players.keys}")
+                    android.util.Log.d("GamePlayViewModel", "Questions Count: ${it.questions.size}")
+                    android.util.Log.d("GamePlayViewModel", "=========================================")
+
+                    val currentUser = authViewModel.currentUser.value
+                    val isHost = currentUser?.uid == it.hostId
+                    _gameUiState.value = _gameUiState.value.copy(
+                        currentSession = it,
+                        isHost = isHost
+                    )
+                    android.util.Log.d("GamePlayViewModel", "GameUiState updated - new boardState: ${_gameUiState.value.currentSession?.boardState}")
+                }
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.gameStarted
             .onEach { session ->
                 session?.let {
                     val currentUser = authViewModel.currentUser.value
@@ -202,6 +248,37 @@ class GamePlayViewModel(
                 message?.let {
                     val updatedMessages = _gameUiState.value.chatMessages + it
                     _gameUiState.value = _gameUiState.value.copy(chatMessages = updatedMessages)
+                }
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.boardUpdate
+            .onEach { boardState ->
+                boardState?.let {
+                    android.util.Log.d("GamePlayViewModel", "BOARD_UPDATE received: $it")
+                    // Update the session with new board state
+                    _gameUiState.value.currentSession?.let { session ->
+                        android.util.Log.d("GamePlayViewModel", "Current session exists, updating with new board state")
+                        val updatedSession = session.copy(boardState = it)
+                        _gameUiState.value = _gameUiState.value.copy(
+                            currentSession = updatedSession
+                        )
+                        android.util.Log.d("GamePlayViewModel", "Session updated with board state: ${updatedSession.boardState}")
+                    } ?: android.util.Log.e("GamePlayViewModel", "ERROR: Current session is null, cannot update board state!")
+                } ?: android.util.Log.e("GamePlayViewModel", "ERROR: Board state in update is null!")
+            }
+            .launchIn(viewModelScope)
+
+        webSocketManager.turnUpdate
+            .onEach { newTurnPlayerId ->
+                newTurnPlayerId?.let {
+                    // Update the session with new current turn
+                    _gameUiState.value.currentSession?.let { session ->
+                        _gameUiState.value = _gameUiState.value.copy(
+                            currentSession = session.copy(currentTurn = it)
+                        )
+                        android.util.Log.d("GamePlayViewModel", "Turn updated to: $it")
+                    }
                 }
             }
             .launchIn(viewModelScope)

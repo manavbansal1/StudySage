@@ -190,13 +190,16 @@ class GroupRepository(
 
     /**
      * Remove member from group
+     * Also removes the group from the user's database
      */
     suspend fun removeMemberFromGroup(groupId: String, userId: String): Result<Unit> {
         return try {
+            // Get group data
             val groupData = getGroupProfile(groupId)
             @Suppress("UNCHECKED_CAST")
             val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
 
+            // Remove user from group's members list
             val updatedMembers = members.filter { it["userId"] != userId }
 
             firestore.collection("groups").document(groupId)
@@ -207,6 +210,24 @@ class GroupRepository(
                     )
                 )
                 .await()
+
+            // ALSO remove group from user's profile
+            try {
+                val userDoc = firestore.collection("users").document(userId).get().await()
+                @Suppress("UNCHECKED_CAST")
+                val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
+                
+                val updatedUserGroups = userGroups.filter { it["groupId"] != groupId }
+                
+                firestore.collection("users").document(userId)
+                    .update("groups", updatedUserGroups)
+                    .await()
+                    
+                Log.d(TAG, "Removed group $groupId from user $userId's profile")
+            } catch (e: Exception) {
+                // Log but don't fail the whole operation if user update fails
+                Log.e(TAG, "Failed to remove group from user profile: ${e.message}", e)
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -254,6 +275,11 @@ class GroupRepository(
         return try {
             val currentUser = firebaseAuth.currentUser
                 ?: return Result.failure(Exception("No user logged in"))
+
+            // VALIDATE: Check if user is still a member
+            if (!isUserMember(groupId, currentUser.uid)) {
+                return Result.failure(Exception("You are not a member of this group"))
+            }
 
             val messageId = firestore.collection("groups")
                 .document(groupId)
@@ -475,6 +501,22 @@ class GroupRepository(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete group $groupId: ${e.message}", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Check if user is a member of a group
+     */
+    suspend fun isUserMember(groupId: String, userId: String): Boolean {
+        return try {
+            val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
+            val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
+            
+            members.any { it["userId"] == userId }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check membership: ${e.message}", e)
+            false
         }
     }
 

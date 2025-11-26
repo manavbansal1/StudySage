@@ -39,10 +39,35 @@ object CloudinaryUploader {
         resourceType: String // e.g., "image", "raw"
     ): String? = withContext(Dispatchers.IO) {
         try {
+            // Validate Cloudinary configuration
+            if (CLOUD_NAME.isBlank() || UPLOAD_PRESET.isBlank()) {
+                println("❌ Cloudinary Error: Configuration not found. Please check your .env file.")
+                return@withContext null
+            }
+
             // Convert URI to File
-            val file = uriToFile(context, fileUri) ?: return@withContext null
+            val file = uriToFile(context, fileUri) ?: run {
+                println("❌ Cloudinary Error: Failed to convert URI to file")
+                return@withContext null
+            }
+
+            // Validate file size (max 10MB for images, 50MB for other files)
+            val maxSize = if (resourceType == "image") 10 * 1024 * 1024 else 50 * 1024 * 1024
+            if (file.length() > maxSize) {
+                val maxSizeMB = maxSize / (1024 * 1024)
+                println("❌ Cloudinary Error: File too large (${file.length() / (1024 * 1024)}MB). Maximum size: ${maxSizeMB}MB")
+                file.delete()
+                return@withContext null
+            }
 
             val mimeType = context.contentResolver.getType(fileUri) ?: "application/octet-stream"
+
+            // Validate image type for image uploads
+            if (resourceType == "image" && !mimeType.startsWith("image/")) {
+                println("❌ Cloudinary Error: Invalid file type. Expected image, got: $mimeType")
+                file.delete()
+                return@withContext null
+            }
 
             // Determine the correct Cloudinary URL based on fileType
             val uploadUrl = when (resourceType) {
@@ -50,6 +75,8 @@ object CloudinaryUploader {
                 "raw" -> CLOUDINARY_RAW_UPLOAD_URL
                 else -> CLOUDINARY_IMAGE_UPLOAD_URL // Default to image upload
             }
+
+            println("📤 Uploading to Cloudinary: ${file.name} (${file.length() / 1024}KB)")
 
             // Requesting For File
             val requestBody = MultipartBody.Builder()
@@ -84,12 +111,24 @@ object CloudinaryUploader {
                     // Clean up temporary file
                     file.delete()
 
+                    println("✅ Cloudinary upload successful: $downloadUrl")
                     return@withContext downloadUrl
                 }
             } else {
-                // Log error
+                // Log detailed error
                 val errorBody = response.body?.string()
-                println("Cloudinary upload failed: ${response.code} - $errorBody")
+                val errorMessage = try {
+                    errorBody?.let { JSONObject(it).optString("error", "Unknown error") }
+                } catch (e: Exception) {
+                    errorBody
+                }
+                
+                when (response.code) {
+                    401 -> println("❌ Cloudinary Error (401): Invalid credentials. Check UPLOAD_PRESET in .env")
+                    400 -> println("❌ Cloudinary Error (400): Bad request - $errorMessage")
+                    413 -> println("❌ Cloudinary Error (413): File too large")
+                    else -> println("❌ Cloudinary upload failed (${response.code}): $errorMessage")
+                }
             }
 
             // Clean up temporary file
@@ -97,7 +136,14 @@ object CloudinaryUploader {
 
             return@withContext null
 
+        } catch (e: java.net.UnknownHostException) {
+            println("❌ Cloudinary Error: No internet connection")
+            return@withContext null
+        } catch (e: java.net.SocketTimeoutException) {
+            println("❌ Cloudinary Error: Upload timeout. Please try again")
+            return@withContext null
         } catch (e: Exception) {
+            println("❌ Cloudinary Error: ${e.message}")
             e.printStackTrace()
             return@withContext null
         }

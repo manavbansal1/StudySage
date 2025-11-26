@@ -189,16 +189,24 @@ fun HomeScreen(
     // We use theme colors directly here.
     val quickActions = listOf(
         QuickAction(
-            title = "Take Quiz",
+            title = "Quick Quiz",
             icon = Icons.Default.Book,
             color = MaterialTheme.colorScheme.primary,
-            onClick = { /* Navigate to quiz */ }
+            onClick = {
+                // Navigate to temporary quiz generation screen
+                // User can upload PDF, generate quiz, and play without saving to database
+                navController.navigate("temp_quiz")
+            }
         ),
         QuickAction(
             title = "Flashcards",
             icon = Icons.Default.Style,
             color = MaterialTheme.colorScheme.secondary,
-            onClick = { /* Navigate to flashcards */ }
+            onClick = {
+                // Navigate to temporary flashcard generation screen
+                // User can upload PDF, generate flashcards with AI, and study without saving
+                navController.navigate("temp_flashcards")
+            }
         ),
         QuickAction(
             title = "Study Groups",
@@ -499,7 +507,7 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    TextButton(onClick = { /* TODO: Navigate to all notes */ }) {
+                    TextButton(onClick = { navController.navigate("recently_opened") }) {
                         Text(
                             text = "See All",
                             fontSize = 14.sp,

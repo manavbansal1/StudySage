@@ -40,25 +40,24 @@ fun GameScreen(navController: NavController) {
     var showJoinDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Multiplayer Games", fontWeight = FontWeight.Bold, fontSize = 24.sp) },
-                actions = {
-                    IconButton(onClick = { navController.navigate("leaderboard") }) {
-                        Icon(Icons.Default.EmojiEvents, contentDescription = "Leaderboard")
-                    }
-                }
-            )
-        }
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Header
+            GamesHeader(
+                onLeaderboardClick = { navController.navigate("leaderboard") },
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
             Spacer(modifier = Modifier.height(32.dp))
             
             // Game Icon
@@ -153,6 +152,7 @@ fun GameScreen(navController: NavController) {
                         navController.navigate("game_play/$code")
                     }
                 )
+                Spacer(modifier = Modifier.height(30.dp))
             }
         }
 
@@ -338,7 +338,7 @@ fun HostGameDialog(
     val gameTypes = listOf(
         GameType.QUIZ_RACE to "Quiz Race",
         GameType.FLASHCARD_BATTLE to "Flashcard Battle",
-        GameType.TEAM_TRIVIA to "Team Trivia",
+        GameType.STUDY_TAC_TOE to "Study-Tac-Toe",
         GameType.SPEED_MATCH to "Speed Match"
     )
 
@@ -509,4 +509,45 @@ fun JoinGameDialog(
             }
         }
     )
+}
+
+
+@Composable
+fun GamesHeader(
+    onLeaderboardClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Play and learn with friends",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Games",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            // Leaderboard button
+            IconButton(
+                onClick = onLeaderboardClick,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EmojiEvents,
+                    contentDescription = "Leaderboard",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+    }
 }
