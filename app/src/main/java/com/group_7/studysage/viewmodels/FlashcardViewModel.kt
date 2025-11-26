@@ -169,28 +169,4 @@ class FlashcardViewModel(
         _flashcards.value = _flashcards.value.shuffled()
     }
 
-    /**
-     * Clear the current error message
-     */
-    fun clearError() {
-        _errorMessage.value = null
-    }
-
-    /**
-     * Save flashcards (optional - for future use if persistence is needed)
-     */
-    fun saveFlashcards(noteId: String) {
-        viewModelScope.launch {
-            try {
-                val result = repository.saveFlashcards(noteId, _flashcards.value)
-                result.onSuccess {
-                    Log.d(TAG, "Flashcards saved successfully")
-                }.onFailure { error ->
-                    Log.e(TAG, "Failed to save flashcards", error)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error saving flashcards", e)
-            }
-        }
-    }
 }

@@ -352,10 +352,6 @@ class GroupViewModel(
         }
     }
 
-    private suspend fun checkIfAdmin(groupId: String): Boolean {
-        val userId = authRepository.currentUser?.uid ?: return false
-        return groupRepository.isUserAdmin(groupId, userId)
-    }
 
     fun getFilteredGroups(): List<GroupItem> {
         val currentState = _uiState.value
@@ -369,9 +365,6 @@ class GroupViewModel(
         }
     }
 
-    fun clearOperationStatus() {
-        _operationStatus.value = null
-    }
 
     override fun onCleared() {
         super.onCleared()

@@ -285,11 +285,6 @@ class NotesViewModel(
         }
     }
 
-    fun clearError() {
-        Log.d(TAG, "Clearing note errors")
-        _errorMessage.value = null
-    }
-
     fun updateNoteSummary(noteId: String, content: String, userPreferences: String) {
         viewModelScope.launch {
             _isLoading.value = true

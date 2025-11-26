@@ -41,21 +41,17 @@ object CloudinaryUploader {
         try {
             // Validate Cloudinary configuration
             if (CLOUD_NAME.isBlank() || UPLOAD_PRESET.isBlank()) {
-                println("❌ Cloudinary Error: Configuration not found. Please check your .env file.")
                 return@withContext null
             }
 
             // Convert URI to File
             val file = uriToFile(context, fileUri) ?: run {
-                println("❌ Cloudinary Error: Failed to convert URI to file")
                 return@withContext null
             }
 
             // Validate file size (max 10MB for images, 50MB for other files)
             val maxSize = if (resourceType == "image") 10 * 1024 * 1024 else 50 * 1024 * 1024
             if (file.length() > maxSize) {
-                val maxSizeMB = maxSize / (1024 * 1024)
-                println("❌ Cloudinary Error: File too large (${file.length() / (1024 * 1024)}MB). Maximum size: ${maxSizeMB}MB")
                 file.delete()
                 return@withContext null
             }
@@ -64,7 +60,6 @@ object CloudinaryUploader {
 
             // Validate image type for image uploads
             if (resourceType == "image" && !mimeType.startsWith("image/")) {
-                println("❌ Cloudinary Error: Invalid file type. Expected image, got: $mimeType")
                 file.delete()
                 return@withContext null
             }
@@ -75,8 +70,6 @@ object CloudinaryUploader {
                 "raw" -> CLOUDINARY_RAW_UPLOAD_URL
                 else -> CLOUDINARY_IMAGE_UPLOAD_URL // Default to image upload
             }
-
-            println("📤 Uploading to Cloudinary: ${file.name} (${file.length() / 1024}KB)")
 
             // Requesting For File
             val requestBody = MultipartBody.Builder()
@@ -124,10 +117,10 @@ object CloudinaryUploader {
                 }
                 
                 when (response.code) {
-                    401 -> println("❌ Cloudinary Error (401): Invalid credentials. Check UPLOAD_PRESET in .env")
-                    400 -> println("❌ Cloudinary Error (400): Bad request - $errorMessage")
-                    413 -> println("❌ Cloudinary Error (413): File too large")
-                    else -> println("❌ Cloudinary upload failed (${response.code}): $errorMessage")
+                    401 -> { /* Invalid credentials */ }
+                    400 -> { /* Bad request */ }
+                    413 -> { /* File too large */ }
+                    else -> { /* Upload failed */ }
                 }
             }
 

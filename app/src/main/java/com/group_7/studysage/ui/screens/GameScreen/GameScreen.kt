@@ -72,16 +72,17 @@ fun GameScreen(navController: NavController) {
 
             Text(
                 text = "Ready to Play?",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Host a game or join with a code",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -91,12 +92,13 @@ fun GameScreen(navController: NavController) {
                 onClick = { showHostDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp),
+                    .height(66.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("Host a Game", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
@@ -108,9 +110,17 @@ fun GameScreen(navController: NavController) {
                 onClick = { showJoinDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(66.dp),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    2.dp,
+                    MaterialTheme.colorScheme.primary
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                Icon(Icons.Default.Login, contentDescription = null)
+                Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("Join a Game", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
@@ -132,15 +142,28 @@ fun GameScreen(navController: NavController) {
             uiState.error?.let { error ->
                 Spacer(modifier = Modifier.height(24.dp))
                 Card(
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 ) {
-                    Text(
-                        text = error,
+                    Row(
                         modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
 
@@ -521,9 +544,10 @@ fun GamesHeader(
         Text(
             text = "Play and learn with friends",
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            letterSpacing = 0.3.sp
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -531,20 +555,24 @@ fun GamesHeader(
         ) {
             Text(
                 text = "Games",
-                fontSize = 32.sp,
+                fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = (-0.5).sp
             )
 
-            // Leaderboard button
-            IconButton(
+            // Leaderboard button with background
+            FilledIconButton(
                 onClick = onLeaderboardClick,
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.EmojiEvents,
                     contentDescription = "Leaderboard",
-                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(26.dp)
                 )
             }

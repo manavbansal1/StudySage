@@ -87,17 +87,13 @@ object ResendEmailService {
                 val responseBody = resp.body?.string() ?: ""
 
                 if (resp.isSuccessful) {
-                    Log.d(TAG, "✅ Welcome email sent successfully to: $toEmail")
-                    Log.d(TAG, "Response: $responseBody")
                     Result.success(Unit)
                 } else {
                     val errorMsg = "Failed to send email. Status: ${resp.code}, Body: $responseBody"
-                    Log.e(TAG, "❌ $errorMsg")
                     Result.failure(Exception(errorMsg))
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception while sending welcome email to $toEmail: ${e.message}", e)
             Result.failure(e)
         }
     }

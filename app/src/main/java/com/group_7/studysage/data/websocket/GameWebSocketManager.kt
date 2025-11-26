@@ -116,7 +116,6 @@ class GameWebSocketManager(
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 _connectionState.value = ConnectionState.Connected
-                println("✅ WebSocket connected to game session")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -133,17 +132,14 @@ class GameWebSocketManager(
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 _connectionState.value = ConnectionState.Disconnecting
-                println("⚠️ WebSocket closing: $reason")
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 _connectionState.value = ConnectionState.Disconnected
-                println("❌ WebSocket closed: $reason")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 _connectionState.value = ConnectionState.Error(t.message ?: "Connection failed")
-                println("❌ WebSocket error: ${t.message}")
             }
         })
     }
@@ -222,7 +218,6 @@ class GameWebSocketManager(
                     message.data?.let {
                         val boardData = json.decodeFromString<Map<String, List<String>>>(it)
                         _boardUpdate.value = boardData["boardState"]
-                        println("🎮 Board update received: ${boardData["boardState"]}")
                     }
                 }
                 MessageType.ERROR -> {
@@ -231,11 +226,11 @@ class GameWebSocketManager(
                     }
                 }
                 else -> {
-                    println("📩 Unhandled message type: ${message.type}")
+                    // Unhandled message type
                 }
             }
         } catch (e: Exception) {
-            println("❌ Error parsing message: ${e.message}")
+            // Error parsing message
         }
     }
 
@@ -348,31 +343,6 @@ class GameWebSocketManager(
 
         sendMessage(WebSocketMessage(
             type = MessageType.MATCH_PAIR,
-            data = dataString
-        ))
-    }
-
-    /**
-     * Send chat message
-     */
-    fun sendChatMessage(
-        senderId: String,
-        senderName: String,
-        message: String,
-        teamOnly: Boolean = false
-    ) {
-        val chatData = ChatMessageData(
-            senderId = senderId,
-            senderName = senderName,
-            message = message,
-            timestamp = System.currentTimeMillis(),
-            teamOnly = teamOnly
-        )
-
-        val dataString = json.encodeToString(ChatMessageData.serializer(), chatData)
-
-        sendMessage(WebSocketMessage(
-            type = MessageType.CHAT_MESSAGE,
             data = dataString
         ))
     }
