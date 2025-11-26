@@ -147,58 +147,6 @@ class NotificationsViewModel(
         }
     }
 
-    /**
-     * Update daily reminder time.
-     * If notifications are enabled, reschedules reminders with the new time.
-     *
-     * @param context Application context for WorkManager
-     * @param time Time in HH:mm format (e.g., "18:00")
-     */
-    fun updateReminderTime(context: Context, time: String) {
-        viewModelScope.launch {
-            Log.d(TAG, "Updating reminder time: $time")
-            _uiState.update { it.copy(isSaving = true, error = null, message = null) }
-
-            authRepository.updateReminderTime(time).onSuccess {
-                try {
-                    // Reschedule with new time if notifications are enabled
-                    if (_uiState.value.notificationsEnabled) {
-                        Log.d(TAG, "Rescheduling reminders with new time: $time")
-                        ReminderScheduler.cancelDailyReminder(context)
-                        ReminderScheduler.scheduleDailyReminder(context, time)
-                    } else {
-                        Log.d(TAG, "Notifications disabled, skipping reschedule")
-                    }
-
-                    Log.d(TAG, "Reminder time updated successfully")
-                    _uiState.update {
-                        it.copy(
-                            dailyReminderTime = time,
-                            isSaving = false,
-                            message = "Reminder time updated"
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error rescheduling reminders", e)
-                    _uiState.update {
-                        it.copy(
-                            dailyReminderTime = time,
-                            isSaving = false,
-                            error = "Time updated but rescheduling failed: ${e.message}"
-                        )
-                    }
-                }
-            }.onFailure { exception ->
-                Log.e(TAG, "Error updating reminder time", exception)
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        error = exception.message
-                    )
-                }
-            }
-        }
-    }
 
     /**
      * Clear any displayed message or error.

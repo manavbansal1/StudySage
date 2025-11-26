@@ -144,6 +144,13 @@ fun StudySageNavigation(
         // Collect fullscreen overlay state from courseViewModel
         val courseUiState by courseViewModel.uiState.collectAsState()
 
+        // Clear selected course when navigating away from course screen
+        androidx.compose.runtime.LaunchedEffect(currentDestination?.route) {
+            if (currentDestination?.route != Screen.Course.route && courseUiState.selectedCourse != null) {
+                courseViewModel.clearSelectedCourse()
+            }
+        }
+
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
                 currentDestination?.route == "privacy_settings" ||
@@ -152,7 +159,8 @@ fun StudySageNavigation(
                 currentDestination?.route == "temp_flashcards" || // Hide nav on temp flashcard screen
                 currentDestination?.route == "recently_opened" ||
                 currentDestination?.route?.startsWith("game_") == true ||
-                courseUiState.isShowingFullscreenOverlay // Hide nav when quiz/NFC screens are showing
+                courseUiState.isShowingFullscreenOverlay || // Hide nav when quiz/NFC screens are showing
+                courseUiState.selectedCourse != null // Hide nav when viewing course details
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -275,7 +283,8 @@ fun StudySageNavigation(
                 ) {
                     HomeScreen(
                         navController = navController,
-                        courseViewModel = courseViewModel
+                        courseViewModel = courseViewModel,
+                        authViewModel = authViewModel
                     )
                 }
                 composable(
