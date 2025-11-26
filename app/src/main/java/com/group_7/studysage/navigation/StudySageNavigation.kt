@@ -248,7 +248,7 @@ fun StudySageNavigation(
                 }
             },
             modifier = modifier
-        ) { innerPadding ->
+        ) @Suppress("UNUSED_PARAMETER") { _ ->
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
@@ -283,8 +283,7 @@ fun StudySageNavigation(
                 ) {
                     HomeScreen(
                         navController = navController,
-                        courseViewModel = courseViewModel,
-                        authViewModel = authViewModel
+                        courseViewModel = courseViewModel
                     )
                 }
                 composable(

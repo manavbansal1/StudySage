@@ -58,10 +58,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,7 +151,6 @@ fun HomeScreen(
     navController: NavController,
     homeViewModel: HomeViewModel = viewModel(),
     courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel = viewModel(),
-    authViewModel: com.group_7.studysage.viewmodels.AuthViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -164,25 +161,12 @@ fun HomeScreen(
 
     // Pull-to-refresh state
     val isRefreshing by homeViewModel.isRefreshing
+    @Suppress("DEPRECATION")
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
 
     val tasksState = remember { mutableStateListOf<DailyTask>() }
 
-    // Track the last seen profile update counter to detect changes
-    val profileUpdateCounter by authViewModel.profileUpdated.collectAsState()
-    val lastSeenCounter = remember { mutableStateOf(profileUpdateCounter) }
-    
-    // Refresh home data when profile counter changes OR on first load
-    LaunchedEffect(profileUpdateCounter) {
-        if (profileUpdateCounter != lastSeenCounter.value) {
-            homeViewModel.refreshHomeData()
-            lastSeenCounter.value = profileUpdateCounter
-        } else if (lastSeenCounter.value == 0) {
-            // Initial load when counter is 0
-            homeViewModel.refreshHomeData()
-        }
-    }
-
+    // Load daily tasks sample data
     LaunchedEffect(Unit) {
         val sample = listOf(
             DailyTask("1", "Complete a Quiz", "Test your knowledge", 25, Icons.AutoMirrored.Filled.MenuBook),
@@ -241,10 +225,12 @@ fun HomeScreen(
         color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            @Suppress("DEPRECATION")
             SwipeRefresh(
                 state = swipeRefreshState,
                 onRefresh = { homeViewModel.refreshHomeData() },
                 indicator = { state, trigger ->
+                    @Suppress("DEPRECATION")
                     SwipeRefreshIndicator(
                         state = state,
                         refreshTriggerDistance = trigger,
