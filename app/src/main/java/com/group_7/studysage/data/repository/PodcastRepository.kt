@@ -278,8 +278,12 @@ class PodcastRepository(
                     tempFiles.add(tempFile)
                 }
 
-                // Combine all WAV files into one
-                val finalAudioFile = File(context.cacheDir, "podcast_${noteId}.wav")
+                // Combine all WAV files into one and save to app files directory (persistent storage)
+                val podcastsDir = File(context.filesDir, "podcasts")
+                if (!podcastsDir.exists()) {
+                    podcastsDir.mkdirs()
+                }
+                val finalAudioFile = File(podcastsDir, "podcast_${noteId}.wav")
                 if (finalAudioFile.exists()) {
                     finalAudioFile.delete()
                 }
@@ -349,11 +353,12 @@ class PodcastRepository(
     }
 
     /**
-     * Delete cached podcast audio file
+     * Delete podcast audio file from persistent storage
      */
     fun deletePodcast(noteId: String): Boolean {
         return try {
-            val audioFile = File(context.cacheDir, "podcast_${noteId}.wav")
+            val podcastsDir = File(context.filesDir, "podcasts")
+            val audioFile = File(podcastsDir, "podcast_${noteId}.wav")
             if (audioFile.exists()) {
                 val deleted = audioFile.delete()
                 Log.d(TAG, "Podcast deleted: $deleted for note $noteId")
@@ -366,5 +371,23 @@ class PodcastRepository(
             Log.e(TAG, "Error deleting podcast: ${e.message}", e)
             false
         }
+    }
+
+    /**
+     * Check if a podcast already exists for a note
+     */
+    fun podcastExists(noteId: String): Boolean {
+        val podcastsDir = File(context.filesDir, "podcasts")
+        val audioFile = File(podcastsDir, "podcast_${noteId}.wav")
+        return audioFile.exists()
+    }
+
+    /**
+     * Get podcast file path if it exists
+     */
+    fun getPodcastPath(noteId: String): String? {
+        val podcastsDir = File(context.filesDir, "podcasts")
+        val audioFile = File(podcastsDir, "podcast_${noteId}.wav")
+        return if (audioFile.exists()) audioFile.absolutePath else null
     }
 }
