@@ -31,4 +31,41 @@ object FileDownloader {
             Toast.makeText(context, "Download failed for URL: $url. Error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
+
+    fun downloadLocalFile(context: Context, sourceFilePath: String, fileName: String) {
+        try {
+            val sourceFile = java.io.File(sourceFilePath)
+            if (!sourceFile.exists()) {
+                Toast.makeText(context, "File not found", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadsDir.exists()) {
+                downloadsDir.mkdirs()
+            }
+
+            // Check if file already exists and add a number suffix if needed
+            var destinationFile = java.io.File(downloadsDir, fileName)
+            var counter = 1
+            val fileNameWithoutExt = fileName.substringBeforeLast(".")
+            val fileExt = fileName.substringAfterLast(".")
+
+            while (destinationFile.exists()) {
+                val newFileName = "${fileNameWithoutExt}_$counter.$fileExt"
+                destinationFile = java.io.File(downloadsDir, newFileName)
+                counter++
+            }
+
+            // Copy file to Downloads directory
+            sourceFile.copyTo(destinationFile, overwrite = false)
+
+            Log.d("FileDownloader", "File downloaded to: ${destinationFile.absolutePath}")
+            Toast.makeText(context, "Downloaded to Downloads/${destinationFile.name}", Toast.LENGTH_SHORT).show()
+
+        } catch (e: Exception) {
+            Log.e("FileDownloader", "Download failed: ${e.message}", e)
+            Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
 }

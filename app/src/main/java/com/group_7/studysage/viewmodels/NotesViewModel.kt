@@ -320,6 +320,29 @@ class NotesViewModel(
         }
     }
 
+    fun loadOrGeneratePodcast(
+        noteId: String,
+        content: String,
+        noteTitle: String = ""
+    ) {
+        Log.d(TAG, "Loading or generating podcast for note $noteId")
+        viewModelScope.launch {
+            _errorMessage.value = null
+
+            // Check if podcast already exists
+            val existingPath = podcastRepository.getPodcastPath(noteId)
+            if (existingPath != null) {
+                Log.d(TAG, "Existing podcast found: $existingPath")
+                _podcastAudioPath.value = existingPath
+                _podcastGenerationStatus.value = "Podcast loaded"
+                // Note: Script won't be available for existing podcasts unless we store it separately
+            } else {
+                Log.d(TAG, "No existing podcast found, generating new one")
+                generatePodcast(noteId, content, noteTitle)
+            }
+        }
+    }
+
     fun generatePodcast(
         noteId: String,
         content: String,
@@ -330,10 +353,11 @@ class NotesViewModel(
             _isPodcastGenerating.value = true
             _podcastGenerationStatus.value = "Initializing..."
             _errorMessage.value = null
+            _podcastAudioPath.value = null // Clear current podcast path
+            _podcastScript.value = null // Clear current script
 
             try {
-                // Always generate fresh podcast
-                // Delete any existing cached podcast first
+                // Delete any existing podcast first
                 podcastRepository.deletePodcast(noteId)
 
                 val result = podcastRepository.generatePodcast(
@@ -382,5 +406,23 @@ class NotesViewModel(
         _podcastGenerationStatus.value = null
         _isPodcastGenerating.value = false
         _podcastScript.value = null
+    }
+
+    fun downloadPodcast(context: Context, noteId: String, originalFileName: String) {
+        Log.d(TAG, "Downloading podcast for note $noteId")
+        val podcastPath = podcastRepository.getPodcastPath(noteId)
+        if (podcastPath != null) {
+            // Use original file name without extension, add _podcast suffix
+            val baseFileName = if (originalFileName.contains(".")) {
+                originalFileName.substringBeforeLast(".")
+            } else {
+                originalFileName
+            }
+            val fileName = "${baseFileName}_podcast.wav"
+            FileDownloader.downloadLocalFile(context, podcastPath, fileName)
+        } else {
+            _errorMessage.value = "Podcast not found. Please generate it first."
+            Log.e(TAG, "Podcast not found for note $noteId")
+        }
     }
 }
