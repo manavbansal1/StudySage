@@ -208,18 +208,6 @@ fun HomeScreen(
                 navController.navigate("temp_flashcards")
             }
         ),
-        QuickAction(
-            title = "Study Groups",
-            icon = Icons.Default.Groups,
-            color = MaterialTheme.colorScheme.tertiary,
-            onClick = { navController.navigate("groups") }
-        ),
-        QuickAction(
-            title = "Games",
-            icon = Icons.Default.SportsEsports,
-            color = MaterialTheme.colorScheme.primaryContainer, // A different shade
-            onClick = { /* Navigate to games */ }
-        )
     )
 
     // Use the theme's background color
@@ -475,14 +463,17 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // NEW: Horizontal Scrolling Quick Actions
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(quickActions) { action ->
+                quickActions.forEach { action ->
                     QuickActionCard(
                         action = action,
-                        onClick = action.onClick
+                        onClick = action.onClick,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -753,7 +744,6 @@ fun QuickActionCard(
 ) {
     GlassCard(
         modifier = modifier
-            .width(110.dp)
             .height(120.dp),
         onClick = onClick
     ) {
