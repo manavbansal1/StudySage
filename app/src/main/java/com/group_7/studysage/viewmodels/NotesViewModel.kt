@@ -438,6 +438,7 @@ class NotesViewModel(
         } else {
             _errorMessage.value = "Podcast not found. Please generate it first."
             Log.e(TAG, "Podcast not found for note $noteId")
+        }}
     // ============================================
     // TEMPORARY FLASHCARD GENERATION
     // ============================================

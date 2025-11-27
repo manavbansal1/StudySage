@@ -104,54 +104,30 @@ fun TempFlashcardsGenerationScreen(
     }
 
     Scaffold(
-        topBar = {
-            // Purple gradient background
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.secondary, // Gold/secondary for flashcards
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
-                            )
-                        )
-                    )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Back button
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.2f),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
-                        }
-                    }
 
-                    // Title
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
                     Text(
                         text = "Quick Flashcards",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-
-                    // Spacer for symmetry
-                    Spacer(modifier = Modifier.size(40.dp))
-                }
-            }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->

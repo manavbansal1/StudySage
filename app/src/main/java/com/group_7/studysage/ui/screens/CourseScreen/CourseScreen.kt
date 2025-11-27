@@ -12,12 +12,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.toColorInt
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +93,13 @@ fun CoursesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
+    
+    // Edit/Delete State
+    var showOptionsSheet by rememberSaveable { mutableStateOf(false) }
+    var courseToEdit by remember { mutableStateOf<Course?>(null) }
+    var showEditDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedCourseForAction by remember { mutableStateOf<Course?>(null) }
 
     // If navigation provided a courseId, load it and set pendingNote
     LaunchedEffect(navCourseId, navNoteId) {
@@ -201,7 +215,11 @@ fun CoursesScreen(
                         items(uiState.courses) { course ->
                             CourseGridCard(
                                 course = course,
-                                onClick = { viewModel.loadCourseWithNotes(course.id) }
+                                onClick = { viewModel.loadCourseWithNotes(course.id) },
+                                onLongClick = {
+                                    selectedCourseForAction = course
+                                    showOptionsSheet = true
+                                }
                             )
                         }
                     }
@@ -217,7 +235,7 @@ fun CoursesScreen(
 
     // Add Course Dialog
     if (showAddCourseDialog) {
-        AddCourseDialog(
+        CourseDialog(
             isLoading = uiState.isCreatingCourse,
             semester = uiState.selectedSemester,
             year = uiState.selectedYear,
@@ -225,6 +243,62 @@ fun CoursesScreen(
             onConfirm = { title, code, instructor, description, credits, color ->
                 viewModel.createCourse(title, code, instructor, description, credits, color)
                 showAddCourseDialog = false
+            }
+        )
+    }
+
+    // Edit Course Dialog
+    if (showEditDialog && courseToEdit != null) {
+        CourseDialog(
+            isLoading = uiState.isLoading,
+            semester = courseToEdit!!.semester,
+            year = courseToEdit!!.year,
+            existingCourse = courseToEdit,
+            onDismiss = { 
+                showEditDialog = false 
+                courseToEdit = null
+            },
+            onConfirm = { title, code, instructor, description, credits, color ->
+                val updatedCourse = courseToEdit!!.copy(
+                    title = title,
+                    code = code,
+                    instructor = instructor,
+                    description = description,
+                    credits = credits,
+                    color = color
+                )
+                viewModel.updateCourse(updatedCourse)
+                showEditDialog = false
+                courseToEdit = null
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteDialog && selectedCourseForAction != null) {
+        DeleteConfirmationDialog(
+            courseName = selectedCourseForAction!!.title,
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                viewModel.deleteCourse(selectedCourseForAction!!.id)
+                showDeleteDialog = false
+                selectedCourseForAction = null
+            }
+        )
+    }
+
+    // Options Bottom Sheet
+    if (showOptionsSheet && selectedCourseForAction != null) {
+        CourseOptionsSheet(
+            onDismiss = { showOptionsSheet = false },
+            onEdit = {
+                showOptionsSheet = false
+                courseToEdit = selectedCourseForAction
+                showEditDialog = true
+            },
+            onDelete = {
+                showOptionsSheet = false
+                showDeleteDialog = true
             }
         )
     }
@@ -275,14 +349,10 @@ fun CoursesHeader(
                 letterSpacing = (-0.5).sp
             )
 
-            // Add button with background
-            FilledIconButton(
+            // Add button without background
+            IconButton(
                 onClick = onAddClick,
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
+                modifier = Modifier.size(44.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -310,10 +380,17 @@ fun FilterSection(
     ) {
         // Semester Filter
         var semesterExpanded by remember { mutableStateOf(false) }
+        var semesterWidth by remember { mutableStateOf(0.dp) }
+        val density = LocalDensity.current
+
         Box(modifier = Modifier.weight(1f)) {
             OutlinedButton(
                 onClick = { semesterExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        semesterWidth = with(density) { coordinates.size.width.toDp() }
+                    },
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
@@ -338,7 +415,11 @@ fun FilterSection(
             DropdownMenu(
                 expanded = semesterExpanded,
                 onDismissRequest = { semesterExpanded = false },
-                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                modifier = Modifier.width(semesterWidth),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
             ) {
                 Semester.values().forEach { semester ->
                     DropdownMenuItem(
@@ -355,7 +436,8 @@ fun FilterSection(
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                        }
+                        },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -363,10 +445,16 @@ fun FilterSection(
 
         // Year Filter
         var yearExpanded by remember { mutableStateOf(false) }
+        var yearWidth by remember { mutableStateOf(0.dp) }
+
         Box(modifier = Modifier.weight(1f)) {
             OutlinedButton(
                 onClick = { yearExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        yearWidth = with(density) { coordinates.size.width.toDp() }
+                    },
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
@@ -391,7 +479,11 @@ fun FilterSection(
             DropdownMenu(
                 expanded = yearExpanded,
                 onDismissRequest = { yearExpanded = false },
-                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                modifier = Modifier.width(yearWidth),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
             ) {
                 availableYears.forEach { year ->
                     DropdownMenuItem(
@@ -408,7 +500,8 @@ fun FilterSection(
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                        }
+                        },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -416,10 +509,12 @@ fun FilterSection(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CourseGridCard(
     course: Course,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     // Attempt to parse the user's color, fall back to primary if invalid
     val tintColor = try {
@@ -432,10 +527,15 @@ fun CourseGridCard(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.85f), // Slightly taller for better proportions
-        onClick = onClick
+        onClick = null // We handle clicks manually for combinedClickable
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
         ) {
             // Top Half - Visual Section
             Box(
@@ -613,8 +713,13 @@ fun ConfirmationOverlay(
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        // Re-using the GlassCard from this file
-        GlassCard {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        ) {
             Column(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -664,4 +769,113 @@ fun ConfirmationOverlay(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CourseOptionsSheet(
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Course Options",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            
+            // Edit Option
+            ListItem(
+                headlineContent = { Text("Edit Course Details") },
+                leadingContent = { 
+                    Icon(
+                        Icons.Outlined.Edit, 
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    ) 
+                },
+                modifier = Modifier.clickable { onEdit() },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent
+                )
+            )
+
+            // Delete Option
+            ListItem(
+                headlineContent = { Text("Delete Course") },
+                supportingContent = { Text("This will delete the course and all its notes") },
+                leadingContent = { 
+                    Icon(
+                        Icons.Outlined.Delete, 
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    ) 
+                },
+                modifier = Modifier.clickable { onDelete() },
+                colors = ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                    headlineColor = MaterialTheme.colorScheme.error,
+                    supportingColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    courseName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = {
+            Text(text = "Delete Course?")
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to delete \"$courseName\"? This action cannot be undone and will delete all notes associated with this course.",
+                textAlign = TextAlign.Center
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }

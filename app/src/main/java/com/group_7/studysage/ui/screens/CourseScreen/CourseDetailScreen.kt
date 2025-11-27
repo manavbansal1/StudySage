@@ -325,19 +325,22 @@ fun CourseDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = course.title,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.White
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = Color.White
                         )
                     }
                 },
@@ -351,7 +354,7 @@ fun CourseDetailScreen(
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
+                                color = Color.White,
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp
                             )
@@ -359,17 +362,18 @@ fun CourseDetailScreen(
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = "Add Note",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = Color.White,
                                 modifier = Modifier.size(26.dp)
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
+
     ) { paddingValues ->
         // Simple swipe-to-refresh state using Accompanist (deprecated warning is acceptable for now)
         val isRefreshing = courseViewModel.uiState.collectAsState().value.isRefreshing

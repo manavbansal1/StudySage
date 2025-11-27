@@ -473,7 +473,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(17.dp))
 
             // NEW: Horizontal Scrolling Quick Actions
             Row(
@@ -765,21 +765,14 @@ fun QuickActionCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Icon highlight
-            Box(
+            Icon(
+                imageVector = action.icon,
+                contentDescription = action.title,
+                tint = action.color,
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(action.color.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = action.icon,
-                    contentDescription = action.title,
-                    tint = action.color,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+                    .padding(top = 8.dp)
+                    .size(32.dp)
+            )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = action.title,
