@@ -37,6 +37,7 @@ import com.group_7.studysage.utils.FileUtils
 import com.group_7.studysage.viewmodels.AuthViewModel
 import com.group_7.studysage.viewmodels.GameViewModel
 import com.group_7.studysage.viewmodels.GameViewModelFactory
+import com.group_7.studysage.viewmodels.HomeViewModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +56,9 @@ fun TempQuizGenerationScreen(
             authViewModel = authViewModel
         )
     )
+
+    // Create HomeViewModel for task completion
+    val homeViewModel: HomeViewModel = viewModel()
 
     // State variables needed:
     var selectedPdfUri by remember { mutableStateOf<Uri?>(null) }
@@ -106,6 +110,7 @@ fun TempQuizGenerationScreen(
 
         PlayQuizScreen(
             quiz = tempQuiz,
+            homeViewModel = homeViewModel,
             onBack = {
                 // User cancelled quiz or quiz completed - go back
                 gameViewModel.clearQuizGenerationState()

@@ -19,11 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.navigation.StudySageNavigation
 import com.group_7.studysage.ui.theme.StudySageTheme
 import com.group_7.studysage.viewmodels.AuthViewModel
 import com.group_7.studysage.viewmodels.AuthViewModelFactory
+import com.group_7.studysage.viewmodels.HomeViewModel
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.group_7.studysage.utils.PermissionHandler
 import com.group_7.studysage.utils.NotificationPermissionHelper
@@ -31,7 +35,10 @@ import com.group_7.studysage.utils.StudySageNotificationManager
 import com.group_7.studysage.utils.ReminderScheduler
 import com.group_7.studysage.services.NfcHostApduService
 import com.group_7.studysage.data.nfc.NFCPayload
+import com.group_7.studysage.workers.DailyTaskResetWorker
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
+import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
 
@@ -72,6 +79,9 @@ class MainActivity : ComponentActivity() {
                 Log.e("MainActivity", "Failed to update daily streak: ${e.message}")
             }
         }
+
+        // Schedule daily task reset worker to run at midnight
+        scheduleDailyTaskReset()
 
         // Set up HCE callback
         NfcHostApduService.onDataReceived = { data ->
@@ -174,6 +184,48 @@ class MainActivity : ComponentActivity() {
         return data
     }
 
+    /**
+     * Schedule a periodic worker to reset/generate daily tasks at midnight
+     */
+    private fun scheduleDailyTaskReset() {
+        try {
+            // Calculate initial delay to midnight
+            val currentTime = Calendar.getInstance()
+            val midnight = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                // If it's already past midnight today, schedule for tomorrow
+                if (before(currentTime)) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+            }
+
+            val initialDelay = midnight.timeInMillis - currentTime.timeInMillis
+
+            // Create periodic work request (runs every 24 hours)
+            val dailyTaskWork = PeriodicWorkRequestBuilder<DailyTaskResetWorker>(
+                repeatInterval = 24,
+                repeatIntervalTimeUnit = TimeUnit.HOURS
+            )
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .build()
+
+            // Enqueue work with replace policy to avoid duplicate workers
+            WorkManager.getInstance(applicationContext)
+                .enqueueUniquePeriodicWork(
+                    DailyTaskResetWorker.WORK_NAME,
+                    ExistingPeriodicWorkPolicy.KEEP, // Keep existing if already scheduled
+                    dailyTaskWork
+                )
+
+            Log.d("MainActivity", "✅ Daily task reset worker scheduled (initial delay: ${initialDelay / 1000 / 60} minutes)")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Failed to schedule daily task reset worker: ${e.message}", e)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         NfcHostApduService.onDataReceived = null
@@ -190,6 +242,22 @@ fun StudySageApp() {
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(authRepository)
     )
+
+    // Get HomeViewModel to track study time
+    val homeViewModel: HomeViewModel = viewModel()
+
+    // Track app lifecycle to start/stop study time tracking
+    DisposableEffect(Unit) {
+        // App is active - start tracking
+        homeViewModel.startStudyTimeTracking()
+        Log.d("StudySageApp", "📚 Study time tracking started (app active)")
+
+        onDispose {
+            // App is being disposed/backgrounded - stop tracking
+            homeViewModel.stopStudyTimeTracking()
+            Log.d("StudySageApp", "📚 Study time tracking stopped (app inactive)")
+        }
+    }
 
     // Permission launcher for notifications (Android 13+)
     val permissionLauncher = rememberLauncherForActivityResult(

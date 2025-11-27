@@ -3,13 +3,11 @@ package com.group_7.studysage.data.repository
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.generationConfig
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.group_7.studysage.BuildConfig
+import com.group_7.studysage.data.api.CloudRunApiService
 import com.group_7.studysage.utils.CloudinaryUploader
 import com.group_7.studysage.utils.NotificationHelper
 import com.group_7.studysage.utils.StudySageNotificationManager
@@ -52,29 +50,8 @@ class NotesRepository(
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    // Primary model for content generation
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
-        apiKey = BuildConfig.GEMINI_API_KEY,
-        generationConfig = generationConfig {
-            temperature = 0.4f
-            topK = 32
-            topP = 1f
-            maxOutputTokens = 4096
-        },
-    )
-
-    // Fallback model
-    private val fallbackModel = GenerativeModel(
-        modelName = "gemini-1.0-pro",
-        apiKey = BuildConfig.GEMINI_API_KEY,
-        generationConfig = generationConfig {
-            temperature = 0.4f
-            topK = 32
-            topP = 1f
-            maxOutputTokens = 2048
-        },
-    )
+    // Use Cloud Run API service for Gemini AI
+    private val cloudRunApi = CloudRunApiService(BuildConfig.CLOUD_RUN_URL)
 
     suspend fun uploadNotesAndProcess(
         context: Context,
@@ -430,12 +407,11 @@ class NotesRepository(
             """.trimIndent()
 
             try {
-                val response = generativeModel.generateContent(prompt)
-                response.text ?: throw Exception("Empty response from primary model")
+                val responseText = cloudRunApi.generateContent(prompt)
+                responseText.ifBlank { throw Exception("Empty response from Cloud Run API") }
             } catch (e: Exception) {
-                Log.w(TAG, "Primary model failed for summary, trying fallback: ${e.message}")
-                val fallbackResponse = fallbackModel.generateContent(prompt)
-                fallbackResponse.text ?: throw Exception("Empty response from fallback model")
+                Log.w(TAG, "Cloud Run API failed for summary: ${e.message}")
+                generateBasicSummary(content)
             }
 
         } catch (e: Exception) {
@@ -458,20 +434,15 @@ class NotesRepository(
             """.trimIndent()
 
             try {
-                val response = generativeModel.generateContent(prompt)
-                response.text?.split("\n")
-                    ?.filter { it.trim().isNotEmpty() && (it.contains("•") || it.contains("-") || it.contains("*") || it.matches(Regex("^\\d+\\..*"))) }
-                    ?.map { it.replace(Regex("^[•\\-*\\d.\\s]*"), "").trim() }
-                    ?.filter { it.isNotEmpty() }
-                    ?.take(7) ?: throw Exception("Could not parse key points")
+                val responseText = cloudRunApi.generateContent(prompt)
+                responseText.split("\n")
+                    .filter { it.trim().isNotEmpty() && (it.contains("•") || it.contains("-") || it.contains("*") || it.matches(Regex("^\\d+\\..*"))) }
+                    .map { it.replace(Regex("^[•\\-*\\d.\\s]*"), "").trim() }
+                    .filter { it.isNotEmpty() }
+                    .take(7)
             } catch (e: Exception) {
-                Log.w(TAG, "Primary model failed for key points, trying fallback")
-                val fallbackResponse = fallbackModel.generateContent(prompt)
-                fallbackResponse.text?.split("\n")
-                    ?.filter { it.trim().isNotEmpty() && (it.contains("•") || it.contains("-") || it.contains("*") || it.matches(Regex("^\\d+\\..*"))) }
-                    ?.map { it.replace(Regex("^[•\\-*\\d.\\s]*"), "").trim() }
-                    ?.filter { it.isNotEmpty() }
-                    ?.take(7) ?: throw Exception("Fallback also failed")
+                Log.w(TAG, "Failed to extract key points: ${e.message}")
+                emptyList()
             }
 
         } catch (e: Exception) {
@@ -494,18 +465,14 @@ class NotesRepository(
             """.trimIndent()
 
             try {
-                val response = generativeModel.generateContent(prompt)
-                response.text?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() && it.length > 2 }
-                    ?.take(5) ?: throw Exception("Could not generate tags")
+                val responseText = cloudRunApi.generateContent(prompt)
+                responseText.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() && it.length > 2 }
+                    .take(5)
             } catch (e: Exception) {
-                Log.w(TAG, "Primary model failed for tags, trying fallback")
-                val fallbackResponse = fallbackModel.generateContent(prompt)
-                fallbackResponse.text?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() && it.length > 2 }
-                    ?.take(5) ?: throw Exception("Fallback failed for tags")
+                Log.w(TAG, "Failed to generate tags: ${e.message}")
+                emptyList()
             }
 
         } catch (e: Exception) {
@@ -528,24 +495,17 @@ class NotesRepository(
             """.trimIndent()
 
             try {
-                val response = generativeModel.generateContent(prompt)
-                val generatedTitle = response.text?.trim()?.take(60)
+                val responseText = cloudRunApi.generateContent(prompt)
+                val generatedTitle = responseText.trim().take(60)
 
-                if (!generatedTitle.isNullOrBlank() && generatedTitle.length >= 3) {
+                if (generatedTitle.isNotBlank() && generatedTitle.length >= 3) {
                     generatedTitle
                 } else {
                     throw Exception("Generated title too short or empty")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Primary model failed for title, trying fallback")
-                val fallbackResponse = fallbackModel.generateContent(prompt)
-                val fallbackTitle = fallbackResponse.text?.trim()?.take(60)
-
-                if (!fallbackTitle.isNullOrBlank() && fallbackTitle.length >= 3) {
-                    fallbackTitle
-                } else {
-                    throw Exception("Fallback title generation failed")
-                }
+                Log.w(TAG, "Failed to generate title: ${e.message}")
+                generateBasicTitle(content, originalFileName)
             }
 
         } catch (e: Exception) {

@@ -62,6 +62,7 @@ import com.group_7.studysage.ui.screens.auth.SignInScreen
 import com.group_7.studysage.ui.screens.auth.SignUpScreen
 import com.group_7.studysage.viewmodels.AuthViewModel
 import com.group_7.studysage.viewmodels.CourseViewModel
+import com.group_7.studysage.viewmodels.HomeViewModel
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -134,12 +135,56 @@ fun StudySageNavigation(
         // Create a fresh NavController for authenticated users
         val navController = androidx.navigation.compose.rememberNavController()
         val courseViewModel: CourseViewModel = viewModel()
+        val homeViewModel: HomeViewModel = viewModel()
+
+        // Track the current user ID to detect when a different user logs in
+        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+
+        // Track previous user ID to detect changes - use remember with a key to persist across recomposition
+        val previousUserId = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+
+        // Detect when user ID changes (different user logs in) and reload study time data
+        androidx.compose.runtime.LaunchedEffect(currentUserId) {
+            android.util.Log.d("StudySageNav", "========================================")
+            android.util.Log.d("StudySageNav", "🔍 LaunchedEffect triggered")
+            android.util.Log.d("StudySageNav", "   currentUserId: $currentUserId")
+            android.util.Log.d("StudySageNav", "   previousUserId: ${previousUserId.value}")
+
+            if (currentUserId != null) {
+                // Check if this is a different user or first login
+                val isDifferentUser = previousUserId.value != null && previousUserId.value != currentUserId
+                val isFirstLogin = previousUserId.value == null
+
+                if (isDifferentUser) {
+                    android.util.Log.d("StudySageNav", "👤 DIFFERENT USER DETECTED!")
+                    android.util.Log.d("StudySageNav", "   Previous: ${previousUserId.value}")
+                    android.util.Log.d("StudySageNav", "   Current:  $currentUserId")
+                    android.util.Log.d("StudySageNav", "🧹 Calling reloadStudyTimeForCurrentUser()...")
+                    homeViewModel.reloadStudyTimeForCurrentUser()
+                    android.util.Log.d("StudySageNav", "✅ reloadStudyTimeForCurrentUser() completed")
+                } else if (isFirstLogin) {
+                    android.util.Log.d("StudySageNav", "🔐 First user login: $currentUserId")
+                    android.util.Log.d("StudySageNav", "📂 Loading initial data...")
+                    homeViewModel.reloadStudyTimeForCurrentUser()
+                } else {
+                    android.util.Log.d("StudySageNav", "ℹ️ Same user, no reset needed ($currentUserId)")
+                }
+
+                // Update previous user ID AFTER the check
+                previousUserId.value = currentUserId
+                android.util.Log.d("StudySageNav", "📝 Updated previousUserId to: $currentUserId")
+            } else {
+                android.util.Log.d("StudySageNav", "⚠️ currentUserId is null (user signed out?)")
+                // Clear previous user ID so next sign-in is treated as new
+                previousUserId.value = null
+                android.util.Log.d("StudySageNav", "🧹 Cleared previousUserId")
+            }
+            android.util.Log.d("StudySageNav", "========================================")
+        }
+
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
-        val selectedIndex = screens.indexOfFirst { screen ->
-            currentDestination?.hierarchy?.any { it.route == screen.route } == true
-        }
 
         // Collect fullscreen overlay state from courseViewModel
         val courseUiState by courseViewModel.uiState.collectAsState()
@@ -248,11 +293,11 @@ fun StudySageNavigation(
                 }
             },
             modifier = modifier
-        ) { innerPadding ->
+        ) { paddingValues ->
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier
+                modifier = Modifier.padding(paddingValues)
             ) {
                 composable(
                     Screen.Home.route,
@@ -283,8 +328,7 @@ fun StudySageNavigation(
                 ) {
                     HomeScreen(
                         navController = navController,
-                        courseViewModel = courseViewModel,
-                        authViewModel = authViewModel
+                        courseViewModel = courseViewModel
                     )
                 }
                 composable(

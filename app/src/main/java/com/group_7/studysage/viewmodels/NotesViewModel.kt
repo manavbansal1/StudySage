@@ -6,8 +6,6 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.generationConfig
 import com.group_7.studysage.BuildConfig
 import com.group_7.studysage.data.models.Flashcard
 import com.group_7.studysage.data.repository.Note
@@ -438,7 +436,9 @@ class NotesViewModel(
         } else {
             _errorMessage.value = "Podcast not found. Please generate it first."
             Log.e(TAG, "Podcast not found for note $noteId")
-        }}
+        }
+    }
+
     // ============================================
     // TEMPORARY FLASHCARD GENERATION
     // ============================================
@@ -541,20 +541,9 @@ class NotesViewModel(
                 $limitedText
             """.trimIndent()
 
-            // Use Gemini API (use stable model instead of experimental)
-            val generativeModel = GenerativeModel(
-                modelName = "gemini-2.5-flash",
-                apiKey = BuildConfig.GEMINI_API_KEY,
-                generationConfig = generationConfig {
-                    temperature = 0.7f
-                    topK = 32
-                    topP = 1f
-                    maxOutputTokens = 8192 // Sufficient token limit for flashcard generation
-                }
-            )
-
-            val response = generativeModel.generateContent(prompt)
-            val jsonText = response.text ?: throw Exception("Empty response from AI")
+            // Use Cloud Run backend instead of direct API
+            val apiService = com.group_7.studysage.data.api.CloudRunApiService(BuildConfig.CLOUD_RUN_URL)
+            val jsonText = apiService.generateContent(prompt)
 
             // Parse JSON response
             parseFlashcardsFromJson(jsonText)

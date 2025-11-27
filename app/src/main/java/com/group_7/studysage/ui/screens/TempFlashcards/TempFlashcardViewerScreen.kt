@@ -16,22 +16,34 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.models.Flashcard
+import com.group_7.studysage.viewmodels.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TempFlashcardViewerScreen(
     flashcards: List<Flashcard>,
     fileName: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    homeViewModel: HomeViewModel = viewModel()
 ) {
     var currentIndex by remember { mutableIntStateOf(0) }
     var isFlipped by remember { mutableStateOf(false) }
     var showCompletionDialog by remember { mutableStateOf(false) }
+    var taskCompleted by remember { mutableStateOf(false) }
 
     // Reset flip when changing cards
     LaunchedEffect(currentIndex) {
         isFlipped = false
+    }
+
+    // Automatically complete flashcard task when user finishes all flashcards
+    LaunchedEffect(showCompletionDialog) {
+        if (showCompletionDialog && !taskCompleted) {
+            homeViewModel.checkAndCompleteTaskByType("flashcards")
+            taskCompleted = true
+        }
     }
 
     Scaffold(

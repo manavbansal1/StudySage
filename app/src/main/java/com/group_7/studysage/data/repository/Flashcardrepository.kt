@@ -1,14 +1,12 @@
 package com.group_7.studysage.data.repository
 
 import android.util.Log
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.generationConfig
 import com.google.firebase.firestore.FirebaseFirestore
 import com.group_7.studysage.BuildConfig
+import com.group_7.studysage.data.api.CloudRunApiService
 import com.group_7.studysage.ui.screens.Flashcards.Flashcard
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
-import org.json.JSONObject
 
 class FlashcardRepository {
 
@@ -20,16 +18,8 @@ class FlashcardRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
 
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
-        apiKey = BuildConfig.GEMINI_API_KEY,
-        generationConfig = generationConfig {
-            temperature = 0.4f
-            topK = 32
-            topP = 1f
-            maxOutputTokens = 8192 // Sufficient token limit
-        },
-    )
+    // Use Cloud Run API service for Gemini AI
+    private val cloudRunApi = CloudRunApiService(BuildConfig.CLOUD_RUN_URL)
 
     /**
      * Generate flashcards using AI from note content.
@@ -88,12 +78,11 @@ class FlashcardRepository {
             """.trimIndent()
 
             onProgress(40)
-            Log.d(TAG, "Sending universal flashcard request to Gemini...")
+            Log.d(TAG, "Sending universal flashcard request to Gemini via Cloud Run...")
 
-            val response = generativeModel.generateContent(prompt)
+            val aiContent = cloudRunApi.generateContent(prompt)
             onProgress(75)
 
-            val aiContent = response.text ?: throw Exception("Empty response from AI")
             Log.d(TAG, "Received AI response for flashcards")
 
             onProgress(90)

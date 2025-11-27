@@ -61,11 +61,39 @@ class HomeViewModel(
     private val _isRefreshing = mutableStateOf(false)
     val isRefreshing: State<Boolean> = _isRefreshing
 
+    // Daily Tasks functionality - Must be initialized before init block
+    private val tasksRepository: com.group_7.studysage.data.repository.TasksRepository =
+        com.group_7.studysage.data.repository.TasksRepository(
+            com.google.firebase.firestore.FirebaseFirestore.getInstance(),
+            com.google.firebase.auth.FirebaseAuth.getInstance()
+        )
+
+    private val _dailyTasks = kotlinx.coroutines.flow.MutableStateFlow<List<com.group_7.studysage.data.model.DailyTaskItem>>(emptyList())
+    val dailyTasks: kotlinx.coroutines.flow.StateFlow<List<com.group_7.studysage.data.model.DailyTaskItem>> = _dailyTasks
+
+    private val _userTotalXP = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val userTotalXP: kotlinx.coroutines.flow.StateFlow<Int> = _userTotalXP
+
+    private val _userLevel = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val userLevel: kotlinx.coroutines.flow.StateFlow<Int> = _userLevel
+
+    // Study time tracking - tracks time when app is in foreground
+    private val sharedPreferences = application.getSharedPreferences("StudyTimePrefs", Context.MODE_PRIVATE)
+    private val _studyTimeToday = kotlinx.coroutines.flow.MutableStateFlow(0) // in seconds
+    val studyTimeToday: kotlinx.coroutines.flow.StateFlow<Int> = _studyTimeToday
+    private var studyStartTime: Long = 0
+    private var isTrackingStudyTime = false
+    private val STUDY_GOAL_SECONDS = 30 * 60 // 30 minutes in seconds
+    private var studyTimerJob: kotlinx.coroutines.Job? = null
+    private var firestoreListener: com.google.firebase.firestore.ListenerRegistration? = null
+
     init {
         loadRecentNotes()
         loadUserProfile()
         loadRecentlyOpenedPdfs()
         loadCourses()
+        loadDailyTasks()
+        loadStudyTimeForToday()
     }
 
     // Load user profile from Firestore
@@ -76,6 +104,10 @@ class HomeViewModel(
                 val profile = authRepository.getUserProfile()
                 _userFullName.value = (profile?.get("name") as? String) ?: "User"
                 _userProfile.value = profile  // Store full profile data
+
+                // Update XP and Level when profile is loaded
+                _userTotalXP.value = (profile?.get("xpPoints") as? Long)?.toInt() ?: 0
+                _userLevel.value = (profile?.get("level") as? Long)?.toInt() ?: 0
             } catch (e: Exception) {
                 _userFullName.value = "User"
                 _userProfile.value = null
@@ -396,7 +428,464 @@ class HomeViewModel(
         }
     }
 
+
+    /**
+     * Load daily tasks from repository
+     * Checks and generates tasks for today if needed, then collects the flow
+     */
+    fun loadDailyTasks() {
+        viewModelScope.launch {
+            try {
+                // Check and generate tasks if they don't exist for today
+                val result = tasksRepository.checkAndGenerateTasksForToday()
+                android.util.Log.d(TAG, "Check and generate tasks result: ${result.isSuccess}")
+
+                // Collect the flow of daily tasks in the viewModelScope
+                // This launches a separate coroutine to collect the flow continuously
+                tasksRepository.getTodaysTasks().collect { tasks ->
+                    _dailyTasks.value = tasks
+                    android.util.Log.d(TAG, "Daily tasks loaded: ${tasks.size} tasks")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Job was cancelled, this is normal during ViewModel cleanup
+                android.util.Log.d(TAG, "Daily tasks collection cancelled (normal during cleanup)")
+                throw e // Re-throw to properly cancel the coroutine
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error loading daily tasks: ${e.message}", e)
+                _errorMessage.value = "Failed to load daily tasks"
+            }
+        }
+    }
+
+    /**
+     * Toggle task completion status
+     * Marks task as complete and awards XP
+     */
+    fun toggleTaskCompletion(taskId: String, xpAmount: Int) {
+        viewModelScope.launch {
+            try {
+                val result = tasksRepository.completeTask(taskId, xpAmount)
+                if (result.isSuccess) {
+                    android.util.Log.d(TAG, "Task $taskId completed, awarded $xpAmount XP")
+                    // Refresh user profile to get updated XP and level
+                    loadUserProfile()
+                    updateUserXPAndLevel()
+                } else {
+                    _errorMessage.value = "Failed to complete task"
+                    android.util.Log.e(TAG, "Failed to complete task: ${result.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error toggling task completion: ${e.message}", e)
+                _errorMessage.value = "Error completing task"
+            }
+        }
+    }
+
+    /**
+     * Check and complete task by type
+     * Finds the first incomplete task matching the given type and completes it
+     */
+    fun checkAndCompleteTaskByType(taskType: String) {
+        viewModelScope.launch {
+            try {
+                // Find the first incomplete task of the specified type
+                val task = _dailyTasks.value.firstOrNull {
+                    it.taskType == taskType && !it.isCompleted
+                }
+
+                if (task != null) {
+                    // Complete the task
+                    val result = tasksRepository.completeTask(task.id, task.xpReward)
+                    if (result.isSuccess) {
+                        android.util.Log.d(TAG, "Auto-completed task: ${task.title} (${task.xpReward} XP)")
+                        // Refresh user profile to get updated XP and level
+                        loadUserProfile()
+                        updateUserXPAndLevel()
+                    } else {
+                        android.util.Log.e(TAG, "Failed to auto-complete task: ${result.exceptionOrNull()?.message}")
+                    }
+                } else {
+                    android.util.Log.d(TAG, "No incomplete task found for type: $taskType")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error checking and completing task by type: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Update user XP and level from profile
+     */
+    private fun updateUserXPAndLevel() {
+        viewModelScope.launch {
+            try {
+                val profile = authRepository.getUserProfile()
+                _userTotalXP.value = (profile?.get("xpPoints") as? Long)?.toInt() ?: 0
+                _userLevel.value = (profile?.get("level") as? Long)?.toInt() ?: 0
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error updating XP and level: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Reset all user-specific data when user changes
+     * This ensures complete data isolation between different user accounts
+     */
+    private fun resetUserSpecificData() {
+        android.util.Log.d(TAG, "========================================")
+        android.util.Log.d(TAG, "🧹 resetUserSpecificData() called")
+        android.util.Log.d(TAG, "   Before reset:")
+        android.util.Log.d(TAG, "   - studyTimeToday: ${_studyTimeToday.value}")
+        android.util.Log.d(TAG, "   - dailyTasks: ${_dailyTasks.value.size} tasks")
+        android.util.Log.d(TAG, "   - userTotalXP: ${_userTotalXP.value}")
+        android.util.Log.d(TAG, "   - userLevel: ${_userLevel.value}")
+        android.util.Log.d(TAG, "   - userFullName: ${_userFullName.value}")
+
+        _studyTimeToday.value = 0
+        _dailyTasks.value = emptyList()
+        _userTotalXP.value = 0
+        _userLevel.value = 0
+        _userFullName.value = "User"
+        _userProfile.value = null
+        _recentlyOpenedPdfs.value = emptyList()
+
+        // Remove Firestore listener if it exists
+        firestoreListener?.remove()
+        firestoreListener = null
+
+        android.util.Log.d(TAG, "   After reset:")
+        android.util.Log.d(TAG, "   - studyTimeToday: ${_studyTimeToday.value}")
+        android.util.Log.d(TAG, "   - dailyTasks: ${_dailyTasks.value.size} tasks")
+        android.util.Log.d(TAG, "   - userTotalXP: ${_userTotalXP.value}")
+        android.util.Log.d(TAG, "   - userLevel: ${_userLevel.value}")
+        android.util.Log.d(TAG, "   - userFullName: ${_userFullName.value}")
+        android.util.Log.d(TAG, "✅ User-specific data reset complete")
+        android.util.Log.d(TAG, "========================================")
+    }
+
+    // ==================== STUDY TIME TRACKING ====================
+
+    /**
+     * Reload study time data - call this when user logs in/out
+     * This ensures fresh data for the current user
+     */
+    fun reloadStudyTimeForCurrentUser() {
+        android.util.Log.d(TAG, "🔄 Reloading study time for current user")
+
+        // IMPORTANT: Reset study time to 0 BEFORE stopping tracking
+        // This prevents old user's time from being synced to new user
+        _studyTimeToday.value = 0
+
+        // Stop current tracking
+        stopStudyTimeTracking()
+
+        // Reset all user-specific data completely
+        resetUserSpecificData()
+
+        // Reset the start time so new tracking starts fresh
+        studyStartTime = System.currentTimeMillis()
+
+        // Reload for current user
+        loadStudyTimeForToday()
+
+        // Restart tracking if app is active
+        startStudyTimeTracking()
+    }
+
+    /**
+     * Load study time for today from Firestore with REAL-TIME LISTENER
+     * This will automatically detect changes made in Firebase Console
+     */
+    private fun loadStudyTimeForToday() {
+        val today = getTodayDateString()
+
+        viewModelScope.launch {
+            try {
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+
+                // Check if user changed - if so, clear old data
+                val lastUserId = sharedPreferences.getString("lastUserId", "")
+                if (userId != null && userId != lastUserId) {
+                    android.util.Log.d(TAG, "👤 User changed from $lastUserId to $userId - clearing old study data")
+                    // Clear old user's study time data
+                    sharedPreferences.edit()
+                        .clear()
+                        .putString("lastUserId", userId)
+                        .putString("lastStudyDate", today)
+                        .putInt("studyTimeSeconds", 0)
+                        .apply()
+
+                    // Reset all user-specific data
+                    resetUserSpecificData()
+                }
+
+                if (userId != null) {
+                    // Set up REAL-TIME listener for Firestore changes
+                    val docRef = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(userId)
+                        .collection("studyProgress")
+                        .document(today)
+
+                    // Remove old listener if exists
+                    firestoreListener?.remove()
+
+                    // Add snapshot listener for real-time updates
+                    firestoreListener = docRef.addSnapshotListener { snapshot, error ->
+                        if (error != null) {
+                            android.util.Log.e(TAG, "❌ Firestore listener error: ${error.message}")
+                            loadFromLocalStorage(today)
+                            return@addSnapshotListener
+                        }
+
+                        if (snapshot != null && snapshot.exists()) {
+                            val firestoreTime = (snapshot.getLong("studyTimeSeconds") ?: 0).toInt()
+
+                            // Only update if value changed (avoid infinite loops)
+                            if (_studyTimeToday.value != firestoreTime) {
+                                _studyTimeToday.value = firestoreTime
+
+                                // Update local cache with user ID
+                                sharedPreferences.edit()
+                                    .putString("lastUserId", userId)
+                                    .putString("lastStudyDate", today)
+                                    .putInt("studyTimeSeconds", firestoreTime)
+                                    .apply()
+
+                                android.util.Log.d(TAG, "🔄 Study time updated from Firestore: ${firestoreTime / 60}m ${firestoreTime % 60}s")
+
+                                // Check if goal is reached (in case manual change completes it)
+                                checkStudyGoalCompletion()
+                            }
+                        } else {
+                            // Document doesn't exist yet, use local storage
+                            android.util.Log.d(TAG, "📚 No Firestore data yet, using local storage")
+                            loadFromLocalStorage(today)
+                        }
+                    }
+
+                    android.util.Log.d(TAG, "👂 Real-time Firestore listener active for study time")
+                } else {
+                    // No user logged in, clear everything
+                    android.util.Log.w(TAG, "⚠️ User not logged in, clearing all study data")
+                    sharedPreferences.edit().clear().apply()
+                    _studyTimeToday.value = 0
+                }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error setting up Firestore listener: ${e.message}")
+                loadFromLocalStorage(today)
+            }
+        }
+    }
+
+    /**
+     * Load study time from SharedPreferences (local fallback)
+     */
+    private fun loadFromLocalStorage(today: String) {
+        val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        val lastUserId = sharedPreferences.getString("lastUserId", "")
+        val lastStudyDate = sharedPreferences.getString("lastStudyDate", "")
+
+        // Check if user changed
+        if (userId != null && userId != lastUserId) {
+            android.util.Log.d(TAG, "👤 User changed in local storage - resetting study time")
+            sharedPreferences.edit()
+                .clear()
+                .putString("lastUserId", userId)
+                .putString("lastStudyDate", today)
+                .putInt("studyTimeSeconds", 0)
+                .apply()
+
+            // Reset all user-specific data
+            resetUserSpecificData()
+            return
+        }
+
+        if (lastStudyDate == today) {
+            // Same day, load existing study time
+            _studyTimeToday.value = sharedPreferences.getInt("studyTimeSeconds", 0)
+            android.util.Log.d(TAG, "📚 Loaded study time from local: ${_studyTimeToday.value / 60} minutes")
+        } else {
+            // New day, reset study time
+            _studyTimeToday.value = 0
+            sharedPreferences.edit()
+                .putString("lastUserId", userId ?: "")
+                .putString("lastStudyDate", today)
+                .putInt("studyTimeSeconds", 0)
+                .apply()
+            android.util.Log.d(TAG, "📅 New day detected, reset study time")
+        }
+    }
+
+    /**
+     * Start tracking study time when app comes to foreground
+     * This should be called when the app becomes active
+     */
+    fun startStudyTimeTracking() {
+        if (!isTrackingStudyTime) {
+            isTrackingStudyTime = true
+            studyStartTime = System.currentTimeMillis()
+
+            // Start a periodic timer that updates every 10 seconds
+            studyTimerJob = viewModelScope.launch {
+                while (isTrackingStudyTime) {
+                    kotlinx.coroutines.delay(10_000) // Update every 10 seconds
+                    if (isTrackingStudyTime) {
+                        updateStudyTime()
+                    }
+                }
+            }
+
+            android.util.Log.d(TAG, "📚 Study time tracking STARTED")
+        }
+    }
+
+    /**
+     * Stop tracking study time when app goes to background
+     * This should be called when the app becomes inactive
+     */
+    fun stopStudyTimeTracking() {
+        if (isTrackingStudyTime) {
+            isTrackingStudyTime = false
+            studyTimerJob?.cancel()
+            studyTimerJob = null
+
+            // Only update if there's actual time to save (prevent syncing 0 to new users)
+            if (_studyTimeToday.value > 0) {
+                // Final update when stopping
+                updateStudyTime()
+            }
+
+            android.util.Log.d(TAG, "📚 Study time tracking STOPPED. Total today: ${_studyTimeToday.value / 60} minutes")
+        }
+    }
+
+    /**
+     * Update the study time accumulation and sync to Firestore
+     */
+    private fun updateStudyTime() {
+        val currentTime = System.currentTimeMillis()
+        val sessionDuration = ((currentTime - studyStartTime) / 1000).toInt() // in seconds
+
+        // Skip if session duration is 0 or negative (invalid state)
+        if (sessionDuration <= 0) {
+            android.util.Log.d(TAG, "⏭️ Skipping study time update (invalid session duration: $sessionDuration)")
+            return
+        }
+
+        // Add session time to total
+        val newTotalTime = _studyTimeToday.value + sessionDuration
+        _studyTimeToday.value = newTotalTime
+
+        // Save to SharedPreferences (local cache) with user ID
+        val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        sharedPreferences.edit()
+            .putString("lastUserId", userId ?: "")
+            .putInt("studyTimeSeconds", newTotalTime)
+            .apply()
+
+        // Sync to Firestore
+        syncStudyTimeToFirestore(newTotalTime)
+
+        // Reset start time for next interval
+        studyStartTime = currentTime
+
+        val minutes = newTotalTime / 60
+        val seconds = newTotalTime % 60
+        android.util.Log.d(TAG, "⏱️ Study time updated: ${minutes}m ${seconds}s / 30m")
+
+        // Check if study goal is reached
+        checkStudyGoalCompletion()
+    }
+
+    /**
+     * Sync study time to Firestore
+     */
+    private fun syncStudyTimeToFirestore(studyTimeSeconds: Int) {
+        viewModelScope.launch {
+            try {
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+
+                if (userId == null) {
+                    android.util.Log.w(TAG, "⚠️ Cannot sync to Firestore: User not logged in")
+                    return@launch
+                }
+
+                val today = getTodayDateString()
+                val studyData = mapOf(
+                    "studyTimeSeconds" to studyTimeSeconds,
+                    "date" to today,
+                    "lastUpdated" to com.google.firebase.Timestamp.now(),
+                    "userId" to userId
+                )
+
+                android.util.Log.d(TAG, "🔄 Attempting to sync study time to Firestore...")
+                android.util.Log.d(TAG, "   User ID: $userId")
+                android.util.Log.d(TAG, "   Date: $today")
+                android.util.Log.d(TAG, "   Time: $studyTimeSeconds seconds (${studyTimeSeconds / 60} minutes)")
+
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users")
+                    .document(userId)
+                    .collection("studyProgress")
+                    .document(today)
+                    .set(studyData)
+                    .addOnSuccessListener {
+                        android.util.Log.d(TAG, "✅ Study time synced to Firestore successfully!")
+                        android.util.Log.d(TAG, "   Path: users/$userId/studyProgress/$today")
+                        android.util.Log.d(TAG, "   Data: ${studyTimeSeconds}s")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e(TAG, "❌ Failed to sync to Firestore: ${e.message}")
+                        android.util.Log.e(TAG, "   Error type: ${e.javaClass.simpleName}")
+                        android.util.Log.e(TAG, "   User ID: $userId")
+                        // Local data is still saved in SharedPreferences
+                    }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ Error syncing study time: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Check if study goal (30 minutes) is reached and complete the task
+     */
+    private fun checkStudyGoalCompletion() {
+        if (_studyTimeToday.value >= STUDY_GOAL_SECONDS) {
+            // Check if task is already completed to avoid duplicate completions
+            val studyTask = _dailyTasks.value.firstOrNull { it.taskType == "study" }
+            if (studyTask != null && !studyTask.isCompleted) {
+                android.util.Log.d(TAG, "🎉 Study goal reached (30 minutes)! Completing study task...")
+                checkAndCompleteTaskByType("study")
+
+                // Stop tracking since goal is reached
+                stopStudyTimeTracking()
+            }
+        }
+    }
+
+    /**
+     * Get today's date as a string (format: yyyy-MM-dd)
+     */
+    private fun getTodayDateString(): String {
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        return dateFormat.format(java.util.Date())
+    }
+    /**
+     * Clean up when ViewModel is cleared
+     */
+    override fun onCleared() {
+        super.onCleared()
+        stopStudyTimeTracking()
+        // Remove Firestore listener to prevent memory leaks
+        firestoreListener?.remove()
+        android.util.Log.d(TAG, "🧹 Cleaned up: Study tracking stopped, Firestore listener removed")
+    }
+
     companion object {
         private const val TAG = "HomeViewModel"
     }
 }
+
+

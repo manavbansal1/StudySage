@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.FlashcardViewModel
+import com.group_7.studysage.viewmodels.HomeViewModel
 
 data class Flashcard(
     val id: String,
@@ -37,7 +38,8 @@ data class Flashcard(
 fun FlashcardScreen(
     note: Note,
     onBack: () -> Unit,
-    flashcardViewModel: FlashcardViewModel = viewModel()
+    flashcardViewModel: FlashcardViewModel = viewModel(),
+    homeViewModel: HomeViewModel = viewModel()
 ) {
     val flashcards by flashcardViewModel.flashcards.collectAsState()
     val isLoading by flashcardViewModel.isLoading.collectAsState()
@@ -48,6 +50,7 @@ fun FlashcardScreen(
     var isFlipped by remember { mutableStateOf(false) }
     var showCompletionDialog by remember { mutableStateOf(false) }
     var showGenerateDialog by remember { mutableStateOf(false) }
+    var taskCompleted by remember { mutableStateOf(false) }
 
     // Simple background color for clean Material look
     val solidBackgroundModifier = Modifier
@@ -57,6 +60,14 @@ fun FlashcardScreen(
     LaunchedEffect(note.id) {
         if (flashcards.isEmpty()) {
             flashcardViewModel.loadFlashcardsForNote(note.id)
+        }
+    }
+
+    // Automatically complete flashcard task when user finishes all flashcards
+    LaunchedEffect(showCompletionDialog) {
+        if (showCompletionDialog && !taskCompleted) {
+            homeViewModel.checkAndCompleteTaskByType("flashcards")
+            taskCompleted = true
         }
     }
 

@@ -386,12 +386,15 @@ fun CourseDetailScreen(
     ) { paddingValues ->
         // Simple swipe-to-refresh state using Accompanist (deprecated warning is acceptable for now)
         val isRefreshing = courseViewModel.uiState.collectAsState().value.isRefreshing
+        @Suppress("DEPRECATION")
         val swipeState = rememberSwipeRefreshState(isRefreshing)
 
+        @Suppress("DEPRECATION")
         SwipeRefresh(
             state = swipeState,
             onRefresh = { courseViewModel.refreshCourse(course.id) },
             indicator = { state, trigger ->
+                @Suppress("DEPRECATION")
                 SwipeRefreshIndicator(
                     state = state,
                     refreshTriggerDistance = trigger,
