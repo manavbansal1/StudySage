@@ -892,4 +892,41 @@ class AuthRepository(
             Result.failure(e)
         }
     }
+
+    /**
+     * Award XP to the current user
+     * Adds XP to user's totalXP field and calculates level (totalXP/100)
+     */
+    suspend fun awardXP(amount: Int): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("User not authenticated"))
+
+            // Get current totalXP
+            val userDoc = firestore.collection("users")
+                .document(userId)
+                .get()
+                .await()
+
+            val currentTotalXP = (userDoc.getLong("xpPoints") ?: 0L).toInt()
+            val newTotalXP = currentTotalXP + amount
+            val newLevel = newTotalXP / 100
+
+            // Update totalXP and level
+            firestore.collection("users")
+                .document(userId)
+                .update(
+                    mapOf(
+                        "xpPoints" to newTotalXP,
+                        "level" to newLevel
+                    )
+                )
+                .await()
+
+            Log.d(TAG, "Awarded $amount XP to user $userId. Total XP: $newTotalXP, Level: $newLevel")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error awarding XP: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 }

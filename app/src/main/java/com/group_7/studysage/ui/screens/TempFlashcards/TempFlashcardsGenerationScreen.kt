@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.group_7.studysage.utils.FileUtils
+import com.group_7.studysage.viewmodels.HomeViewModel
 import com.group_7.studysage.viewmodels.NotesViewModel
 import kotlinx.coroutines.delay
 
@@ -38,7 +39,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun TempFlashcardsGenerationScreen(
     navController: NavController,
-    notesViewModel: NotesViewModel = viewModel()  // We'll use NotesViewModel for flashcard generation
+    notesViewModel: NotesViewModel = viewModel(),  // We'll use NotesViewModel for flashcard generation
+    homeViewModel: HomeViewModel = viewModel()  // For task completion
 ) {
     val context = LocalContext.current
 
@@ -70,6 +72,7 @@ fun TempFlashcardsGenerationScreen(
         TempFlashcardViewerScreen(
             flashcards = tempFlashcardState.generatedFlashcards,
             fileName = selectedFileName.substringBeforeLast("."),
+            homeViewModel = homeViewModel,
             onBack = {
                 // Clear temp flashcards and go back
                 notesViewModel.clearTempFlashcardState()

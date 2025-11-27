@@ -58,8 +58,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -164,17 +166,38 @@ fun HomeScreen(
     @Suppress("DEPRECATION")
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
 
+    // Collect dailyTasks StateFlow from homeViewModel
+    val dailyTasksFromViewModel by homeViewModel.dailyTasks.collectAsState()
+
+    // XP Animation state
+    val showXPAnimation = remember { mutableStateOf(false) }
+    val recentXPGained = remember { mutableStateOf(0) }
+
     val tasksState = remember { mutableStateListOf<DailyTask>() }
 
-    // Load daily tasks sample data
-    LaunchedEffect(Unit) {
-        val sample = listOf(
-            DailyTask("1", "Complete a Quiz", "Test your knowledge", 25, Icons.AutoMirrored.Filled.MenuBook),
-            DailyTask("2", "Study for 30 mins", "Focus time", 50, Icons.AutoMirrored.Filled.MenuBook),
-            DailyTask("3", "Review Flashcards", "Memorize concepts", 30, Icons.AutoMirrored.Filled.MenuBook),
-        )
+    // Update tasksState whenever dailyTasks changes
+    LaunchedEffect(dailyTasksFromViewModel) {
+        android.util.Log.d("HomeScreen", "Daily tasks updated: ${dailyTasksFromViewModel.size} tasks received")
         tasksState.clear()
-        tasksState.addAll(sample)
+        // Map DailyTaskItem to DailyTask for UI
+        val mappedTasks = dailyTasksFromViewModel.map { taskItem ->
+            android.util.Log.d("HomeScreen", "Mapping task: ${taskItem.title} (completed: ${taskItem.isCompleted})")
+            DailyTask(
+                id = taskItem.id,
+                title = taskItem.title,
+                description = taskItem.description,
+                xpReward = taskItem.xpReward,
+                icon = when (taskItem.taskType) {
+                    "quiz" -> Icons.AutoMirrored.Filled.MenuBook
+                    "study" -> Icons.Default.AccessTime
+                    "flashcards" -> Icons.Default.Style
+                    else -> Icons.Default.Book
+                },
+                isCompleted = taskItem.isCompleted
+            )
+        }
+        tasksState.addAll(mappedTasks)
+        android.util.Log.d("HomeScreen", "Tasks state updated with ${tasksState.size} tasks")
     }
 
     val completedTasksCount = tasksState.count { it.isCompleted }
@@ -326,6 +349,7 @@ fun HomeScreen(
                 }
             }
 
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // DAILY TASKS SECTION
@@ -388,9 +412,13 @@ fun HomeScreen(
                         EnhancedTaskCard(
                             task = task,
                             onToggleCompleted = { toggled ->
-                                val index = tasksState.indexOfFirst { it.id == task.id }
-                                if (index >= 0) {
-                                    tasksState[index] = tasksState[index].copy(isCompleted = toggled)
+                                if (toggled && !task.isCompleted) {
+                                    // Only call toggle if marking as complete and not already completed
+                                    homeViewModel.toggleTaskCompletion(task.id, task.xpReward)
+
+                                    // Show XP animation
+                                    recentXPGained.value = task.xpReward
+                                    showXPAnimation.value = true
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -428,36 +456,7 @@ fun HomeScreen(
                         }
                     }
                 }
-            } else {
-                // Empty State for Tasks
-                GlassCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "🎉", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "All Done!",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Great job completing today's tasks",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -608,6 +607,55 @@ fun HomeScreen(
                             fontWeight = FontWeight.Medium
                         )
                     }
+                }
+            }
+
+            // XP Completion Animation Popup
+            AnimatedVisibility(
+                visible = showXPAnimation.value,
+                enter = fadeIn() + androidx.compose.animation.scaleIn(
+                    initialScale = 0.8f,
+                    animationSpec = tween(300)
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.scaleOut(
+                    targetScale = 1.2f,
+                    animationSpec = tween(300)
+                ),
+                modifier = Modifier
+                    .align(Alignment.Center)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shadowElevation = 12.dp,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "XP Gained",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Text(
+                            text = "+${recentXPGained.value} XP",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // Auto-hide XP animation after 2 seconds
+            LaunchedEffect(showXPAnimation.value) {
+                if (showXPAnimation.value) {
+                    kotlinx.coroutines.delay(2000)
+                    showXPAnimation.value = false
                 }
             }
         }

@@ -6,6 +6,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -13,10 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group_7.studysage.viewmodels.HomeViewModel
 
 @Composable
 fun QuizGameScreen(
     quizGameViewModel: QuizGameViewModel = viewModel(),
+    homeViewModel: HomeViewModel = viewModel(),
     pdfUri: String?
 ) {
     val questions by quizGameViewModel.questions.collectAsState()
@@ -59,6 +62,11 @@ fun QuizGameScreen(
             }
         }
     } else {
+        // Quiz finished - automatically complete the quiz daily task
+        LaunchedEffect(Unit) {
+            homeViewModel.checkAndCompleteTaskByType("quiz")
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
