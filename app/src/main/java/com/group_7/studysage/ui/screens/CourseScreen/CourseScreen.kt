@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.toColorInt
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -781,56 +782,120 @@ fun CourseOptionsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp)
+                .padding(bottom = 48.dp) // Extra padding for bottom nav/gestures
         ) {
+            // Header
             Text(
                 text = "Course Options",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface
             )
             
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(16.dp))
             
             // Edit Option
-            ListItem(
-                headlineContent = { Text("Edit Course Details") },
-                leadingContent = { 
-                    Icon(
-                        Icons.Outlined.Edit, 
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    ) 
-                },
-                modifier = Modifier.clickable { onEdit() },
-                colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent
-                )
-            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onEdit() },
+                color = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Edit,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    Column {
+                        Text(
+                            text = "Edit Course Details",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Modify title, code, credits, etc.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
             // Delete Option
-            ListItem(
-                headlineContent = { Text("Delete Course") },
-                supportingContent = { Text("This will delete the course and all its notes") },
-                leadingContent = { 
-                    Icon(
-                        Icons.Outlined.Delete, 
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    ) 
-                },
-                modifier = Modifier.clickable { onDelete() },
-                colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent,
-                    headlineColor = MaterialTheme.colorScheme.error,
-                    supportingColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                )
-            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onDelete() },
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.errorContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    Column {
+                        Text(
+                            text = "Delete Course",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "Permanently remove course and notes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
         }
     }
 }
