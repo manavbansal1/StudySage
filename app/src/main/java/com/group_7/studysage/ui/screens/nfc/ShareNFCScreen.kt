@@ -71,10 +71,13 @@ fun ShareNFCScreen(
 
     val payload = remember {
         NFCPayload(
+            noteId = note.id,
             noteTitle = note.title,
             fileUrl = note.fileUrl,
             originalFileName = note.originalFileName,
-            fileType = note.fileType
+            fileType = note.fileType,
+            content = note.content,
+            tags = note.tags
         )
     }
 
