@@ -28,19 +28,6 @@ class GamePlayViewModel(
     init {
         observeWebSocket()
     }
-
-    fun connect(groupId: String, sessionId: String) {
-        val currentUser = authViewModel.currentUser.value
-        currentUser?.let {
-            webSocketManager.connect(
-                groupId = groupId,
-                sessionId = sessionId,
-                userId = it.uid,
-                userName = it.displayName ?: "Unknown"
-            )
-        }
-    }
-
     /**
      * Connect to a standalone game using only the game code
      */

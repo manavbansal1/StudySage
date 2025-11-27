@@ -30,6 +30,10 @@ class AuthViewModel(
     private val _currentUser = MutableStateFlow<FirebaseUser?>(authRepository.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser
 
+    // Flag to track when profile data has been updated
+    private val _profileUpdated = MutableStateFlow(0)
+    val profileUpdated: StateFlow<Int> = _profileUpdated
+
     init {
         if (_isSignedIn.value) {
             loadUserProfile()
@@ -107,5 +111,13 @@ class AuthViewModel(
             _userProfile.value = profile
             _isLoading.value = false
         }
+    }
+
+    /**
+     * Call this method when profile data (like profile picture) is updated
+     * This will trigger a refresh on HomeScreen
+     */
+    fun notifyProfileUpdated() {
+        _profileUpdated.value += 1
     }
 }

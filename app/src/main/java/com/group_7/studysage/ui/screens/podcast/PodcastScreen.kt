@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,11 +35,16 @@ fun PodcastScreen(
     notesViewModel: NotesViewModel = viewModel(),
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableStateOf(0) }
     var duration by remember { mutableStateOf(0) }
     var showScriptDialog by remember { mutableStateOf(false) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
+    var showVolumeDialog by remember { mutableStateOf(false) }
+    var playbackSpeed by remember { mutableStateOf(1.0f) }
+    var volume by remember { mutableStateOf(1.0f) }
 
     val isPodcastGenerating by notesViewModel.isPodcastGenerating.collectAsState()
     val podcastGenerationStatus by notesViewModel.podcastGenerationStatus.collectAsState()
@@ -46,9 +52,9 @@ fun PodcastScreen(
     val errorMessage by notesViewModel.errorMessage.collectAsState()
     val podcastScript by notesViewModel.podcastScript.collectAsState()
 
-    // Automatically generate podcast when screen opens
+    // Check for existing podcast or generate new one when screen opens
     LaunchedEffect(Unit) {
-        notesViewModel.generatePodcast(
+        notesViewModel.loadOrGeneratePodcast(
             noteId = note.id,
             content = note.content,
             noteTitle = note.title
@@ -59,6 +65,12 @@ fun PodcastScreen(
     LaunchedEffect(podcastAudioPath) {
         podcastAudioPath?.let { path ->
             try {
+                // Stop playback if currently playing
+                if (isPlaying) {
+                    mediaPlayer?.pause()
+                    isPlaying = false
+                }
+
                 mediaPlayer?.release()
                 mediaPlayer = null
 
@@ -73,7 +85,16 @@ fun PodcastScreen(
                     )
                     setOnPreparedListener {
                         duration = this.duration
-                        android.util.Log.d("PodcastScreen", "Audio prepared, duration: ${this.duration}ms")
+                        // Apply current playback speed and volume
+                        try {
+                            this.playbackParams = this.playbackParams.setSpeed(playbackSpeed)
+                            this.setVolume(volume, volume)
+                        } catch (e: Exception) {
+                            android.util.Log.e("PodcastScreen", "Error setting playback params: ${e.message}")
+                        }
+                        // Sync isPlaying state with actual MediaPlayer state
+                        isPlaying = this.isPlaying
+                        android.util.Log.d("PodcastScreen", "Audio prepared, duration: ${this.duration}ms, isPlaying: ${this.isPlaying}")
                     }
                     setOnCompletionListener {
                         isPlaying = false
@@ -87,14 +108,17 @@ fun PodcastScreen(
                         mp.reset()
                         true // Error handled
                     }
-                    setOnSeekCompleteListener {
+                    setOnSeekCompleteListener { mp ->
                         // Resume playing after seek if it was playing
-                        if (isPlaying && !it.isPlaying) {
+                        if (isPlaying && !mp.isPlaying) {
                             try {
-                                it.start()
+                                android.util.Log.d("PodcastScreen", "Resuming after seek")
+                                mp.start()
                             } catch (e: Exception) {
                                 android.util.Log.e("PodcastScreen", "Error resuming after seek: ${e.message}")
                             }
+                        } else {
+                            android.util.Log.d("PodcastScreen", "Seek complete, not auto-starting (isPlaying=$isPlaying)")
                         }
                     }
                     setOnInfoListener { mp, what, extra ->
@@ -110,13 +134,20 @@ fun PodcastScreen(
         }
     }
 
-    // Update playback position
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
+    // Update playback position and sync state
+    LaunchedEffect(mediaPlayer) {
+        while (true) {
             delay(100)
             mediaPlayer?.let {
                 try {
-                    if (it.isPlaying) {
+                    // Sync isPlaying state with actual MediaPlayer state
+                    val actuallyPlaying = it.isPlaying
+                    if (actuallyPlaying != isPlaying) {
+                        android.util.Log.d("PodcastScreen", "State mismatch detected! UI: $isPlaying, Player: $actuallyPlaying - syncing to player state")
+                        isPlaying = actuallyPlaying
+                    }
+
+                    if (actuallyPlaying) {
                         currentPosition = it.currentPosition
                     }
                 } catch (e: Exception) {
@@ -151,6 +182,34 @@ fun PodcastScreen(
                     }
                 },
                 actions = {
+                    // Show regenerate button when podcast exists and not generating
+                    if (podcastAudioPath != null && !isPodcastGenerating) {
+                        IconButton(onClick = {
+                            notesViewModel.generatePodcast(
+                                noteId = note.id,
+                                content = note.content,
+                                noteTitle = note.title
+                            )
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Regenerate Podcast",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    // Show download button when podcast is available
+                    if (podcastAudioPath != null && !isPodcastGenerating) {
+                        IconButton(onClick = {
+                            notesViewModel.downloadPodcast(context, note.id, note.originalFileName)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = "Download Podcast",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                     // Show script button when script is available
                     if (podcastScript != null) {
                         IconButton(onClick = { showScriptDialog = true }) {
@@ -177,7 +236,7 @@ fun PodcastScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -304,40 +363,250 @@ fun PodcastScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Play/Pause button
-                    FloatingActionButton(
-                        onClick = {
-                            mediaPlayer?.let {
-                                if (isPlaying) {
-                                    it.pause()
-                                    isPlaying = false
-                                } else {
-                                    it.start()
-                                    isPlaying = true
-                                }
-                            }
-                        },
-                        modifier = Modifier.size(80.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
+                    // Playback controls row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        // Volume control button
+                        IconButton(
+                            onClick = { showVolumeDialog = true },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VolumeUp,
+                                contentDescription = "Volume",
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Skip backward 10 seconds
+                        IconButton(
+                            onClick = {
+                                mediaPlayer?.let {
+                                    val newPosition = (currentPosition - 10000).coerceAtLeast(0)
+                                    it.seekTo(newPosition)
+                                    currentPosition = newPosition
+                                }
+                            },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Replay10,
+                                contentDescription = "Skip back 10 seconds",
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Play/Pause button
+                        FloatingActionButton(
+                            onClick = {
+                                mediaPlayer?.let {
+                                    if (isPlaying) {
+                                        it.pause()
+                                        isPlaying = false
+                                    } else {
+                                        it.start()
+                                        isPlaying = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier.size(56.dp),
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Skip forward 10 seconds
+                        IconButton(
+                            onClick = {
+                                mediaPlayer?.let {
+                                    val newPosition = (currentPosition + 10000).coerceAtMost(duration)
+                                    it.seekTo(newPosition)
+                                    currentPosition = newPosition
+                                }
+                            },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Forward10,
+                                contentDescription = "Skip forward 10 seconds",
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Playback speed button
+                        IconButton(
+                            onClick = { showSpeedDialog = true },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = "Playback speed",
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Status text
-                    Text(
-                        text = if (isPlaying) "Now Playing" else "Paused",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Status text - centered
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isPlaying) "Now Playing" else "Paused",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
+        }
+
+        // Volume dialog
+        if (showVolumeDialog) {
+            AlertDialog(
+                onDismissRequest = { showVolumeDialog = false },
+                title = { Text("Volume") },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "${(volume * 100).toInt()}%",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Slider(
+                            value = volume,
+                            onValueChange = { newVolume ->
+                                volume = newVolume
+                                mediaPlayer?.let {
+                                    try {
+                                        it.setVolume(newVolume, newVolume)
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("PodcastScreen", "Error setting volume: ${e.message}")
+                                    }
+                                }
+                            },
+                            valueRange = 0f..1f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("0%", style = MaterialTheme.typography.bodySmall)
+                            Text("100%", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showVolumeDialog = false }) {
+                        Text("Done")
+                    }
+                }
+            )
+        }
+
+        // Playback speed dialog
+        if (showSpeedDialog) {
+            val speedOptions = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
+
+            AlertDialog(
+                onDismissRequest = { showSpeedDialog = false },
+                title = {
+                    Text(
+                        "Playback Speed",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        speedOptions.forEach { speed ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        playbackSpeed = speed
+                                        mediaPlayer?.let {
+                                            try {
+                                                it.playbackParams = it.playbackParams.setSpeed(speed)
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("PodcastScreen", "Error setting speed: ${e.message}")
+                                            }
+                                        }
+                                        showSpeedDialog = false
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (playbackSpeed == speed)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${String.format("%.2f", speed)}x",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = if (playbackSpeed == speed) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (playbackSpeed == speed)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (playbackSpeed == speed) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showSpeedDialog = false }) {
+                        Text("Close")
+                    }
+                }
+            )
         }
 
         // Script dialog

@@ -23,7 +23,6 @@ class PodcastRepository(
 ) {
     companion object {
         private const val TAG = "PodcastRepository"
-        private const val MAX_CONTENT_LENGTH = 15000
         private const val GOOGLE_TTS_CHAR_LIMIT = 5000 // Google Cloud TTS limit per request
     }
 
@@ -32,10 +31,10 @@ class PodcastRepository(
         modelName = "gemini-2.5-flash",
         apiKey = BuildConfig.GEMINI_API_KEY,
         generationConfig = generationConfig {
-            temperature = 0.7f // Balanced creativity for podcast scripts
+            temperature = 0.7f
             topK = 40
             topP = 0.95f
-            maxOutputTokens = 8192 // Increased for longer podcasts (15 min = ~2250 words = ~3000 tokens)
+            maxOutputTokens = 8192
         },
     )
 
@@ -48,9 +47,6 @@ class PodcastRepository(
         noteTitle: String = ""
     ): String {
         return try {
-            // Auto-calculate duration based on content length (keep it simple and short)
-            // Aim for 150 words per minute of speech
-            // Cap at 700 words max to stay well under 5000 char limit and avoid chunking issues
             val maxWords = 700
             val estimatedMinutes = (maxWords / 150).coerceAtMost(5)
 
@@ -282,8 +278,12 @@ class PodcastRepository(
                     tempFiles.add(tempFile)
                 }
 
-                // Combine all WAV files into one
-                val finalAudioFile = File(context.cacheDir, "podcast_${noteId}.wav")
+                // Combine all WAV files into one and save to app files directory (persistent storage)
+                val podcastsDir = File(context.filesDir, "podcasts")
+                if (!podcastsDir.exists()) {
+                    podcastsDir.mkdirs()
+                }
+                val finalAudioFile = File(podcastsDir, "podcast_${noteId}.wav")
                 if (finalAudioFile.exists()) {
                     finalAudioFile.delete()
                 }
@@ -353,11 +353,12 @@ class PodcastRepository(
     }
 
     /**
-     * Delete cached podcast audio file
+     * Delete podcast audio file from persistent storage
      */
     fun deletePodcast(noteId: String): Boolean {
         return try {
-            val audioFile = File(context.cacheDir, "podcast_${noteId}.wav")
+            val podcastsDir = File(context.filesDir, "podcasts")
+            val audioFile = File(podcastsDir, "podcast_${noteId}.wav")
             if (audioFile.exists()) {
                 val deleted = audioFile.delete()
                 Log.d(TAG, "Podcast deleted: $deleted for note $noteId")
@@ -376,7 +377,8 @@ class PodcastRepository(
      * Check if a podcast already exists for a note
      */
     fun podcastExists(noteId: String): Boolean {
-        val audioFile = File(context.cacheDir, "podcast_${noteId}.wav")
+        val podcastsDir = File(context.filesDir, "podcasts")
+        val audioFile = File(podcastsDir, "podcast_${noteId}.wav")
         return audioFile.exists()
     }
 
@@ -384,7 +386,8 @@ class PodcastRepository(
      * Get podcast file path if it exists
      */
     fun getPodcastPath(noteId: String): String? {
-        val audioFile = File(context.cacheDir, "podcast_${noteId}.wav")
+        val podcastsDir = File(context.filesDir, "podcasts")
+        val audioFile = File(podcastsDir, "podcast_${noteId}.wav")
         return if (audioFile.exists()) audioFile.absolutePath else null
     }
 }
