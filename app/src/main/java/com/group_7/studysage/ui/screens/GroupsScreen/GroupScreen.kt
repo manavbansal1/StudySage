@@ -86,12 +86,15 @@ fun GroupScreen(
         ) {
             // Pull-to-refresh wrapper
             val isRefreshing by viewModel.isRefreshing.collectAsState()
+            @Suppress("DEPRECATION")
             val swipeState = rememberSwipeRefreshState(isRefreshing)
 
+            @Suppress("DEPRECATION")
             SwipeRefresh(
                 state = swipeState,
                 onRefresh = { viewModel.refreshGroups() },
                 indicator = { state, trigger ->
+                    @Suppress("DEPRECATION")
                     SwipeRefreshIndicator(
                         state = state,
                         refreshTriggerDistance = trigger,

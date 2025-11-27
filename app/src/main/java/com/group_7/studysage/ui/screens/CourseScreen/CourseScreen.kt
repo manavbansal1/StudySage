@@ -124,12 +124,15 @@ fun CoursesScreen(
 
             // Pull-to-refresh wrapper for the grid
             val isRefreshing = uiState.isRefreshing
+            @Suppress("DEPRECATION")
             val swipeState = rememberSwipeRefreshState(isRefreshing)
 
+            @Suppress("DEPRECATION")
             SwipeRefresh(
                 state = swipeState,
                 onRefresh = { viewModel.refreshCourses() },
                 indicator = { state, trigger ->
+                    @Suppress("DEPRECATION")
                     SwipeRefreshIndicator(
                         state = state,
                         refreshTriggerDistance = trigger,

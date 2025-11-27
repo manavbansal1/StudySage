@@ -4,7 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.ai.client.generativeai.GenerativeModel
+import com.group_7.studysage.BuildConfig
+import com.group_7.studysage.data.api.CloudRunApiService
 import com.group_7.studysage.ui.screens.GameScreen.QuizGame.data.Question
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import org.json.JSONObject
 
 class QuizGameViewModel : ViewModel() {
     private val _questions = MutableStateFlow<List<Question>>(emptyList())
@@ -29,10 +29,8 @@ class QuizGameViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-pro",
-        apiKey = com.group_7.studysage.BuildConfig.GEMINI_API_KEY
-    )
+    // Use Cloud Run API service for Gemini AI
+    private val cloudRunApi = CloudRunApiService(BuildConfig.CLOUD_RUN_URL)
 
     fun loadQuestionsFromPdf(pdfUri: String, context: Context) {
         viewModelScope.launch {
@@ -65,8 +63,8 @@ class QuizGameViewModel : ViewModel() {
 
     private suspend fun generateQuestionsFromText(text: String): List<Question> {
         val prompt = "Based on the following text, generate a JSON array of 5 multiple choice questions. Each question should have a 'questionText' field, an 'options' field with 4 string options, and a 'correctAnswerIndex' field with the index of the correct answer. Text: $text"
-        val response = generativeModel.generateContent(prompt)
-        return parseQuestionsFromJson(response.text ?: "")
+        val responseText = cloudRunApi.generateContent(prompt)
+        return parseQuestionsFromJson(responseText)
     }
 
     private fun parseQuestionsFromJson(jsonString: String): List<Question> {

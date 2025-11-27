@@ -3,20 +3,14 @@ package com.group_7.studysage.data.repository
 import android.content.Context
 import android.util.Base64
 import android.util.Log
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.generationConfig
 import com.group_7.studysage.BuildConfig
+import com.group_7.studysage.data.api.CloudRunApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
-import java.util.concurrent.TimeUnit
 
 class PodcastRepository(
     private val context: Context
@@ -26,17 +20,8 @@ class PodcastRepository(
         private const val GOOGLE_TTS_CHAR_LIMIT = 5000 // Google Cloud TTS limit per request
     }
 
-    // Gemini model for podcast script generation
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
-        apiKey = BuildConfig.GEMINI_API_KEY,
-        generationConfig = generationConfig {
-            temperature = 0.7f
-            topK = 40
-            topP = 0.95f
-            maxOutputTokens = 8192
-        },
-    )
+    // Cloud Run API service for Gemini and TTS
+    private val cloudRunApi = CloudRunApiService(BuildConfig.CLOUD_RUN_URL)
 
     /**
      * Generate a podcast script from note content using Gemini AI
@@ -88,11 +73,10 @@ class PodcastRepository(
 
             Log.d(TAG, "Generating podcast script for content: ${content.length} chars")
 
-            val response = generativeModel.generateContent(prompt)
-            val rawScript = response.text ?: throw Exception("Empty response from AI model")
+            val response = cloudRunApi.generateContent(prompt)
 
             // Clean up any formatting that slipped through
-            val cleanScript = rawScript
+            val cleanScript = response
                 .replace(Regex("\\*[^*]*\\*"), "") // Remove anything between asterisks
                 .replace(Regex("\\[[^\\]]*\\]"), "") // Remove anything in brackets
                 .replace(Regex("\\([^)]*\\)"), "") // Remove anything in parentheses (stage directions)
@@ -142,58 +126,15 @@ class PodcastRepository(
     }
 
     /**
-     * Convert single text chunk to speech using Google Cloud TTS
+     * Convert single text chunk to speech using Google Cloud TTS via Cloud Run backend
      */
     private suspend fun convertChunkToSpeech(
         text: String,
         speakingRate: Double = 1.0
     ): ByteArray {
         return withContext(Dispatchers.IO) {
-            val apiKey = BuildConfig.GOOGLE_CLOUD_TTS_API_KEY
-            if (apiKey.isEmpty() || apiKey == "YOUR_GOOGLE_CLOUD_TTS_API_KEY_HERE") {
-                throw Exception("Google Cloud TTS API key not configured")
-            }
-
-            val url = "https://texttospeech.googleapis.com/v1/text:synthesize?key=$apiKey"
-
-            val requestBody = JSONObject().apply {
-                put("input", JSONObject().put("text", text))
-                put("voice", JSONObject().apply {
-                    put("languageCode", "en-US")
-                    put("name", "en-US-Neural2-J")
-                    put("ssmlGender", "MALE")
-                })
-                put("audioConfig", JSONObject().apply {
-                    put("audioEncoding", "LINEAR16") // WAV format for better quality
-                    put("speakingRate", speakingRate)
-                    put("pitch", 0.0)
-                    put("sampleRateHertz", 24000) // High quality audio
-                })
-            }
-
-            val client = OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .build()
-
-            val request = Request.Builder()
-                .url(url)
-                .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-
-            if (!response.isSuccessful) {
-                val errorBody = response.body?.string()
-                Log.e(TAG, "TTS API error: ${response.code} - $errorBody")
-                throw Exception("TTS API Error (${response.code})")
-            }
-
-            val responseBody = response.body?.string()
-            val jsonResponse = JSONObject(responseBody ?: "")
-            val audioContentBase64 = jsonResponse.getString("audioContent")
-
+            // Use Cloud Run backend for TTS
+            val audioContentBase64 = cloudRunApi.textToSpeech(text)
             Base64.decode(audioContentBase64, Base64.DEFAULT)
         }
     }

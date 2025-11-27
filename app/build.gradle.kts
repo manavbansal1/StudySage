@@ -18,7 +18,7 @@ if (envFile.exists()) {
         envProperties.load(stream)
     }
     println("✓ .env file loaded successfully")
-    println("✓ GEMINI_API_KEY: ${if (envProperties.getProperty("GEMINI_API_KEY")?.isNotEmpty() == true) "Found" else "Missing"}")
+    println("✓ CLOUD_RUN_URL: ${if (envProperties.getProperty("CLOUD_RUN_URL")?.isNotEmpty() == true) "Found" else "Missing"}")
     println("✓ CLOUDINARY_CLOUD_NAME: ${if (envProperties.getProperty("CLOUDINARY_CLOUD_NAME")?.isNotEmpty() == true) "Found" else "Missing"}")
 } else {
     println("⚠ .env file not found at: ${envFile.absolutePath}")
@@ -45,11 +45,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GEMINI_API_KEY", "\"${getEnvOrDefault("GEMINI_API_KEY")}\"")
+        // Cloud Run URL for backend API (Gemini + TTS)
+        buildConfigField("String", "CLOUD_RUN_URL", "\"${getEnvOrDefault("CLOUD_RUN_URL", "")}\"")
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${getEnvOrDefault("CLOUDINARY_CLOUD_NAME")}\"")
         buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${getEnvOrDefault("CLOUDINARY_UPLOAD_PRESET")}\"")
         buildConfigField("String", "RESEND_API_KEY", "\"${getEnvOrDefault("RESEND_API_KEY")}\"")
-        buildConfigField("String", "GOOGLE_CLOUD_TTS_API_KEY", "\"${getEnvOrDefault("GOOGLE_CLOUD_TTS_API_KEY")}\"")
     }
 
     buildTypes {

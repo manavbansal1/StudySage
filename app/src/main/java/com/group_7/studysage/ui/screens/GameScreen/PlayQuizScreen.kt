@@ -21,21 +21,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.model.Quiz
 import com.group_7.studysage.data.model.QuizOption
+import com.group_7.studysage.viewmodels.HomeViewModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayQuizScreen(
     quiz: Quiz,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    homeViewModel: HomeViewModel = viewModel()
 ) {
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var selectedAnswers by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) } // questionIndex -> optionIndex
     var showFeedback by remember { mutableStateOf(false) }
     var quizCompleted by remember { mutableStateOf(false) }
     var questionVisible by remember { mutableStateOf(true) }
+    var taskCompleted by remember { mutableStateOf(false) }
 
     val currentQuestion = quiz.questions.getOrNull(currentQuestionIndex)
     val selectedOptionIndex = selectedAnswers[currentQuestionIndex]
@@ -43,6 +47,14 @@ fun PlayQuizScreen(
     // Calculate score
     val score = selectedAnswers.count { (questionIdx, optionIdx) ->
         quiz.questions.getOrNull(questionIdx)?.options?.getOrNull(optionIdx)?.isCorrect == true
+    }
+
+    // Automatically complete quiz task when quiz is finished
+    LaunchedEffect(quizCompleted) {
+        if (quizCompleted && !taskCompleted) {
+            homeViewModel.checkAndCompleteTaskByType("quiz")
+            taskCompleted = true
+        }
     }
 
     Scaffold(
