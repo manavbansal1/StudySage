@@ -125,15 +125,18 @@ class NotesRepository(
                 resourceType = if (getFileType(fileName).contains("Image")) "image" else "raw"
             ) ?: throw Exception("Failed to upload file to Cloudinary.")
 
-            // Skip AI summary generation during upload to keep uploads fast and
-            // allow users to request summaries later with custom preferences.
-            onProgress("Skipping AI summary generation for now...")
-
-            val summary = "" // empty summary saved; generate on-demand later
-            val keyPoints = emptyList<String>()
-            // Generate lightweight tags and title locally (no LLM) so notes are searchable
+            onProgress("Generating AI summary...")
+            val summary = generateAISummary(fileContent, true, userPreferences)
+            
+            onProgress("Extracting key points...")
+            val keyPoints = extractKeyPoints(fileContent)
+            
+            onProgress("Generating tags...")
             val tags = generateBasicTags(fileContent)
-            val title = generateBasicTitle(fileContent, fileName)
+            
+            onProgress("Setting title...")
+            // Use the user-provided filename (minus extension) as the title
+            val title = if (fileName.contains(".")) fileName.substringBeforeLast(".") else fileName
 
             onProgress("Saving to database...")
 
