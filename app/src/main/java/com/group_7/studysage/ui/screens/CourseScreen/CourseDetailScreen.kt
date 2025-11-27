@@ -325,19 +325,22 @@ fun CourseDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = course.title,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.White
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = Color.White
                         )
                     }
                 },
@@ -351,7 +354,7 @@ fun CourseDetailScreen(
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
+                                color = Color.White,
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp
                             )
@@ -359,17 +362,18 @@ fun CourseDetailScreen(
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = "Add Note",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = Color.White,
                                 modifier = Modifier.size(26.dp)
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
+
     ) { paddingValues ->
         // Simple swipe-to-refresh state using Accompanist (deprecated warning is acceptable for now)
         val isRefreshing = courseViewModel.uiState.collectAsState().value.isRefreshing
@@ -461,77 +465,141 @@ fun CourseDetailScreen(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { showUploadOptionsSheet = false },
-            sheetState = sheetState
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 48.dp)
             ) {
                 Text(
                     text = "Add Note",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 12.dp)
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
 
-                ListItem(
-                    headlineContent = { Text("Upload from phone") },
-                    supportingContent = {
-                        Text(
-                            text = "Select a file from your device",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Upload,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        showUploadOptionsSheet = false
-                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                            type = "*/*"
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            val mimeTypes = arrayOf(
-                                "application/pdf",
-                                "text/plain",
-                                "application/msword",
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                "text/markdown",
-                                "application/rtf",
-                                "image/*"
+                // Upload from phone
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            showUploadOptionsSheet = false
+                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                type = "*/*"
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                val mimeTypes = arrayOf(
+                                    "application/pdf",
+                                    "text/plain",
+                                    "application/msword",
+                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    "text/markdown",
+                                    "application/rtf",
+                                    "image/*"
+                                )
+                                putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                            }
+                            filePickerLauncher.launch(intent)
+                        },
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Upload,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(24.dp)
                             )
-                            putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
                         }
-                        filePickerLauncher.launch(intent)
+                        
+                        Column {
+                            Text(
+                                text = "Upload from phone",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Select a file from your device",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                )
+                }
 
-                ListItem(
-                    headlineContent = { Text("Receive via NFC") },
-                    supportingContent = {
-                        Text(
-                            text = "Transfer notes from another device",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Nfc,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
-                        showUploadOptionsSheet = false
-                        showReceiveNFCScreen = true
+                // Receive via NFC
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            showUploadOptionsSheet = false
+                            showReceiveNFCScreen = true
+                        },
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Nfc,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        
+                        Column {
+                            Text(
+                                text = "Receive via NFC",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Transfer notes from another device",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
     }
@@ -544,149 +612,148 @@ fun CourseDetailScreen(
                 showNoteOptions = false
                 selectedNote = null
             },
-            sheetState = sheetState
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 48.dp)
             ) {
                 Text(
                     text = if (note.title.isNotBlank()) note.title else note.originalFileName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
                     modifier = Modifier
-                        .padding(vertical = 12.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
 
-                ListItem(
-                    headlineContent = { Text("Download original note") },
-                    supportingContent = {
-                        Text(
-                            text = note.originalFileName.ifBlank { "Download the uploaded file" },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.FileDownload,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
+                // Helper to create consistent option items
+                @Composable
+                fun NoteOptionItem(
+                    title: String,
+                    subtitle: String,
+                    icon: androidx.compose.ui.graphics.vector.ImageVector,
+                    color: Color = MaterialTheme.colorScheme.primaryContainer,
+                    iconTint: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick: () -> Unit
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onClick() },
+                        color = MaterialTheme.colorScheme.surfaceContainerLow
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(color),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = iconTint,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            
+                            Column {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
+                NoteOptionItem(
+                    title = "Download original note",
+                    subtitle = note.originalFileName.ifBlank { "Download the uploaded file" },
+                    icon = Icons.Default.FileDownload,
+                    onClick = {
                         notesViewModel.downloadNote(context, note)
                         showNoteOptions = false
                         selectedNote = null
                     }
                 )
 
-                ListItem(
-                    headlineContent = { Text("View AI summary") },
-                    supportingContent = {
-                        Text(
-                            text = if (note.summary.isNotBlank()) {
-                                "Read the generated summary for this note"
-                            } else {
-                                "Summary will appear here when available"
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Description,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
+                NoteOptionItem(
+                    title = "View AI summary",
+                    subtitle = if (note.summary.isNotBlank()) "Read the generated summary" else "Summary will appear here when available",
+                    icon = Icons.Default.Description,
+                    onClick = {
                         showNoteOptions = false
                         selectedNote = null
                         if (note.id.isBlank()) {
-                            Toast.makeText(
-                                context,
-                                "Note details not available yet for this document.",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(context, "Note details not available yet.", Toast.LENGTH_SHORT).show()
                         } else {
-                            // Select the note in the ViewModel so we can fetch details if needed
                             notesViewModel.selectNote(note)
-
                             if (note.summary.isNotBlank()) {
-                                // Already has a summary -> show it
                                 showSummaryScreen = true
-                                // ensure latest details loaded
-                                if (note.summary.isBlank()) {
-                                    notesViewModel.loadNoteById(note.id)
-                                }
+                                if (note.summary.isBlank()) notesViewModel.loadNoteById(note.id)
                             } else {
-                                // No summary yet -> ask user for preferences and generate on demand
                                 showGenerateSummaryDialog = true
-                                // Trigger load of full note content if it's not present
                                 notesViewModel.loadNoteById(note.id)
                             }
                         }
                     }
                 )
 
-                ListItem(
-                    headlineContent = { Text("View Flashcards") },
-                    supportingContent = {
-                        Text(
-                            text = note.originalFileName.ifBlank { "Show flashcards" },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.FileDownload,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
+                NoteOptionItem(
+                    title = "View Flashcards",
+                    subtitle = "Study with flashcards",
+                    icon = Icons.Default.Style, // Changed to Style for cards
+                    onClick = {
                         showNoteOptions = false
                         selectedNote = note
                         showFlashcardScreen = true
                     }
                 )
 
-                ListItem(
-                    headlineContent = { Text("Generate Quiz") },
-                    supportingContent = {
-                        Text(
-                            text = "Create an interactive quiz from this note",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Quiz,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
+                NoteOptionItem(
+                    title = "Generate Quiz",
+                    subtitle = "Create an interactive quiz",
+                    icon = Icons.Default.Quiz,
+                    onClick = {
                         showNoteOptions = false
                         selectedNote = note
                         showQuizGeneratingDialog = true
                     }
                 )
 
-                ListItem(
-                    headlineContent = { Text("Share via NFC") },
-                    supportingContent = {
-                        Text(
-                            text = "Share the note with another device",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Nfc,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
+                NoteOptionItem(
+                    title = "Share via NFC",
+                    subtitle = "Share with another device",
+                    icon = Icons.Default.Nfc,
+                    onClick = {
                         showNoteOptions = false
                         noteToShare = selectedNote
                         selectedNote = null
@@ -694,28 +761,16 @@ fun CourseDetailScreen(
                     }
                 )
 
-                ListItem(
-                    headlineContent = { Text("Listen to podcast") },
-                    supportingContent = {
-                        Text(
-                            text = "Generate and listen to an AI podcast about this note",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Headphones,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.clickable {
+                NoteOptionItem(
+                    title = "Listen to podcast",
+                    subtitle = "Generate and listen to AI podcast",
+                    icon = Icons.Default.Headphones,
+                    onClick = {
                         showNoteOptions = false
                         selectedNote = note
                         showPodcastScreen = true
                     }
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }

@@ -98,6 +98,23 @@ class CourseRepository {
                 throw Exception("You can only delete your own courses.")
             }
 
+            // Delete all associated notes first
+            val notesSnapshot = firestore.collection("notes")
+                .whereEqualTo("courseId", courseId)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            val batch = firestore.batch()
+            for (document in notesSnapshot.documents) {
+                batch.delete(document.reference)
+            }
+            // Commit the batch delete for notes
+            if (!notesSnapshot.isEmpty) {
+                batch.commit().await()
+            }
+
+            // Delete the course
             firestore.collection("courses").document(courseId).delete().await()
             Result.success(Unit)
 

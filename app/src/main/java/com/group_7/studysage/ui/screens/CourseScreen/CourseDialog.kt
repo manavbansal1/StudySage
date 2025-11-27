@@ -20,26 +20,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.core.graphics.toColorInt
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.group_7.studysage.data.repository.Course
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddCourseDialog(
+fun CourseDialog(
     isLoading: Boolean,
     semester: String,
     year: String,
+    existingCourse: Course? = null,
     onDismiss: () -> Unit,
     onConfirm: (title: String, code: String, instructor: String, description: String, credits: Int, color: String) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    var instructor by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var credits by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf(courseColors.first()) }
+    var title by remember { mutableStateOf(existingCourse?.title ?: "") }
+    var code by remember { mutableStateOf(existingCourse?.code ?: "") }
+    var instructor by remember { mutableStateOf(existingCourse?.instructor ?: "") }
+    var description by remember { mutableStateOf(existingCourse?.description ?: "") }
+    var credits by remember { mutableStateOf(existingCourse?.credits?.toString() ?: "") }
+    var selectedColor by remember { mutableStateOf(existingCourse?.color ?: courseColors.first()) }
 
     // Error states for validation
     var titleError by remember { mutableStateOf(false) }
@@ -77,7 +79,7 @@ fun AddCourseDialog(
             shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
-            shadowElevation = 8.dp, // <-- FIXED
+            shadowElevation = 8.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -88,7 +90,7 @@ fun AddCourseDialog(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "Add Course",
+                    text = if (existingCourse != null) "Edit Course" else "Add Course",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -107,7 +109,7 @@ fun AddCourseDialog(
                     singleLine = true,
                     isError = titleError,
                     supportingText = if (titleError) {
-                        { Text("Course title is required") } // Color is set by colors property
+                        { Text("Course title is required") }
                     } else null,
                     shape = RoundedCornerShape(12.dp),
                     colors = glassTextFieldColors
@@ -262,7 +264,7 @@ fun AddCourseDialog(
                         onClick = onDismiss,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp), // Set fixed height
+                            .height(48.dp),
                         enabled = !isLoading,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
@@ -279,7 +281,7 @@ fun AddCourseDialog(
                         enabled = !isLoading,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp), // Set fixed height
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -290,7 +292,7 @@ fun AddCourseDialog(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
-                            Text("Add") // <-- CHANGED
+                            Text(if (existingCourse != null) "Update" else "Add")
                         }
                     }
                 }
