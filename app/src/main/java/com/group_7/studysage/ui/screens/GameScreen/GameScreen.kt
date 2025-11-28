@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,8 +37,8 @@ fun GameScreen(navController: NavController) {
     val viewModel: StandaloneGameViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
 
-    var showHostDialog by remember { mutableStateOf(false) }
-    var showJoinDialog by remember { mutableStateOf(false) }
+    var showHostDialog by rememberSaveable { mutableStateOf(false) }
+    var showJoinDialog by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -347,10 +348,10 @@ fun HostGameDialog(
     onDismiss: () -> Unit,
     onHostGame: (GameType, ContentSource, String?, String?) -> Unit
 ) {
-    var selectedGameType by remember { mutableStateOf(GameType.QUIZ_RACE) }
-    var selectedContentSource by remember { mutableStateOf(ContentSource.TEXT) }
-    var topicText by remember { mutableStateOf("") }
-    var selectedPdfUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedGameType by rememberSaveable { mutableStateOf(GameType.QUIZ_RACE) }
+    var selectedContentSource by rememberSaveable { mutableStateOf(ContentSource.TEXT) }
+    var topicText by rememberSaveable { mutableStateOf("") }
+    var selectedPdfUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     val pdfPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -493,7 +494,7 @@ fun JoinGameDialog(
     onDismiss: () -> Unit,
     onJoinGame: (String) -> Unit
 ) {
-    var gameCode by remember { mutableStateOf("") }
+    var gameCode by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
