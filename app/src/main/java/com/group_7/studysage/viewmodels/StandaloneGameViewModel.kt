@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.group_7.studysage.data.api.GameApiService
 import com.group_7.studysage.data.models.ContentSource
 import com.group_7.studysage.data.models.GameType
+import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.utils.CloudinaryUploader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ data class StandaloneGameUiState(
 class StandaloneGameViewModel : ViewModel() {
     private val apiService = GameApiService()
     private val auth = FirebaseAuth.getInstance()
+    private val authRepository = AuthRepository()
 
     private val _uiState = MutableStateFlow(StandaloneGameUiState())
     val uiState: StateFlow<StandaloneGameUiState> = _uiState.asStateFlow()
@@ -76,9 +78,13 @@ class StandaloneGameViewModel : ViewModel() {
                     contentData
                 }
 
+                // Fetch user's name from Firestore
+                val userProfile = authRepository.getUserProfile()
+                val userName = userProfile?.get("name") as? String ?: "Player"
+
                 val response = apiService.hostGame(
                     hostId = currentUser.uid,
-                    hostName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Player",
+                    hostName = userName,
                     gameType = gameType,
                     contentSource = contentSource,
                     contentData = finalContentData,
@@ -120,10 +126,14 @@ class StandaloneGameViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Fetch user's name from Firestore
+                val userProfile = authRepository.getUserProfile()
+                val userName = userProfile?.get("name") as? String ?: "Player"
+
                 val response = apiService.joinGameByCode(
                     gameCode = gameCode,
                     userId = currentUser.uid,
-                    userName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Player"
+                    userName = userName
                 )
 
                 if (response.success && response.data != null) {
