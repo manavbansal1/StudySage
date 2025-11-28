@@ -55,7 +55,6 @@ fun GameScreen(navController: NavController) {
         ) {
             // Header
             GamesHeader(
-                onLeaderboardClick = { navController.navigate("leaderboard") },
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -536,7 +535,6 @@ fun JoinGameDialog(
 
 @Composable
 fun GamesHeader(
-    onLeaderboardClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -547,34 +545,12 @@ fun GamesHeader(
             letterSpacing = 0.3.sp
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Games",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                letterSpacing = (-0.5).sp
-            )
-
-            // Leaderboard button with background
-            FilledIconButton(
-                onClick = onLeaderboardClick,
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EmojiEvents,
-                    contentDescription = "Leaderboard",
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-        }
+        Text(
+            text = "Games",
+            fontSize = 36.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            letterSpacing = (-0.5).sp
+        )
     }
 }
