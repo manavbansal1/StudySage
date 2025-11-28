@@ -360,9 +360,7 @@ fun HostGameDialog(
 
     val gameTypes = listOf(
         GameType.QUIZ_RACE to "Quiz Race",
-        GameType.FLASHCARD_BATTLE to "Flashcard Battle",
-        GameType.STUDY_TAC_TOE to "Study-Tac-Toe",
-        GameType.SPEED_MATCH to "Speed Match"
+        GameType.STUDY_TAC_TOE to "Study-Tac-Toe"
     )
 
     AlertDialog(
