@@ -342,7 +342,25 @@ class GroupViewModel(
     fun acceptInvite(invite: GroupInvite) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Accepting invite for group: ${'$'}{invite.groupName}")
+                Log.d(TAG, "Accepting invite for group: ${invite.groupName}")
+
+                // Check if group exists and has members
+                val groupProfile = groupRepository.getGroupProfile(invite.groupId)
+                val memberCount = (groupProfile?.get("memberCount") as? Long)?.toInt() ?: 0
+                
+                if (groupProfile == null || memberCount < 1) {
+                    Log.w(TAG, "Cannot join group ${invite.groupName}: Group does not exist or is empty")
+                    _operationStatus.value = "Group doesn't exist"
+                    
+                    // Clear error message after delay
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(3000)
+                        if (_operationStatus.value == "Group doesn't exist") {
+                            _operationStatus.value = null
+                        }
+                    }
+                    return@launch
+                }
 
                 val acceptResult = authRepository.acceptGroupInvite(invite.inviteId, invite.groupId)
 

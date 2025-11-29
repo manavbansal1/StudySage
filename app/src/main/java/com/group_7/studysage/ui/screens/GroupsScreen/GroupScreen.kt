@@ -215,7 +215,8 @@ fun GroupScreen(
                 onReject = { invite ->
                     viewModel.rejectInvite(invite)
                 },
-                onDismiss = { viewModel.toggleInviteOverlay() }
+                onDismiss = { viewModel.toggleInviteOverlay() },
+                errorMessage = operationStatus
             )
         }
         }
