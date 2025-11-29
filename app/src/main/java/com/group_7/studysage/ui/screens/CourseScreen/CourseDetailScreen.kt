@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -262,7 +263,55 @@ fun CourseDetailScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .wrapContentHeight(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 12.dp
+                        )
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(28.dp),
+                            modifier = Modifier.padding(40.dp)
+                        ) {
+                            Text(
+                                "Loading Summary",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                )
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Text(
+                                    "Fetching note details...",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -338,7 +387,7 @@ fun CourseDetailScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = course.title,
+                        text = "${course.code} - ${course.title}",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = Color.White
@@ -944,78 +993,57 @@ fun CourseDetailScreen(
 
     // Show animated loading dialog while generating quiz
     if (quizGenerationState.isGenerating) {
-        var dotCount by remember { mutableStateOf(0) }
-        
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(500)
-                dotCount = (dotCount + 1) % 4
-            }
-        }
-        
-        AlertDialog(
-            onDismissRequest = { },
-            icon = {
-                Box(contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        strokeWidth = 4.dp
-                    )
-                }
-            },
-            title = { 
-                Text(
-                    "Generating Quiz",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                ) 
-            },
-            text = {
+        Dialog(onDismissRequest = { }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 12.dp
+                )
+            ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                    modifier = Modifier.padding(40.dp)
                 ) {
-                    AnimatedContent(
-                        targetState = dotCount,
-                        transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
-                        },
-                        label = "loading_text"
-                    ) { dots ->
-                        Text(
-                            text = "Creating quiz questions${".".repeat(dots)}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    Text(
+                        "Generating Quiz",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "AI is analyzing your note",
-                            style = MaterialTheme.typography.bodyMedium,
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text(
+                            "AI is creating quiz questions...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
-            },
-            confirmButton = { },
-            shape = RoundedCornerShape(20.dp)
-        )
+            }
+        }
     }
 
     // Handle quiz generation completion
@@ -1083,13 +1111,13 @@ fun CourseDetailScreen(
                             } else {
                                 "$pendingFileName.pdf"
                             }
-                            
+
                             homeViewModel.uploadAndProcessNote(
                                 context,
                                 uri,
                                 finalName, // Pass the name with .pdf extension
                                 course.id,
-                                "" 
+                                ""
                             )
                         }
                         showUploadDialog = false
@@ -1119,79 +1147,57 @@ fun CourseDetailScreen(
 
     // Upload Loading Animation Dialog
     if (isLoading) {
-        var dotCount by remember { mutableStateOf(0) }
-        
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(500)
-                dotCount = (dotCount + 1) % 4
-            }
-        }
-        
-        AlertDialog(
-            onDismissRequest = { /* Prevent dismissal while uploading */ },
-            icon = {
-                Box(contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        strokeWidth = 4.dp,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-            },
-            title = { 
-                Text(
-                    "Uploading Note",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                ) 
-            },
-            text = {
+        Dialog(onDismissRequest = { /* Prevent dismissal while uploading */ }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 12.dp
+                )
+            ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                    modifier = Modifier.padding(40.dp)
                 ) {
-                    AnimatedContent(
-                        targetState = dotCount,
-                        transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
-                        },
-                        label = "upload_loading_text"
-                    ) { dots ->
+                    Text(
+                        "Uploading Note",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
                         Text(
-                            text = "Processing document${".".repeat(dots)}",
+                            "Processing your document...",
                             style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Simulated steps
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                            Text("Reading file content", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                            Text("AI analyzing key concepts", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                            Text("Generating summary & tags", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
                 }
-            },
-            confirmButton = { },
-            shape = RoundedCornerShape(20.dp)
-        )
+            }
+        }
     }
 }
 

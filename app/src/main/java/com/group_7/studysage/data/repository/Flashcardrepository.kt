@@ -290,6 +290,7 @@ class FlashcardRepository {
     }
 
 
+
     suspend fun saveFlashcards(noteId: String, flashcards: List<Flashcard>): Result<Unit> {
         return try {
             val batch = firestore.batch()
@@ -315,6 +316,34 @@ class FlashcardRepository {
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save flashcards", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun loadFlashcardsForNote(noteId: String): Result<List<Flashcard>> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_FLASHCARDS)
+                .whereEqualTo("noteId", noteId)
+                .get()
+                .await()
+
+            val flashcards = snapshot.documents.mapNotNull { doc ->
+                try {
+                    Flashcard(
+                        id = doc.id,
+                        question = doc.getString("question") ?: "",
+                        answer = doc.getString("answer") ?: "",
+                        difficulty = doc.getString("difficulty") ?: "medium"
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing flashcard document: ${doc.id}", e)
+                    null
+                }
+            }
+
+            Result.success(flashcards)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load flashcards for note: $noteId", e)
             Result.failure(e)
         }
     }
