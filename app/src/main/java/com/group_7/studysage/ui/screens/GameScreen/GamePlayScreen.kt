@@ -242,7 +242,7 @@ fun WaitingForPlayersScreen(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${players.size}/${session?.maxPlayers ?: 8}",
+                        text = "${players.size}/${session?.maxPlayers ?: 2}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -369,7 +369,7 @@ fun WaitingForPlayersScreen(
                     text = when {
                         !hasCorrectPlayers && isStudyTacToe && players.size < 2 -> "Study Tac Toe requires exactly 2 players"
                         !hasCorrectPlayers && isStudyTacToe && players.size > 2 -> "Study Tac Toe is limited to 2 players only"
-                        !hasCorrectPlayers -> "Need at least 2 players"
+                        !hasCorrectPlayers -> "Need 2 players"
                         !allReady -> "Waiting for all players to be ready"
                         else -> ""
                     },

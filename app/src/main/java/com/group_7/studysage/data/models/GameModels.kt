@@ -179,7 +179,7 @@ data class GameSessionData(
     val gameCode: String, // Unique code for joining
     val players: Map<String, Player> = emptyMap(),
     val teams: Map<String, Team> = emptyMap(),
-    val maxPlayers: Int = 8,
+    val maxPlayers: Int = 2,
     val status: GameStatus = GameStatus.WAITING,
     val currentQuestionIndex: Int = 0,
     val currentTurn: String? = null, // Player ID whose turn it is (for turn-based games)
