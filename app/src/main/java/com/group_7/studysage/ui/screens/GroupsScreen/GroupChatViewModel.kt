@@ -205,6 +205,26 @@ class GroupChatViewModel(
         }
     }
 
+    fun removeAllMembers(groupId: String) {
+        viewModelScope.launch {
+            try {
+                val currentUserId = authRepository.currentUser?.uid ?: return@launch
+                val result = groupRepository.removeAllMembersFromGroup(groupId, currentUserId)
+
+                result.onSuccess {
+                    // Reload group data to reflect changes
+                    loadGroupData(groupId)
+                }
+                
+                result.onFailure { error ->
+                    Log.e("GroupChatViewModel", "Failed to remove all members: ${error.message}", error)
+                }
+            } catch (e: Exception) {
+                Log.e("GroupChatViewModel", "Error removing all members: ${e.message}", e)
+            }
+        }
+    }
+
     fun promoteToAdmin(groupId: String, userId: String) {
         viewModelScope.launch {
             try {
@@ -240,16 +260,7 @@ class GroupChatViewModel(
      * Remove group from current user's profile
      * Used when user is removed from group and wants to clean up their local list
      */
-    fun removeGroupFromUserProfile(groupId: String) {
-        viewModelScope.launch {
-            try {
-                authRepository.removeGroupFromUserProfile(groupId)
-                Log.d("GroupChatViewModel", "Removed group $groupId from user profile")
-            } catch (e: Exception) {
-                Log.e("GroupChatViewModel", "Error removing group from profile: ${e.message}", e)
-            }
-        }
-    }
+
 
     fun deleteGroup(groupId: String) {
         viewModelScope.launch {
@@ -360,5 +371,12 @@ class GroupChatViewModel(
 
     fun clearUploadSuccess() {
         _uploadSuccess.value = null
+    }
+
+    fun removeGroupFromUserProfile(groupId: String) {
+        viewModelScope.launch {
+            val userId = authRepository.currentUser?.uid ?: return@launch
+            groupRepository.removeGroupFromUserProfile(groupId, userId)
+        }
     }
 }

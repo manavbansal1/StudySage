@@ -47,6 +47,11 @@ fun GroupScreen(
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Silently refresh groups when user navigates to this screen
+    LaunchedEffect(Unit) {
+        viewModel.loadGroups()
+    }
+
     // Show operation status in snackbar
     LaunchedEffect(operationStatus) {
         operationStatus?.let { message ->
@@ -338,7 +343,10 @@ fun GroupsList(
         filteredGroups.forEach { group ->
             GroupCard(
                 group = group,
-                onClick = { onGroupClick(group.groupId) }
+                onClick = {
+                    viewModel.markGroupAsRead(group.groupId)
+                    onGroupClick(group.groupId)
+                }
             )
         }
 
@@ -507,6 +515,17 @@ fun GroupCard(
                         )
                     }
                 }
+            }
+
+            // Unread indicator (red dot) before chevron
+            if (group.unreadCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             // Chevron icon

@@ -22,7 +22,7 @@ import kotlinx.coroutines.tasks.await
  */
 class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    internal val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     companion object {
         private const val TAG = "AuthRepository"
