@@ -288,16 +288,21 @@ fun CourseDetailScreen(
             result.data?.data?.let { uri ->
                 val fileInfo = FileUtils.getFileInfo(context, uri)
                 if (fileInfo != null) {
-                    val validationResult = FileUtils.validateFile(context, uri)
-                    when (validationResult) {
-                        is FileUtils.ValidationResult.Success -> {
-                            pendingFileUri = uri
-                            pendingFileName = fileInfo.name
-                            showUploadDialog = true
+                    // Enforce PDF validation
+                    if (fileInfo.name.endsWith(".pdf", ignoreCase = true)) {
+                        val validationResult = FileUtils.validateFile(context, uri)
+                        when (validationResult) {
+                            is FileUtils.ValidationResult.Success -> {
+                                pendingFileUri = uri
+                                pendingFileName = fileInfo.name
+                                showUploadDialog = true
+                            }
+                            is FileUtils.ValidationResult.Error -> {
+                                Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
+                            }
                         }
-                        is FileUtils.ValidationResult.Error -> {
-                            Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
-                        }
+                    } else {
+                        Toast.makeText(context, "Only PDF files are supported", Toast.LENGTH_LONG).show()
                     }
                 } else {
                     Toast.makeText(context, "Could not read file", Toast.LENGTH_SHORT).show()
@@ -307,12 +312,16 @@ fun CourseDetailScreen(
     }
 
     // Show messages and refresh course on successful upload
-    LaunchedEffect(uploadStatus) {
+    // Show messages and refresh course on successful upload
+    LaunchedEffect(isLoading, uploadStatus) {
+        if (!isLoading && uploadStatus?.contains("processed successfully", ignoreCase = true) == true) {
+            // Refresh course to show newly uploaded document immediately after loading finishes
+            courseViewModel.refreshCourse(course.id)
+        }
+        
         uploadStatus?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            // Refresh course to show newly uploaded document
-            if (message.contains("processed successfully", ignoreCase = true)) {
-                courseViewModel.refreshCourse(course.id)
+            if (!isLoading) {
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -419,17 +428,6 @@ fun CourseDetailScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold
                         )
-
-                        if (isLoading && uploadStatus != null) {
-                            Column(horizontalAlignment = Alignment.End) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = uploadStatus!!,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                            )
-                            }
-                        }
                     }
                 }
 
@@ -498,18 +496,8 @@ fun CourseDetailScreen(
                         .clickable {
                             showUploadOptionsSheet = false
                             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                type = "*/*"
+                                type = "application/pdf"
                                 addCategory(Intent.CATEGORY_OPENABLE)
-                                val mimeTypes = arrayOf(
-                                    "application/pdf",
-                                    "text/plain",
-                                    "application/msword",
-                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                    "text/markdown",
-                                    "application/rtf",
-                                    "image/*"
-                                )
-                                putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
                             }
                             filePickerLauncher.launch(intent)
                         },
@@ -1044,42 +1032,71 @@ fun CourseDetailScreen(
         }
     }
 
-    // Upload confirmation dialog
+    // Upload confirmation and rename dialog
     if (showUploadDialog && pendingFileUri != null) {
+        // Initialize note name with filename when dialog opens
+        LaunchedEffect(pendingFileName) {
+            if (pendingFileName.isNotBlank() && pendingFileName != "null") {
+                // Remove extension for the name, but keep it for the file processing
+                val nameWithoutExt = pendingFileName.substringBeforeLast(".")
+                pendingFileName = nameWithoutExt
+            }
+        }
+
         AlertDialog(
             onDismissRequest = {
                 showUploadDialog = false
                 pendingFileUri = null
                 pendingFileName = ""
-//                userPreferences = ""
             },
             title = { Text("Add Note to Course") },
             text = {
                 Column {
-                    Text("File: $pendingFileName")
+                    Text(
+                        "Enter a name for your note:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pendingFileName,
+                        onValueChange = { pendingFileName = it },
+                        label = { Text("Note Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "This note will be added to ${course.title} (${course.code})",
-                        style = MaterialTheme.typography.bodyMedium
+                        "This note will be added to ${course.title}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         pendingFileUri?.let { uri ->
+                            // Ensure the name has .pdf extension for the system
+                            val finalName = if (pendingFileName.endsWith(".pdf", ignoreCase = true)) {
+                                pendingFileName
+                            } else {
+                                "$pendingFileName.pdf"
+                            }
+                            
                             homeViewModel.uploadAndProcessNote(
                                 context,
                                 uri,
-                                pendingFileName,
+                                finalName, // Pass the name with .pdf extension
                                 course.id,
-                                "" // No preferences during upload
+                                "" 
                             )
                         }
                         showUploadDialog = false
                         pendingFileUri = null
                         pendingFileName = ""
-                    }
+                    },
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Upload")
                 }
@@ -1090,11 +1107,90 @@ fun CourseDetailScreen(
                         showUploadDialog = false
                         pendingFileUri = null
                         pendingFileName = ""
-                    }
+                    },
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Cancel")
                 }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Upload Loading Animation Dialog
+    if (isLoading) {
+        var dotCount by remember { mutableStateOf(0) }
+        
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(500)
+                dotCount = (dotCount + 1) % 4
             }
+        }
+        
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismissal while uploading */ },
+            icon = {
+                Box(contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        strokeWidth = 4.dp,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            },
+            title = { 
+                Text(
+                    "Uploading Note",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                ) 
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AnimatedContent(
+                        targetState = dotCount,
+                        transitionSpec = {
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                        },
+                        label = "upload_loading_text"
+                    ) { dots ->
+                        Text(
+                            text = "Processing document${".".repeat(dots)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Simulated steps
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                            Text("Reading file content", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                            Text("AI analyzing key concepts", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                            Text("Generating summary & tags", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = { },
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }
