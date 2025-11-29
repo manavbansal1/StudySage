@@ -112,7 +112,7 @@ fun CourseDetailScreen(
     val uploadStatus by homeViewModel.uploadStatus
     val errorMessage by homeViewModel.errorMessage
     val selectedNoteState by notesViewModel.selectedNote.collectAsState()
-    val isSummaryLoading by notesViewModel.isNoteDetailsLoading.collectAsState()
+    val isSummaryLoading by notesViewModel.isLoading.collectAsState()
     val quizGenerationState by gameViewModel.quizGenerationState.collectAsState()
 
     // Observe pending note id from CourseViewModel
@@ -387,7 +387,7 @@ fun CourseDetailScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "${course.code} - ${course.title}",
+                        text = "${course.title} - ${course.code}",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = Color.White
@@ -1466,46 +1466,27 @@ fun NoteSummaryScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = note.title.ifBlank { "AI Summary" },
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = Color.White
                         )
                     }
                 },
-                actions = {
-                    // Star button - only show when summary exists
-                    if (note.summary.isNotBlank()) {
-                        IconButton(onClick = onToggleStar) {
-                            Icon(
-                                imageVector = if (note.isStarred) Icons.Filled.Star else Icons.Outlined.Star,
-                                contentDescription = if (note.isStarred) "Unstar summary" else "Star summary",
-                                tint = if (note.isStarred) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = onDownload,
-                        enabled = note.fileUrl.isNotBlank()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FileDownload,
-                            contentDescription = "Download note"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
@@ -1525,73 +1506,64 @@ fun NoteSummaryScreen(
                 }
             }
 
-            item {
-                Column {
-                    Text(
-                        text = note.title.ifBlank { note.originalFileName.ifBlank { "Course note" } },
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = formatDate(note.createdAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (note.tags.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Tags: ${note.tags.joinToString(", ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
 
             item {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Summary",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "AI Summary",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
 
                             // Regenerate button - only show when summary exists
                             if (note.summary.isNotBlank()) {
-                                TextButton(
+                                IconButton(
                                     onClick = { showRegenerateDialog = true }
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
+                                        contentDescription = "Regenerate",
+                                        tint = MaterialTheme.colorScheme.primary
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Regenerate")
                                 }
                             }
                         }
+
+                        Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
                         when {
                             note.summary.isNotBlank() -> {
                                 Text(
                                     text = note.summary,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 24.sp
                                 )
                             }
                             isLoading -> {
@@ -1618,71 +1590,111 @@ fun NoteSummaryScreen(
                     Card(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
-                        )
+                        ),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = "Key Points",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            note.keyPoints.forEach { point ->
-                                Text(
-                                    text = "• $point",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
                                 )
+                                Text(
+                                    text = "Key Points",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                            
+                            note.keyPoints.forEach { point ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "•",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = point,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 24.sp
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
 
-            item {
+        }
+
+        // Loading overlay when regenerating summary (shows after clicking Generate)
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
                 Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 12.dp
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(28.dp),
+                        modifier = Modifier.padding(40.dp)
                     ) {
                         Text(
-                            text = "Original Document",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            "Generating AI Summary",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
                         )
-                        Text(
-                            text = "File name: ${note.originalFileName.ifBlank { "Not available" }}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (note.fileType.isNotBlank()) {
-                            Text(
-                                text = "File type: ${note.fileType}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             )
-                        }
-                        Text(
-                            text = "Updated: ${formatDate(note.updatedAt)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (note.fileUrl.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            FilledTonalButton(onClick = onDownload) {
-                                Icon(
-                                    imageVector = Icons.Default.FileDownload,
-                                    contentDescription = null
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Download original")
-                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            Text(
+                                "AI is analyzing your note...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
