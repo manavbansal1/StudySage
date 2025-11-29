@@ -147,6 +147,9 @@ fun GroupChatScreen(
                         onPromoteToAdmin = { userId ->
                             viewModel.promoteToAdmin(groupId, userId)
                         },
+                        onRemoveAllMembers = {
+                            viewModel.removeAllMembers(groupId)
+                        },
                         groupChatViewModel = viewModel
                     )
                 }
@@ -617,7 +620,8 @@ private fun ErrorState(
 ) {
     // Check if this is a "removed from group" error
     val isRemovedError = message.contains("no longer a member", ignoreCase = true) ||
-                         message.contains("removed from this group", ignoreCase = true)
+                         message.contains("removed from this group", ignoreCase = true) ||
+                         message.contains("Group not found", ignoreCase = true)
 
     Box(modifier = modifier.fillMaxSize()) {
         // Back arrow in top left

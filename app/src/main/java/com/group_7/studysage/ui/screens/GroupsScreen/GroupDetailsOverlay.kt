@@ -49,6 +49,7 @@ fun GroupDetailsOverlay(
     onDeleteGroup: () -> Unit,
     onRemoveMember: (String) -> Unit,
     onPromoteToAdmin: (String) -> Unit,
+    onRemoveAllMembers: () -> Unit,
     groupChatViewModel: GroupChatViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -61,6 +62,7 @@ fun GroupDetailsOverlay(
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var showLeaveConfirmation by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showRemoveMembersRequiredDialog by remember { mutableStateOf(false) }
     var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Auto-dismiss success message
@@ -106,33 +108,52 @@ fun GroupDetailsOverlay(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // Header with close button
-                Row(
+                // Header with gradient background
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Group Details",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onSurface
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    MaterialTheme.colorScheme.background
+                                )
+                            )
                         )
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Group Details",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Manage members and settings",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
 
@@ -338,7 +359,13 @@ fun GroupDetailsOverlay(
                         if (isAdmin) {
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = { showDeleteConfirmation = true },
+                                onClick = {
+                                    if (memberCount > 1) {
+                                        showRemoveMembersRequiredDialog = true
+                                    } else {
+                                        showDeleteConfirmation = true
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp),
@@ -418,6 +445,41 @@ fun GroupDetailsOverlay(
             },
             dismissButton = {
                 TextButton(onClick = { showLeaveConfirmation = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    // Remove Members Required Dialog
+    if (showRemoveMembersRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveMembersRequiredDialog = false },
+            icon = {
+                Icon(Icons.Default.GroupRemove, null, tint = MaterialTheme.colorScheme.error)
+            },
+            title = { Text("Remove Members First") },
+            text = {
+                Text("You must remove all other members before you can delete this group.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveMembersRequiredDialog = false
+                        onRemoveAllMembers()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Remove All Members")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveMembersRequiredDialog = false }) {
                     Text("Cancel")
                 }
             },
@@ -605,24 +667,39 @@ private fun MemberItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
         ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 6.dp
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Member Avatar
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(52.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            )
+                        )
+                    )
+                    .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 if (memberPic.isNotEmpty()) {
@@ -659,16 +736,31 @@ private fun MemberItem(
                     if (isThisUserAdmin) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        ) {
-                            Text(
-                                text = "Admin",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Admin",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }

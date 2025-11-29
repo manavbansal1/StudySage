@@ -74,6 +74,20 @@ class GroupRepository(
             val currentUser = firebaseAuth.currentUser
                 ?: return Result.failure(Exception("No user logged in"))
 
+            // Fetch user's actual name from Firestore profile
+            val userProfile = try {
+                firestore.collection("users")
+                    .document(currentUser.uid)
+                    .get()
+                    .await()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch user profile: ${e.message}", e)
+                null
+            }
+            
+            val userName = userProfile?.getString("name") ?: currentUser.displayName ?: "User"
+            val userProfilePic = userProfile?.getString("profileImageUrl") ?: currentUser.photoUrl?.toString() ?: ""
+
             val groupId = firestore.collection("groups").document().id
 
             val groupProfile = mapOf(
@@ -87,8 +101,8 @@ class GroupRepository(
                 "members" to listOf(
                     mapOf(
                         "userId" to currentUser.uid,
-                        "name" to (currentUser.displayName ?: "User"),
-                        "profilePic" to (currentUser.photoUrl?.toString() ?: ""),
+                        "name" to userName,
+                        "profilePic" to userProfilePic,
                         "role" to "admin",
                         "joinedAt" to System.currentTimeMillis()
                     )
@@ -190,9 +204,13 @@ class GroupRepository(
 
     /**
      * Remove member from group
-     * Also removes the group from the user's database
+     * Also removes the group from the user's database if removeFromProfile is true
      */
-    suspend fun removeMemberFromGroup(groupId: String, userId: String): Result<Unit> {
+    suspend fun removeMemberFromGroup(
+        groupId: String, 
+        userId: String, 
+        removeFromProfile: Boolean = true
+    ): Result<Unit> {
         return try {
             // Get group data
             val groupData = getGroupProfile(groupId)
@@ -211,27 +229,138 @@ class GroupRepository(
                 )
                 .await()
 
-            // ALSO remove group from user's profile
-            try {
-                val userDoc = firestore.collection("users").document(userId).get().await()
-                @Suppress("UNCHECKED_CAST")
-                val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
-                
-                val updatedUserGroups = userGroups.filter { it["groupId"] != groupId }
-                
-                firestore.collection("users").document(userId)
-                    .update("groups", updatedUserGroups)
-                    .await()
+            // Remove group from user's profile ONLY if requested
+            if (removeFromProfile) {
+                try {
+                    val userDoc = firestore.collection("users").document(userId).get().await()
+                    @Suppress("UNCHECKED_CAST")
+                    val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
                     
-                Log.d(TAG, "Removed group $groupId from user $userId's profile")
-            } catch (e: Exception) {
-                // Log but don't fail the whole operation if user update fails
-                Log.e(TAG, "Failed to remove group from user profile: ${e.message}", e)
+                    val updatedUserGroups = userGroups.filter { it["groupId"] != groupId }
+                    
+                    firestore.collection("users").document(userId)
+                        .update("groups", updatedUserGroups)
+                        .await()
+                        
+                    Log.d(TAG, "Removed group $groupId from user $userId's profile")
+                } catch (e: Exception) {
+                    // Log but don't fail the whole operation if user update fails
+                    Log.e(TAG, "Failed to remove group from user profile: ${e.message}", e)
+                }
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to remove member $userId from group $groupId: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove ALL members from group except the admin
+     * Used before deleting a group to ensure clean cleanup
+     */
+    suspend fun removeAllMembersFromGroup(groupId: String, adminId: String): Result<Unit> {
+        return try {
+            // Get all members
+            val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
+            val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
+            
+            // Filter out the admin
+            val membersToRemove = members.filter { it["userId"] != adminId }
+            
+            // Remove each member
+            membersToRemove.forEach { member ->
+                val userId = member["userId"] as? String
+                if (userId != null) {
+                    // Remove from group and their profile
+                    removeMemberFromGroup(groupId, userId, removeFromProfile = true)
+                }
+            }
+            
+            Log.d(TAG, "Removed all members from group $groupId except admin $adminId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to remove all members from group $groupId: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove group from user's profile ONLY
+     * Used when the group itself has been deleted or user is removed
+     */
+    suspend fun removeGroupFromUserProfile(groupId: String, userId: String): Result<Unit> {
+        return try {
+            val userDoc = firestore.collection("users").document(userId).get().await()
+            @Suppress("UNCHECKED_CAST")
+            val userGroups = userDoc.get("groups") as? MutableList<Map<String, Any>> ?: mutableListOf()
+            
+            val updatedUserGroups = userGroups.filter { it["groupId"] != groupId }
+            
+            firestore.collection("users").document(userId)
+                .update("groups", updatedUserGroups)
+                .await()
+                
+            Log.d(TAG, "Removed group $groupId from user $userId's profile")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to remove group from user profile: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Delete entire group (admin only)
+     * 1. Removes all members from the group document
+     * 2. Removes group from Admin's profile (so it disappears for them)
+     * 3. KEEPS group in other members' profiles (so they see "Group not found" when clicking)
+     * 4. Deletes all messages and the group document globally
+     */
+    suspend fun deleteGroup(groupId: String): Result<Unit> {
+        return try {
+            val currentUser = firebaseAuth.currentUser
+            
+            // Get all members first
+            val groupData = getGroupProfile(groupId)
+            @Suppress("UNCHECKED_CAST")
+            val members = groupData?.get("members") as? List<Map<String, Any>> ?: emptyList()
+            
+            // Process each member
+            members.forEach { member ->
+                val userId = member["userId"] as? String
+                if (userId != null) {
+                    try {
+                        // If it's the admin (current user), remove from their profile so it disappears
+                        // If it's another member, KEEP in profile so they see "Group not found" when clicking
+                        val isCurrentUser = userId == currentUser?.uid
+                        
+                        removeMemberFromGroup(groupId, userId, removeFromProfile = isCurrentUser)
+                        
+                        Log.d(TAG, "Processed member $userId deletion (removedFromProfile=$isCurrentUser)")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to process member $userId: ${e.message}", e)
+                    }
+                }
+            }
+            
+            // Delete all messages from Firestore
+            val messages = firestore.collection("groups")
+                .document(groupId)
+                .collection("messages")
+                .get()
+                .await()
+
+            messages.documents.forEach { it.reference.delete().await() }
+
+            // Delete the group document globally from Firestore
+            firestore.collection("groups").document(groupId).delete().await()
+            
+            Log.d(TAG, "Successfully deleted group $groupId globally")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete group $groupId: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -281,6 +410,20 @@ class GroupRepository(
                 return Result.failure(Exception("You are not a member of this group"))
             }
 
+            // Fetch user's actual name from Firestore profile
+            val userProfile = try {
+                firestore.collection("users")
+                    .document(currentUser.uid)
+                    .get()
+                    .await()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch user profile: ${e.message}", e)
+                null
+            }
+            
+            val userName = userProfile?.getString("name") ?: currentUser.displayName ?: "User"
+            val userProfilePic = userProfile?.getString("profileImageUrl") ?: currentUser.photoUrl?.toString() ?: ""
+
             val messageId = firestore.collection("groups")
                 .document(groupId)
                 .collection("messages")
@@ -289,8 +432,8 @@ class GroupRepository(
             val messageData = mapOf(
                 "messageId" to messageId,
                 "senderId" to currentUser.uid,
-                "senderName" to (currentUser.displayName ?: "User"),
-                "senderProfilePic" to (currentUser.photoUrl?.toString() ?: ""),
+                "senderName" to userName,
+                "senderProfilePic" to userProfilePic,
                 "message" to message,
                 "timestamp" to System.currentTimeMillis(),
                 "images" to images
@@ -310,7 +453,7 @@ class GroupRepository(
                     mapOf(
                         "lastMessage" to message,
                         "lastMessageTime" to System.currentTimeMillis(),
-                        "lastMessageSender" to (currentUser.displayName ?: "User")
+                        "lastMessageSender" to userName
                     )
                 )
                 .await()
@@ -319,7 +462,7 @@ class GroupRepository(
             notifyGroupMembers(
                 groupId = groupId,
                 senderId = currentUser.uid,
-                senderName = currentUser.displayName ?: "User",
+                senderName = userName,
                 messageText = message
             )
 
@@ -480,29 +623,7 @@ class GroupRepository(
         }
     }
 
-    /**
-     * Delete entire group (admin only)
-     */
-    suspend fun deleteGroup(groupId: String): Result<Unit> {
-        return try {
-            // Delete all messages first
-            val messages = firestore.collection("groups")
-                .document(groupId)
-                .collection("messages")
-                .get()
-                .await()
 
-            messages.documents.forEach { it.reference.delete().await() }
-
-            // Delete the group
-            firestore.collection("groups").document(groupId).delete().await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete group $groupId: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
 
     /**
      * Check if user is a member of a group
