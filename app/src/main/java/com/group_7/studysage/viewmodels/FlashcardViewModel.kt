@@ -33,13 +33,31 @@ class FlashcardViewModel(
     val generationProgress: StateFlow<Int> = _generationProgress.asStateFlow()
 
     /**
-     * Load flashcards for a note (currently always returns empty since we don't persist)
+     * Load flashcards for a note from Firestore
      */
     fun loadFlashcardsForNote(noteId: String) {
-        // Don't load flashcards from Firestore - always start fresh
-        _flashcards.value = emptyList()
-        _errorMessage.value = null
-        _isLoading.value = false
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _errorMessage.value = null
+                
+                val result = repository.loadFlashcardsForNote(noteId)
+                
+                result.onSuccess { flashcards ->
+                    _flashcards.value = flashcards
+                    _isLoading.value = false
+                    Log.d(TAG, "Loaded ${flashcards.size} flashcards for note: $noteId")
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to load flashcards", error)
+                    _flashcards.value = emptyList()
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading flashcards", e)
+                _flashcards.value = emptyList()
+                _isLoading.value = false
+            }
+        }
     }
 
     /**
@@ -92,6 +110,9 @@ class FlashcardViewModel(
                         _isLoading.value = false
                         _errorMessage.value = null
                         Log.d(TAG, "Successfully generated ${generatedFlashcards.size} flashcards")
+                        
+                        // Save flashcards to Firestore
+                        saveFlashcardsToFirestore(noteId, generatedFlashcards)
                     }.onFailure { error ->
                         // If AI fails, throw and catch below to trigger fallback
                         throw error
@@ -167,6 +188,24 @@ class FlashcardViewModel(
      */
     fun shuffleFlashcards() {
         _flashcards.value = _flashcards.value.shuffled()
+    }
+
+    /**
+     * Save flashcards to Firestore in the background
+     */
+    private fun saveFlashcardsToFirestore(noteId: String, flashcards: List<Flashcard>) {
+        viewModelScope.launch {
+            try {
+                val result = repository.saveFlashcards(noteId, flashcards)
+                result.onSuccess {
+                    Log.d(TAG, "Successfully saved ${flashcards.size} flashcards to Firestore")
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to save flashcards to Firestore", error)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving flashcards", e)
+            }
+        }
     }
 
 }
