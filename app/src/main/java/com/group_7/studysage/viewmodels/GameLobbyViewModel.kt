@@ -78,12 +78,15 @@ class GameLobbyViewModel(
                 return@launch
             }
 
+            val userProfile = authViewModel.userProfile.value
+            val userName = userProfile?.get("name") as? String ?: "Unknown"
+
             val response = gameApiService.createGameSession(
                 groupId = groupId,
                 documentId = documentId,
                 documentName = documentName,
                 hostId = currentUser.uid,
-                hostName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Unknown",
+                hostName = userName,
                 gameType = gameType,
                 settings = settings
             )
@@ -108,11 +111,14 @@ class GameLobbyViewModel(
                 return@launch
             }
 
+            val userProfile = authViewModel.userProfile.value
+            val userName = userProfile?.get("name") as? String ?: "Unknown"
+
             val response = gameApiService.joinGameSession(
                 groupId = groupId,
                 sessionId = sessionId,
                 userId = currentUser.uid,
-                userName = currentUser.displayName?.takeIf { it.isNotEmpty() } ?: "Unknown"
+                userName = userName
             )
 
             if (response.success && response.data != null) {
