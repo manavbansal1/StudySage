@@ -27,11 +27,12 @@
 
 </div>
 
-<br>
 
-## <img src="https://api.iconify.design/material-symbols:star-rounded.svg?color=%239333ea" width="26" height="26" style="vertical-align: middle;"> Overview
+## Overview
 
 StudySage is a comprehensive educational Android application that combines **AI-powered content processing**, **collaborative study groups**, and **real-time multiplayer games**. Built with modern Android technologies and a custom Kotlin/Ktor backend, StudySage creates an engaging, gamified learning environment.
+
+> **Backend Access**: The multiplayer game server runs on a separate Kotlin/Ktor backend maintained in a private repository. The app's core features (notes, courses, groups, flashcards) work without the backend. For full multiplayer game functionality, email **bansalmanav39@gmail.com** for backend access.
 
 <table>
 <tr>
@@ -59,9 +60,8 @@ StudySage is a comprehensive educational Android application that combines **AI-
 </tr>
 </table>
 
-<br>
 
-## <img src="https://api.iconify.design/material-symbols:bolt.svg?color=%23fbbf24" width="26" height="26" style="vertical-align: middle;"> Key Features
+## Key Features
 
 <details open>
 <summary><b><img src="https://api.iconify.design/material-symbols:auto-awesome.svg?color=%239333ea" width="18" height="18" style="vertical-align: middle; margin-right: 4px;"> AI-Powered Note Processing</b></summary>
@@ -179,13 +179,13 @@ Tic-tac-toe meets trivia
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:code.svg?color=%239333ea" width="26" height="26" style="vertical-align: middle;"> Tech Stack
+## Tech Stack
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-<h3><img src="https://api.iconify.design/material-symbols:phone-android.svg?color=%239333ea" width="22" height="22" style="vertical-align: middle; margin-right: 6px;">Frontend</h3>
+<h3>Frontend</h3>
 
 ```kotlin
 Language:      Kotlin 2.2.21
@@ -204,18 +204,20 @@ Async:         Kotlin Coroutines + Flow
 </td>
 <td width="50%" valign="top">
 
-<h3><img src="https://api.iconify.design/material-symbols:cloud.svg?color=%23fbbf24" width="22" height="22" style="vertical-align: middle; margin-right: 6px;">Backend & Cloud</h3>
+<h3>Backend & Cloud</h3>
 
 ```yaml
 Authentication:  Firebase Auth
 Database:        Cloud Firestore (NoSQL)
 Storage:         Firebase + Cloudinary CDN
 AI:              Gemini 1.5 Flash (Vertex AI)
-Game Server:     Kotlin/Ktor 3.3.1
+Game Server:     Kotlin/Ktor 3.3.1 (separate repo*)
 Hosting:         Railway / Cloud Run
 TTS:             Google Cloud Text-to-Speech
 Real-time:       WebSocket + Firestore Snapshots
 ```
+
+<sub>* Game server is in a private repository. Email **bansalmanav39@gmail.com** for access.</sub>
 
 </td>
 </tr>
@@ -223,7 +225,7 @@ Real-time:       WebSocket + Firestore Snapshots
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:architecture.svg?color=%239333ea" width="26" height="26" style="vertical-align: middle;"> Architecture
+## Architecture
 
 ### MVVM + Clean Architecture
 
@@ -279,17 +281,13 @@ StudySage/
 │   │   ├── components/          # Reusable UI components
 │   │   └── theme/               # Purple-gold theme
 │   └── utils/                   # Helpers & utilities
-│
-└── studysage-backend/           # Kotlin/Ktor Game Server
-    ├── Application.kt           # Server entry point
-    ├── services/                # Game logic & Firebase
-    ├── routes/                  # REST API endpoints
-    └── websocket/               # Real-time handlers
 ```
+
+> **Note**: The **Kotlin/Ktor game server backend** is maintained in a **separate private repository**. To request access for development or deployment, please email **bansalmanav39@gmail.com**.
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:sports-esports.svg?color=%23fbbf24" width="26" height="26" style="vertical-align: middle;"> Multiplayer Games
+## Multiplayer Games
 
 ### Game Architecture
 
@@ -298,7 +296,7 @@ Android App (WebSocket Client)
          │
          │ <50ms latency
          ▼
-Ktor Backend (Game Server)
+Ktor Backend (Game Server)*
   • Session management
   • Turn-based logic
   • AI question generation
@@ -307,6 +305,8 @@ Ktor Backend (Game Server)
          ▼
 Firebase Firestore
 ```
+
+<sub>* The game server backend is maintained in a separate private repository. Email **bansalmanav39@gmail.com** for access.</sub>
 
 ### <img src="https://api.iconify.design/material-symbols:flag.svg?color=%23ef4444" width="22" height="22" style="vertical-align: middle; margin-right: 6px;">Quiz Race
 
@@ -359,7 +359,7 @@ Switch turns
 ```kotlin
 // Real-time via WebSocket
 BOARD_UPDATE {
-  boardState: List<String>  // ["", "X", "O", ...]
+  boardState: List  // ["", "X", "O", ...]
   currentTurn: String       // User ID
   lastMove: Int             // Square index
 }
@@ -381,7 +381,7 @@ WS     /ws/game/{sessionId}                          # Play
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:database.svg?color=%239333ea" width="26" height="26" style="vertical-align: middle;"> Firebase Schema
+## Firebase Schema
 
 ```javascript
 firestore/
@@ -413,7 +413,7 @@ firestore/
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:palette.svg?color=%23fbbf24" width="26" height="26" style="vertical-align: middle;"> Design System
+## Design System
 
 ### Color Palette
 
@@ -444,31 +444,30 @@ Text:             #F5F3FF  // Off-white
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:group.svg?color=%239333ea" width="26" height="26" style="vertical-align: middle;"> Team
+##  Team
 
 <div align="center">
 
 | Developer | Role | GitHub |
 |-----------|------|--------|
-| **Manav Bansal** | Lead Developer & Architecture | [@manavbansal1](https://github.com/manavbansal1) |
-| **Kabir Singh Sidhu** | Backend & AI Integration | [@kabirsinghsidhu](https://github.com/kabirsinghsidhu) |
-| **Ansh Tiwari** | UI/UX & Frontend Design | [@anshtiwari](https://github.com/anshtiwari) |
-| **Akaaljot Singh Mathoda** | Full Stack Development | [@akaaljotmathoda](https://github.com/akaaljotmathoda) |
-| **Yadhu Choudhary** | Games & Multiplayer Systems | [@yadhuchoudhary](https://github.com/yadhuchoudhary) |
+| **Manav Bansal** | Backend & WebSocket Integration | [@manavbansal1](https://github.com/manavbansal1) |
+| **Kabir Singh Sidhu** | AI Integration & Game UI | [@kabirsinghsidhu](https://github.com/kab1rs1dhu) |
+| **Ansh Tiwari** | UI/UX Design & NFC | [@anshtiwari](https://github.com/CandyRagi) |
+| **Akaaljot Singh Mathoda** | Notifications & Quick Actions | [@akaaljotmathoda](https://github.com/Jassa47) |
+| **Yadhu Choudhary** | Podcasts, Flashcards & Content | [@yadhuchoudhary](https://github.com/yadhuuu1110) |
 
 </div>
 
 <br>
 
-## <img src="https://api.iconify.design/material-symbols:balance.svg?color=%23fbbf24" width="26" height="26" style="vertical-align: middle;"> License
+## License
 
 MIT License - Copyright (c) 2025 Group 7 - StudySage Development Team
 
 See [LICENSE](LICENSE) file for details.
 
-<br>
 
-## <img src="https://api.iconify.design/material-symbols:favorite.svg?color=%23ef4444" width="26" height="26" style="vertical-align: middle;"> Acknowledgments
+## Acknowledgments
 
 **Technologies**: [Firebase](https://firebase.google.com) • [Cloudinary](https://cloudinary.com) • [Google Gemini](https://ai.google.dev) • [Ktor](https://ktor.io) • [Jetpack Compose](https://developer.android.com/jetpack/compose)
 
@@ -476,26 +475,20 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
+
 <div align="center">
 
 <div align="center">
 
 <p>
-<img src="https://api.iconify.design/material-symbols:mail.svg?color=%239333ea" width="18" height="18" style="vertical-align: middle; margin-right: 6px;"><b>studysage.team@gmail.com</b>
+<img src="https://api.iconify.design/material-symbols:mail.svg?color=%239333ea" width="18" height="18" style="vertical-align: middle; margin-right: 6px;"><b>bansalmanav39@gmail.com</b>
 </p>
-
-<p>
-<img src="https://api.iconify.design/logos:github-icon.svg" width="18" height="18" style="vertical-align: middle; margin-right: 6px;"><a href="https://github.com/manavbansal1/StudySage/issues"><b>Issues</b></a> • <a href="https://github.com/manavbansal1/StudySage/discussions"><b>Discussions</b></a>
 </p>
-
-<br>
 
 ### ⭐ Star this repo if you found it helpful!
 
 <img src="https://img.shields.io/badge/Status-Active_Development-10B981?style=flat-square" alt="Status">
 <img src="https://img.shields.io/badge/Version-1.0.0-9333EA?style=flat-square" alt="Version">
 <img src="https://img.shields.io/badge/Made_with-❤️-ef4444?style=flat-square" alt="Love">
-
-**Made by Group 7**
 
 </div>
