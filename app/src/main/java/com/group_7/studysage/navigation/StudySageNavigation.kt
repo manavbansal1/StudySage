@@ -257,10 +257,10 @@ fun StudySageNavigation(
                                                 try {
                                                     navController.navigate(screen.route) {
                                                         popUpTo(navController.graph.findStartDestination().id) {
-                                                            inclusive = false
+                                                            saveState = true
                                                         }
-                                                        launchSingleTop = false
-                                                        // Don't save or restore state to force refresh
+                                                        launchSingleTop = true
+                                                        restoreState = true
                                                     }
                                                 } catch (e: Exception) {
                                                     android.util.Log.e("StudySageNavigation", "Navigation to ${screen.route} failed: ${e.message}", e)

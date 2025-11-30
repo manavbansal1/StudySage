@@ -49,6 +49,21 @@ import androidx.compose.ui.platform.LocalUriHandler
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.os.Environment
+import android.os.Build
+import android.widget.Toast
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.ButtonDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -424,6 +439,7 @@ private fun MessagesList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
     message: GroupMessage,
@@ -474,16 +490,44 @@ private fun MessageBubble(
                 // Images
                 if (message.images.isNotEmpty()) {
                     message.images.forEach { imageUrl ->
-                        Image(
-                            painter = rememberAsyncImagePainter(imageUrl),
-                            contentDescription = "Sent image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                                .padding(bottom = 8.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                        var showImageMenu by remember { mutableStateOf(false) }
+                        val context = LocalContext.current
+                        val scope = rememberCoroutineScope()
+
+                        Box {
+                            Image(
+                                painter = rememberAsyncImagePainter(imageUrl),
+                                contentDescription = "Sent image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .padding(bottom = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .combinedClickable(
+                                        onClick = {},
+                                        onLongClick = { showImageMenu = true }
+                                    ),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            DropdownMenu(
+                                expanded = showImageMenu,
+                                onDismissRequest = { showImageMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Save Image") },
+                                    onClick = {
+                                        showImageMenu = false
+                                        scope.launch {
+                                            saveImageToGallery(context, imageUrl)
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Save, contentDescription = null)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -491,15 +535,16 @@ private fun MessageBubble(
                 if (message.attachments.isNotEmpty()) {
                     message.attachments.forEach { attachment ->
                         if (attachment.type == "game_invite") {
-                            // Game Invite UI
+                            // Game Invite UI - Refined
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 8.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                                )
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
@@ -518,7 +563,7 @@ private fun MessageBubble(
                                             text = "Game Invite",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                     
@@ -529,7 +574,7 @@ private fun MessageBubble(
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 2.sp,
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -539,9 +584,12 @@ private fun MessageBubble(
                                             navController.navigate("game_play/${attachment.name}")
                                         },
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp)
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        )
                                     ) {
-                                        Text("Join Game")
+                                        Text("Join Game", color = MaterialTheme.colorScheme.onPrimary)
                                     }
                                 }
                             }
@@ -764,7 +812,7 @@ private fun MessageInputSection(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+                    .padding(start = 0.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 if (messageText.isEmpty()) {
@@ -1142,6 +1190,60 @@ private fun formatTimestamp(timestamp: Long): String {
             val date = Date(timestamp)
             val format = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
             format.format(date)
+        }
+    }
+}
+
+private suspend fun saveImageToGallery(context: android.content.Context, imageUrl: String) {
+    try {
+        val loader = context.imageLoader
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .allowHardware(false) // Disable hardware bitmaps for saving
+            .build()
+
+        val result = (loader.execute(request) as? SuccessResult)?.drawable
+        val bitmap = (result as? BitmapDrawable)?.bitmap
+
+        if (bitmap != null) {
+            val filename = "StudySage_${System.currentTimeMillis()}.jpg"
+            var fos: java.io.OutputStream? = null
+            var imageUri: Uri? = null
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/StudySage")
+                }
+                val contentResolver = context.contentResolver
+                imageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                fos = imageUri?.let { contentResolver.openOutputStream(it) }
+            } else {
+                // For older versions, we might need WRITE_EXTERNAL_STORAGE permission
+                // But for now, let's assume scoped storage or permission handled
+                val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val image = java.io.File(imagesDir, filename)
+                fos = java.io.FileOutputStream(image)
+            }
+
+            if (fos != null) {
+                fos.use {
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(context, "Image saved to gallery", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            Toast.makeText(context, "Error saving image: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }
