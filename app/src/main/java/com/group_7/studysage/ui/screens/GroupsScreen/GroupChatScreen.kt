@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,9 +81,11 @@ fun GroupChatScreen(
     val messages by viewModel.messages.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     val inviteStatus by viewModel.inviteStatus.collectAsState()
+    val messageText by viewModel.messageText.collectAsState()
+    val inviteEmail by viewModel.inviteEmail.collectAsState()
 
-    var showInviteDialog by remember { mutableStateOf(false) }
-    var showGroupDetails by remember { mutableStateOf(false) }
+    var showInviteDialog by rememberSaveable { mutableStateOf(false) }
+    var showGroupDetails by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(groupId) {
         viewModel.loadGroupData(groupId)
@@ -140,8 +143,11 @@ fun GroupChatScreen(
                     // Message input at bottom
                     val context = LocalContext.current
                     MessageInputSection(
+                        messageText = messageText,
+                        onMessageChange = { viewModel.setMessageText(it) },
                         onSendMessage = { message ->
                             viewModel.sendMessage(groupId, message)
+                            viewModel.setMessageText("") // Clear text after sending
                         },
                         onSendAttachment = { uri, type ->
                             if (type == "game_invite") {
@@ -267,10 +273,16 @@ fun GroupChatScreen(
         // Invite dialog
         if (showInviteDialog) {
             InviteMemberDialog(
-                onDismiss = { showInviteDialog = false },
+                email = inviteEmail,
+                onEmailChange = { viewModel.setInviteEmail(it) },
+                onDismiss = {
+                    showInviteDialog = false
+                    viewModel.setInviteEmail("") // Clear email on dismiss
+                },
                 onConfirm = { email ->
                     viewModel.sendInviteByEmail(groupId, email)
                     showInviteDialog = false
+                    viewModel.setInviteEmail("") // Clear email on confirm
                 }
             )
         }
@@ -690,12 +702,14 @@ private fun MessageBubble(
 
 @Composable
 private fun MessageInputSection(
+    messageText: String,
+    onMessageChange: (String) -> Unit,
     onSendMessage: (String) -> Unit,
     onSendAttachment: (Uri, String) -> Unit,
     backOutEasing: Easing,
     modifier: Modifier = Modifier
 ) {
-    var messageText by remember { mutableStateOf("") }
+    // Local state removed, using hoisted state
 
     // Floating pill container
     Surface(
@@ -746,7 +760,7 @@ private fun MessageInputSection(
                     )
                 }
 
-                var showGameDialog by remember { mutableStateOf(false) }
+                var showGameDialog by rememberSaveable { mutableStateOf(false) }
 
                 if (showGameDialog) {
                     GameCodeDialog(
@@ -824,7 +838,7 @@ private fun MessageInputSection(
                 }
                 BasicTextField(
                     value = messageText,
-                    onValueChange = { messageText = it },
+                    onValueChange = onMessageChange,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     ),
@@ -855,7 +869,6 @@ private fun MessageInputSection(
                     onClick = {
                         if (messageText.isNotBlank()) {
                             onSendMessage(messageText.trim())
-                            messageText = ""
                         }
                     },
                     modifier = Modifier
@@ -1060,11 +1073,12 @@ private fun ErrorState(
 
 @Composable
 private fun InviteMemberDialog(
+    email: String,
+    onEmailChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var isValidEmail by remember { mutableStateOf(true) }
+    var isValidEmail by rememberSaveable { mutableStateOf(true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1085,7 +1099,7 @@ private fun InviteMemberDialog(
                 TextField(
                     value = email,
                     onValueChange = {
-                        email = it
+                        onEmailChange(it)
                         isValidEmail = true
                     },
                     label = { Text("Email Address") },
