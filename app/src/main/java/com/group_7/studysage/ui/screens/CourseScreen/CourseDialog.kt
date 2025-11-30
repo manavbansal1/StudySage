@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.group_7.studysage.data.repository.Course
 import androidx.core.graphics.toColorInt
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group_7.studysage.viewmodels.AddCourseViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,16 +36,33 @@ fun CourseDialog(
     year: String,
     existingCourse: Course? = null,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, code: String, instructor: String, description: String, credits: Int, color: String) -> Unit
+    onConfirm: (title: String, code: String, instructor: String, description: String, credits: Int, color: String) -> Unit,
+    addCourseViewModel: AddCourseViewModel = viewModel()
 ) {
-    var title by remember { mutableStateOf(existingCourse?.title ?: "") }
-    var code by remember { mutableStateOf(existingCourse?.code ?: "") }
-    var instructor by remember { mutableStateOf(existingCourse?.instructor ?: "") }
-    var description by remember { mutableStateOf(existingCourse?.description ?: "") }
-    var credits by remember { mutableStateOf(existingCourse?.credits?.toString() ?: "") }
-    var selectedColor by remember { mutableStateOf(existingCourse?.color ?: courseColors.first()) }
+    // Track if we've initialized the ViewModel for this dialog session
+    var hasInitialized by remember { mutableStateOf(false) }
+    
+    // Initialize ViewModel with existing course data if editing (only once)
+    LaunchedEffect(Unit) {
+        if (!hasInitialized) {
+            if (existingCourse != null) {
+                addCourseViewModel.initializeFromExistingCourse(
+                    title = existingCourse.title,
+                    code = existingCourse.code,
+                    instructor = existingCourse.instructor,
+                    description = existingCourse.description,
+                    credits = existingCourse.credits,
+                    color = existingCourse.color
+                )
+            }
+            // Don't clear state if adding a new course - preserve any existing data
+            hasInitialized = true
+        }
+    }
+    
+    // Get state from ViewModel
+    val courseState by addCourseViewModel.uiState.collectAsState()
 
-    // Error states for validation
     var titleError by remember { mutableStateOf(false) }
     var codeError by remember { mutableStateOf(false) }
     var instructorError by remember { mutableStateOf(false) }
@@ -51,10 +70,10 @@ fun CourseDialog(
 
     // Validation function
     fun validateFields(): Boolean {
-        titleError = title.isBlank()
-        codeError = code.isBlank()
-        instructorError = instructor.isBlank()
-        creditsError = credits.isBlank() || credits.toIntOrNull() == null || credits.toInt() < 0
+        titleError = courseState.title.isBlank()
+        codeError = courseState.code.isBlank()
+        instructorError = courseState.instructor.isBlank()
+        creditsError = courseState.credits.isBlank() || courseState.credits.toIntOrNull() == null || courseState.credits.toInt() < 0
 
         return !titleError && !codeError && !instructorError && !creditsError
     }
@@ -98,9 +117,9 @@ fun CourseDialog(
 
                 // Course Title (Required)
                 TextField(
-                    value = title,
+                    value = courseState.title,
                     onValueChange = {
-                        title = it
+                        addCourseViewModel.setTitle(it)
                         titleError = false
                     },
                     label = { Text("Course Title *") },
@@ -119,9 +138,9 @@ fun CourseDialog(
 
                 // Course Code (Required)
                 TextField(
-                    value = code,
+                    value = courseState.code,
                     onValueChange = {
-                        code = it.uppercase()
+                        addCourseViewModel.setCode(it.uppercase())
                         codeError = false
                     },
                     label = { Text("Course Code *") },
@@ -140,9 +159,9 @@ fun CourseDialog(
 
                 // Instructor (Required)
                 TextField(
-                    value = instructor,
+                    value = courseState.instructor,
                     onValueChange = {
-                        instructor = it
+                        addCourseViewModel.setInstructor(it)
                         instructorError = false
                     },
                     label = { Text("Instructor *") },
@@ -161,10 +180,10 @@ fun CourseDialog(
 
                 // Credits (Required)
                 TextField(
-                    value = credits,
+                    value = courseState.credits,
                     onValueChange = { newValue ->
                         if (newValue.isEmpty() || (newValue.toIntOrNull() != null && newValue.toInt() >= 0)) {
-                            credits = newValue
+                            addCourseViewModel.setCredits(newValue)
                             creditsError = false
                         }
                     },
@@ -185,8 +204,8 @@ fun CourseDialog(
 
                 // Description (Optional)
                 TextField(
-                    value = description,
-                    onValueChange = { description = it },
+                    value = courseState.description,
+                    onValueChange = { addCourseViewModel.setDescription(it) },
                     label = { Text("Description (Optional)") },
                     placeholder = { Text("Brief description of the course") },
                     modifier = Modifier.fillMaxWidth(),
@@ -241,8 +260,8 @@ fun CourseDialog(
                     items(courseColors) { color ->
                         ColorOption(
                             color = color,
-                            isSelected = selectedColor == color,
-                            onClick = { selectedColor = color }
+                            isSelected = courseState.selectedColor == color,
+                            onClick = { addCourseViewModel.setSelectedColor(color) }
                         )
                     }
                 }
@@ -274,8 +293,15 @@ fun CourseDialog(
                     Button(
                         onClick = {
                             if (validateFields()) {
-                                val creditsInt = credits.toIntOrNull() ?: 0
-                                onConfirm(title.trim(), code.trim(), instructor.trim(), description.trim(), creditsInt, selectedColor)
+                                val creditsInt = courseState.credits.toIntOrNull() ?: 0
+                                onConfirm(
+                                    courseState.title.trim(),
+                                    courseState.code.trim(),
+                                    courseState.instructor.trim(),
+                                    courseState.description.trim(),
+                                    creditsInt,
+                                    courseState.selectedColor
+                                )
                             }
                         },
                         enabled = !isLoading,

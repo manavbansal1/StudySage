@@ -42,6 +42,7 @@ import com.group_7.studysage.data.repository.Semester
 import com.group_7.studysage.ui.theme.StudySageTheme
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.group_7.studysage.viewmodels.CourseViewModel
+import com.group_7.studysage.viewmodels.AddCourseViewModel
 
 /**
  * A consistent "glass" card style for the entire app.
@@ -102,6 +103,9 @@ fun CoursesScreen(
     var showEditDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var selectedCourseForAction by remember { mutableStateOf<Course?>(null) }
+    
+    // ViewModel for add/edit course dialog (scoped to this screen)
+    val addCourseViewModel: AddCourseViewModel = viewModel()
 
     // If navigation provided a courseId, load it and set pendingNote
     LaunchedEffect(navCourseId, navNoteId) {
@@ -245,11 +249,16 @@ fun CoursesScreen(
             isLoading = uiState.isCreatingCourse,
             semester = uiState.selectedSemester,
             year = uiState.selectedYear,
-            onDismiss = { showAddCourseDialog = false },
+            onDismiss = { 
+                showAddCourseDialog = false
+                addCourseViewModel.clearState() // Clear state when dialog is dismissed
+            },
             onConfirm = { title, code, instructor, description, credits, color ->
                 viewModel.createCourse(title, code, instructor, description, credits, color)
                 showAddCourseDialog = false
-            }
+                addCourseViewModel.clearState() // Clear state after successful creation
+            },
+            addCourseViewModel = addCourseViewModel
         )
     }
 
@@ -276,7 +285,8 @@ fun CoursesScreen(
                 viewModel.updateCourse(updatedCourse)
                 showEditDialog = false
                 courseToEdit = null
-            }
+            },
+            addCourseViewModel = addCourseViewModel
         )
     }
 
