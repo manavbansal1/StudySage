@@ -48,6 +48,22 @@ class GroupChatViewModel(
     private val _isUploadingImage = MutableStateFlow(false)
     val isUploadingImage: StateFlow<Boolean> = _isUploadingImage.asStateFlow()
 
+    // Persist message text across rotation
+    private val _messageText = MutableStateFlow("")
+    val messageText: StateFlow<String> = _messageText.asStateFlow()
+
+    fun setMessageText(text: String) {
+        _messageText.value = text
+    }
+
+    // Persist invite email across rotation
+    private val _inviteEmail = MutableStateFlow("")
+    val inviteEmail: StateFlow<String> = _inviteEmail.asStateFlow()
+
+    fun setInviteEmail(email: String) {
+        _inviteEmail.value = email
+    }
+
     private val _uploadError = MutableStateFlow<String?>(null)
     val uploadError: StateFlow<String?> = _uploadError.asStateFlow()
 
