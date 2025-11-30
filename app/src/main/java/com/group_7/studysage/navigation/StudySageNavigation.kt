@@ -46,6 +46,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.group_7.studysage.ui.screens.CourseScreen.CoursesScreen
+import com.group_7.studysage.ui.screens.CanvasIntegrationScreen
 import com.group_7.studysage.ui.screens.GameLobbyScreen
 import com.group_7.studysage.ui.screens.GamePlayScreen
 import com.group_7.studysage.ui.screens.GameScreen
@@ -89,6 +90,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
         fun createRoute(gameCode: String) = "game_play/$gameCode"
     }
     object Leaderboard : Screen("leaderboard", "Leaderboard")
+    object CanvasIntegration : Screen("canvas_integration", "Canvas Integration")
 }
 @Composable
 private fun GlassCard(
@@ -359,7 +361,13 @@ fun StudySageNavigation(
                     }
                 ) {
                     // Plain course route (no courseId) — show courses list
-                    CoursesScreen(courseViewModel, authViewModel)
+                    CoursesScreen(
+                        courseViewModel,
+                        authViewModel,
+                        onNavigateToCanvas = {
+                            navController.navigate(Screen.CanvasIntegration.route)
+                        }
+                    )
                 }
 
                 composable(
@@ -401,7 +409,15 @@ fun StudySageNavigation(
                     val navCourseId = backStackEntry.arguments?.getString("courseId") ?: ""
                     val navNoteId = backStackEntry.arguments?.getString("noteId")
                     // Pass positional args: viewModel, authViewModel, navCourseId, navNoteId
-                    CoursesScreen(courseViewModel, authViewModel, navCourseId, navNoteId)
+                    CoursesScreen(
+                        courseViewModel,
+                        authViewModel,
+                        navCourseId,
+                        navNoteId,
+                        onNavigateToCanvas = {
+                            navController.navigate(Screen.CanvasIntegration.route)
+                        }
+                    )
                 }
                 composable(
                     Screen.Groups.route,
@@ -468,6 +484,14 @@ fun StudySageNavigation(
                         navController = navController
                     )
                 }
+                
+                // Canvas Integration Screen
+                composable(Screen.CanvasIntegration.route) {
+                    CanvasIntegrationScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                
                 // Sub-pages without transitions
                 composable("privacy_settings") {
                     PrivacyScreen(navController = navController)
