@@ -8,9 +8,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,7 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -167,9 +171,10 @@ fun StudyTacToeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceEvenly
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         // Header with game title and info icon
         Row(
@@ -185,6 +190,7 @@ fun StudyTacToeScreen(
             )
 
             var showInfoDialog by remember { mutableStateOf(false) }
+
             IconButton(onClick = { showInfoDialog = true }) {
                 Icon(
                     Icons.Default.Info,
@@ -214,7 +220,7 @@ fun StudyTacToeScreen(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -282,38 +288,21 @@ fun StudyTacToeScreen(
         // Winner/Draw announcement
         AnimatedVisibility(
             visible = winner != null || isDraw,
-            enter = slideInVertically() + fadeIn(),
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ) + fadeIn(animationSpec = tween(300)),
             exit = slideOutVertically() + fadeOut()
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = if (winner != null) Icons.Default.EmojiEvents else Icons.Default.Handshake,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = if (winner != null) Color(0xFFFFD700) else MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = when {
-                            winner == "X" -> "$player1Name Wins!"
-                            winner == "O" -> "$player2Name Wins!"
-                            isDraw -> "It's a Draw!"
-                            else -> ""
-                        },
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            GameResultCard(
+                winner = winner,
+                isDraw = isDraw,
+                player1Name = player1Name,
+                player2Name = player2Name
+            )
         }
     }
 
@@ -513,9 +502,9 @@ fun PlayerCard(
                 else -> MaterialTheme.colorScheme.surfaceVariant
             }
         ),
-        border = if (isActive) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isActive) 8.dp else 2.dp
+            defaultElevation = if (isActive) 4.dp else 2.dp
         )
     ) {
         Column(
@@ -562,56 +551,141 @@ fun QuestionDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    Icons.Default.QuestionMark,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Answer to Claim Square",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.QuestionMark,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Knowledge Challenge",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "Answer to claim your square",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
             }
         },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = question.question,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
-                    text = question.question,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    text = "Select your answer:",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 question.options.forEachIndexed { index, option ->
+                    val isSelected = selectedAnswer == index
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.02f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "option_scale"
+                    )
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable { selectedAnswer = index },
+                            .padding(vertical = 6.dp)
+                            .scale(scale)
+                            .shadow(
+                                elevation = if (isSelected) 8.dp else 2.dp,
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        onClick = { selectedAnswer = index },
+                        shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (selectedAnswer == index)
+                            containerColor = if (isSelected)
                                 MaterialTheme.colorScheme.primaryContainer
                             else
                                 MaterialTheme.colorScheme.surface
                         ),
                         border = BorderStroke(
-                            width = if (selectedAnswer == index) 2.dp else 1.dp,
-                            color = if (selectedAnswer == index)
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected)
                                 MaterialTheme.colorScheme.primary
                             else
-                                MaterialTheme.colorScheme.outline
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                         )
                     ) {
-                        Text(
-                            text = option,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = ('A' + index).toString(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = option,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -621,17 +695,214 @@ fun QuestionDialog(
                 onClick = {
                     selectedAnswer?.let { onAnswerSelected(it) }
                 },
-                enabled = selectedAnswer != null
+                enabled = selectedAnswer != null,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(48.dp)
             ) {
-                Text("Submit Answer")
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Submit Answer", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(48.dp)
+            ) {
                 Text("Cancel")
             }
         }
     )
+}
+
+@Composable
+fun GameResultCard(
+    winner: String?,
+    isDraw: Boolean,
+    player1Name: String,
+    player2Name: String
+) {
+    // Animated values
+    val infiniteTransition = rememberInfiniteTransition(label = "result_shimmer")
+
+
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    val iconRotation by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rotation"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale),
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                winner != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                isDraw -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = when {
+                            winner != null -> listOf(
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            )
+                            isDraw -> listOf(
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                            )
+                            else -> listOf(Color.Transparent, Color.Transparent)
+                        }
+                    )
+                )
+                .padding(32.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Animated icon
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (winner != null)
+                                Color(0xFFFFD700).copy(alpha = 0.2f)
+                            else
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (winner != null) Icons.Default.EmojiEvents else Icons.Default.Handshake,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(60.dp)
+                            .then(
+                                if (winner != null) {
+                                    Modifier.graphicsLayer {
+                                        rotationZ = iconRotation
+                                    }
+                                } else Modifier
+                            ),
+                        tint = if (winner != null) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Result text with gradient effect
+                Text(
+                    text = when {
+                        winner == "X" -> "🎉 Victory! 🎉"
+                        winner == "O" -> "🎉 Victory! 🎉"
+                        isDraw -> "🤝 It's a Draw! 🤝"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center,
+                    color = if (winner != null)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Winner name with animated background
+                if (winner != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Text(
+                            text = when (winner) {
+                                "X" -> player1Name
+                                "O" -> player2Name
+                                else -> ""
+                            },
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+                            color = when (winner) {
+                                "X" -> Color(0xFF2196F3)
+                                "O" -> Color(0xFFE91E63)
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    }
+                } else if (isDraw) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Text(
+                            text = "Well Played!",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Subtitle
+                Text(
+                    text = when {
+                        winner != null -> "Congratulations on the win!"
+                        isDraw -> "Both players showed great skills!"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
 }
 
 @Composable
