@@ -558,21 +558,16 @@ fun StudySageNavigation(
                 }
                 // GroupChat without transitions
                 composable(
-                    route = Screen.GroupChat.route,
-                    arguments = listOf(
-                        navArgument("groupId") {
-                            type = NavType.StringType
-                        }
-                    )
-                ) { backStackEntry ->
-                    val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-                    GroupChatScreen(
-                        groupId = groupId,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        }
-                    )
-                }
+            route = Screen.GroupChat.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            GroupChatScreen(
+                groupId = groupId,
+                navController = navController,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
             }
         }
     } else {
