@@ -41,6 +41,7 @@ object CloudinaryUploader {
         try {
             // Validate Cloudinary configuration
             if (CLOUD_NAME.isBlank() || UPLOAD_PRESET.isBlank()) {
+                android.util.Log.e("CloudinaryUploader", "❌ Missing Cloudinary credentials. CLOUD_NAME or UPLOAD_PRESET is empty.")
                 return@withContext null
             }
 
@@ -104,7 +105,7 @@ object CloudinaryUploader {
                     // Clean up temporary file
                     file.delete()
 
-                    println("✅ Cloudinary upload successful: $downloadUrl")
+                    android.util.Log.d("CloudinaryUploader", "✅ Cloudinary upload successful: $downloadUrl")
                     return@withContext downloadUrl
                 }
             } else {
@@ -116,11 +117,13 @@ object CloudinaryUploader {
                     errorBody
                 }
                 
+                android.util.Log.e("CloudinaryUploader", "❌ Upload failed. Code: ${response.code}, Error: $errorMessage")
+                
                 when (response.code) {
-                    401 -> { /* Invalid credentials */ }
-                    400 -> { /* Bad request */ }
-                    413 -> { /* File too large */ }
-                    else -> { /* Upload failed */ }
+                    401 -> android.util.Log.e("CloudinaryUploader", "❌ Invalid credentials. Check CLOUD_NAME and UPLOAD_PRESET.")
+                    400 -> android.util.Log.e("CloudinaryUploader", "❌ Bad request. Check parameters.")
+                    413 -> android.util.Log.e("CloudinaryUploader", "❌ File too large.")
+                    else -> android.util.Log.e("CloudinaryUploader", "❌ Upload failed with code ${response.code}")
                 }
             }
 
@@ -130,13 +133,13 @@ object CloudinaryUploader {
             return@withContext null
 
         } catch (e: java.net.UnknownHostException) {
-            println("❌ Cloudinary Error: No internet connection")
+            android.util.Log.e("CloudinaryUploader", "❌ Cloudinary Error: No internet connection", e)
             return@withContext null
         } catch (e: java.net.SocketTimeoutException) {
-            println("❌ Cloudinary Error: Upload timeout. Please try again")
+            android.util.Log.e("CloudinaryUploader", "❌ Cloudinary Error: Upload timeout. Please try again", e)
             return@withContext null
         } catch (e: Exception) {
-            println("❌ Cloudinary Error: ${e.message}")
+            android.util.Log.e("CloudinaryUploader", "❌ Cloudinary Error: ${e.message}", e)
             e.printStackTrace()
             return@withContext null
         }

@@ -31,6 +31,7 @@ fun GroupInviteOverlay(
     onAccept: (GroupInvite) -> Unit,
     onReject: (GroupInvite) -> Unit,
     onDismiss: () -> Unit,
+    errorMessage: String? = null,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -74,6 +75,15 @@ fun GroupInviteOverlay(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
 
                 if (invites.isEmpty()) {
                     // Empty state

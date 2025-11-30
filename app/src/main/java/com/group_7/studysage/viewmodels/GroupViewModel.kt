@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class GroupItem(
@@ -118,7 +119,12 @@ class GroupViewModel(
                         lastMessageTime = (groupProfile["lastMessageTime"] as? Long) ?: 0L,
                         lastMessageSender = groupProfile["lastMessageSender"] as? String ?: "",
                         memberCount = (groupProfile["memberCount"] as? Long)?.toInt() ?: 0,
-                        unreadCount = calculateUnreadCount(groupId, (groupProfile["lastMessageTime"] as? Long) ?: 0L),
+                        unreadCount = calculateUnreadCount(
+                            groupId, 
+                            (groupProfile["lastMessageTime"] as? Long) ?: 0L,
+                            groupProfile["lastMessageSenderId"] as? String,
+                            authRepository.currentUser?.uid
+                        ),
                         isAdmin = checkIfAdminSync(groupId)
                     )
                 }.sortedByDescending { it.lastMessageTime }
@@ -263,7 +269,12 @@ class GroupViewModel(
                     lastMessageTime = (groupProfile["lastMessageTime"] as? Long) ?: 0L,
                     lastMessageSender = groupProfile["lastMessageSender"] as? String ?: "",
                     memberCount = (groupProfile["memberCount"] as? Long)?.toInt() ?: 0,
-                    unreadCount = calculateUnreadCount(groupId, (groupProfile["lastMessageTime"] as? Long) ?: 0L),
+                    unreadCount = calculateUnreadCount(
+                        groupId, 
+                        (groupProfile["lastMessageTime"] as? Long) ?: 0L,
+                        groupProfile["lastMessageSenderId"] as? String,
+                        authRepository.currentUser?.uid
+                    ),
                     isAdmin = false
                 )
             }.sortedByDescending { it.lastMessageTime }
@@ -291,8 +302,9 @@ class GroupViewModel(
      * Calculate unread count for a group
      * Compares last message time with last seen time
      */
-    private fun calculateUnreadCount(groupId: String, lastMessageTime: Long): Int {
+    private fun calculateUnreadCount(groupId: String, lastMessageTime: Long, lastMessageSenderId: String?, currentUserId: String?): Int {
         if (lastMessageTime == 0L) return 0
+        if (currentUserId != null && lastMessageSenderId == currentUserId) return 0
         
         val lastSeenTime = sharedPrefs.getLong("last_seen_$groupId", 0L)
         return if (lastMessageTime > lastSeenTime) 1 else 0
@@ -342,7 +354,25 @@ class GroupViewModel(
     fun acceptInvite(invite: GroupInvite) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Accepting invite for group: ${'$'}{invite.groupName}")
+                Log.d(TAG, "Accepting invite for group: ${invite.groupName}")
+
+                // Check if group exists and has members
+                val groupProfile = groupRepository.getGroupProfile(invite.groupId)
+                val memberCount = (groupProfile?.get("memberCount") as? Long)?.toInt() ?: 0
+                
+                if (groupProfile == null || memberCount < 1) {
+                    Log.w(TAG, "Cannot join group ${invite.groupName}: Group does not exist or is empty")
+                    _operationStatus.value = "Group doesn't exist"
+                    
+                    // Clear error message after delay
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(3000)
+                        if (_operationStatus.value == "Group doesn't exist") {
+                            _operationStatus.value = null
+                        }
+                    }
+                    return@launch
+                }
 
                 val acceptResult = authRepository.acceptGroupInvite(invite.inviteId, invite.groupId)
 
@@ -528,17 +558,26 @@ class GroupViewModel(
     }
 
 
-    fun getFilteredGroups(): List<GroupItem> {
-        val currentState = _uiState.value
-        if (currentState !is GroupUiState.Success) return emptyList()
-
-        val query = _searchQuery.value
-        if (query.isEmpty()) return currentState.groups
-
-        return currentState.groups.filter {
-            it.groupName.contains(query, ignoreCase = true)
+    val filteredGroups: StateFlow<List<GroupItem>> = kotlinx.coroutines.flow.combine(
+        _uiState,
+        _searchQuery
+    ) { state, query ->
+        if (state is GroupUiState.Success) {
+            if (query.isEmpty()) {
+                state.groups
+            } else {
+                state.groups.filter {
+                    it.groupName.contains(query, ignoreCase = true)
+                }
+            }
+        } else {
+            emptyList()
         }
-    }
+    }.stateIn(
+        scope = viewModelScope,
+        started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
 
     override fun onCleared() {
