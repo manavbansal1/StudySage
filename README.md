@@ -154,6 +154,13 @@ Tic-tac-toe meets trivia
 - Works completely offline - no internet required
 - Bidirectional: both send and receive capabilities
 
+**Canvas LMS Integration**:
+- Import courses directly from Canvas using access token
+- Automatic course sync with Canvas data
+- Pulls course code, title, instructor, and semester information
+- One-click bulk import for all enrolled courses
+- Keeps StudySage courses in sync with Canvas enrollment
+
 **XP & Gamification System**:
 - Earn experience points for all activities (studying, games, streaks)
 - Level progression formula: XP = Level² × 100
@@ -231,8 +238,8 @@ Real-time:       WebSocket + Firestore Snapshots
 
 ```
 ┌─────────────────────────────────────────┐
-│   UI Layer (Jetpack Compose)           │
-│   30+ Screens • Material Design 3      │
+│   UI Layer (Jetpack Compose)            │
+│   30+ Screens • Material Design 3       │
 └──────────────┬──────────────────────────┘
                │ StateFlow<UiState>
                ▼
