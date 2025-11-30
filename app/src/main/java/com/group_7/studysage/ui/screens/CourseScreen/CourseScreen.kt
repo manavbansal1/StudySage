@@ -34,10 +34,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.createSavedStateHandle
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.group_7.studysage.data.repository.Course
+import com.group_7.studysage.data.repository.CourseRepository
 import com.group_7.studysage.data.repository.Semester
 import com.group_7.studysage.ui.theme.StudySageTheme
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -88,7 +92,16 @@ private fun GlassCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoursesScreen(
-    viewModel: CourseViewModel = viewModel(),
+    viewModel: CourseViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                CourseViewModel(
+                    courseRepository = CourseRepository(),
+                    savedStateHandle = createSavedStateHandle()
+                )
+            }
+        }
+    ),
     authViewModel: com.group_7.studysage.viewmodels.AuthViewModel,
     navCourseId: String? = null,
     navNoteId: String? = null, // NEW optional nav params
@@ -107,22 +120,61 @@ fun CoursesScreen(
     // ViewModel for add/edit course dialog (scoped to this screen)
     val addCourseViewModel: AddCourseViewModel = viewModel()
 
+    // Restore course state on configuration change (rotation)
+    LaunchedEffect(Unit) {
+        android.util.Log.d("CoursesScreen", "========================================")
+        android.util.Log.d("CoursesScreen", "🔄 LaunchedEffect(Unit) triggered")
+        android.util.Log.d("CoursesScreen", "   Calling restoreSelectedCourseIfNeeded()...")
+        viewModel.restoreSelectedCourseIfNeeded()
+        android.util.Log.d("CoursesScreen", "========================================")
+    }
+
     // If navigation provided a courseId, load it and set pendingNote
     LaunchedEffect(navCourseId, navNoteId) {
+        android.util.Log.d("CoursesScreen", "========================================")
+        android.util.Log.d("CoursesScreen", "🧭 Navigation LaunchedEffect triggered")
+        android.util.Log.d("CoursesScreen", "   navCourseId: ${navCourseId ?: "null"}")
+        android.util.Log.d("CoursesScreen", "   navNoteId: ${navNoteId ?: "null"}")
         if (!navCourseId.isNullOrBlank()) {
+            android.util.Log.d("CoursesScreen", "   Setting pending note and loading course...")
             viewModel.setPendingOpenNote(navNoteId)
             viewModel.loadCourseWithNotes(navCourseId)
         }
+        android.util.Log.d("CoursesScreen", "========================================")
     }
 
+    // Check if we should show the course detail screen or courses list
+    // Show detail screen if:
+    // 1. We have a selected course, OR
+    // 2. We're in the process of restoring state after rotation
     if (uiState.selectedCourse != null) {
+        // Show course detail screen when we have the course data
+        val courseId = uiState.selectedCourse?.course?.id
+        android.util.Log.d("CoursesScreen", "🎯 Showing CourseDetailScreen for course: $courseId")
+
         CourseDetailScreen(
             courseWithNotes = uiState.selectedCourse!!,
-            onBack = { viewModel.clearSelectedCourse() },
+            onBack = {
+                android.util.Log.d("CoursesScreen", "⬅️ Back button explicitly pressed from CourseDetailScreen")
+                viewModel.clearSelectedCourse()
+            },
             courseViewModel = viewModel,
             authViewModel = authViewModel
         )
+    } else if (uiState.isRestoringState) {
+        // Show loading indicator while restoring state after rotation
+        android.util.Log.d("CoursesScreen", "⏳ Restoring course state after rotation (isRestoring=${uiState.isRestoringState})...")
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     } else {
+        // Show courses list when no course is selected and not restoring
+        android.util.Log.d("CoursesScreen", "📋 Showing courses list (selectedCourse is null, isRestoring=false)")
         Scaffold(
             containerColor = Color.Transparent, // Let the theme background show
         ) { paddingValues ->

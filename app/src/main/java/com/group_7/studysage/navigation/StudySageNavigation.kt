@@ -68,7 +68,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.createSavedStateHandle
 import com.group_7.studysage.data.models.GameType
+import com.group_7.studysage.data.repository.CourseRepository
 import com.group_7.studysage.ui.theme.*
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
@@ -135,7 +139,39 @@ fun StudySageNavigation(
     if (isUserSignedIn) {
         // Create a fresh NavController for authenticated users
         val navController = androidx.navigation.compose.rememberNavController()
-        val courseViewModel: CourseViewModel = viewModel()
+
+        // Create courseViewModel scoped to the activity to share across course routes
+        // and ensure SavedStateHandle works properly for configuration changes
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val activity = context as androidx.activity.ComponentActivity
+
+        // Remember the factory to avoid recreating ViewModel on every recomposition
+        val courseViewModelFactory = remember {
+            android.util.Log.d("StudySageNavigation", "========================================")
+            android.util.Log.d("StudySageNavigation", "🏗️ Creating CourseViewModel Factory")
+            android.util.Log.d("StudySageNavigation", "   Context: ${context::class.simpleName}")
+            viewModelFactory {
+                initializer {
+                    android.util.Log.d("StudySageNavigation", "   📦 Factory initializer called")
+                    android.util.Log.d("StudySageNavigation", "   Creating SavedStateHandle...")
+                    val handle = createSavedStateHandle()
+                    android.util.Log.d("StudySageNavigation", "   SavedStateHandle created: ${handle.hashCode()}")
+                    android.util.Log.d("StudySageNavigation", "   SavedStateHandle keys: ${handle.keys()}")
+                    CourseViewModel(
+                        courseRepository = CourseRepository(),
+                        savedStateHandle = handle
+                    )
+                }
+            }
+        }
+
+        val courseViewModel: CourseViewModel = viewModel(
+            viewModelStoreOwner = activity,
+            factory = courseViewModelFactory
+        )
+        android.util.Log.d("StudySageNavigation", "✅ CourseViewModel instance: ${courseViewModel.hashCode()}")
+        android.util.Log.d("StudySageNavigation", "========================================")
+
         val homeViewModel: HomeViewModel = viewModel()
 
         // Track the current user ID to detect when a different user logs in
@@ -190,9 +226,17 @@ fun StudySageNavigation(
         // Collect fullscreen overlay state from courseViewModel
         val courseUiState by courseViewModel.uiState.collectAsState()
 
-        // Clear selected course when navigating away from course screen
+        // Clear selected course when navigating away from course screen to a different tab
+        // BUT not during rotation or when navigating between course routes
         androidx.compose.runtime.LaunchedEffect(currentDestination?.route) {
-            if (currentDestination?.route != Screen.Course.route && courseUiState.selectedCourse != null) {
+            val currentRoute = currentDestination?.route
+            val isCourseRoute = currentRoute == Screen.Course.route ||
+                               currentRoute?.startsWith("${Screen.Course.route}/") == true
+
+            // Only clear if we have a selected course AND we're navigating to a non-course screen
+            if (!isCourseRoute && courseUiState.selectedCourse != null && currentRoute != null) {
+                android.util.Log.d("StudySageNavigation", "📍 Navigating away from courses to: $currentRoute")
+                android.util.Log.d("StudySageNavigation", "🧹 Clearing selected course due to navigation")
                 courseViewModel.clearSelectedCourse()
             }
         }

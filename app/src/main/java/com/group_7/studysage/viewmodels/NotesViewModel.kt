@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.BuildConfig
 import com.group_7.studysage.data.models.Flashcard
@@ -25,11 +26,14 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
 class NotesViewModel(
-    application: Application
+    application: Application,
+    private val savedStateHandle: SavedStateHandle
 ) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "NotesViewModel"
+        private const val SELECTED_NOTE_ID_KEY = "selected_note_id"
+        private const val SHOW_NOTE_OPTIONS_KEY = "show_note_options"
     }
 
     private val notesRepository: NotesRepository = NotesRepository(application.applicationContext)
@@ -52,6 +56,9 @@ class NotesViewModel(
 
     private val _selectedNote = MutableStateFlow<Note?>(null)
     val selectedNote: StateFlow<Note?> = _selectedNote.asStateFlow()
+
+    private val _showNoteOptions = MutableStateFlow(false)
+    val showNoteOptions: StateFlow<Boolean> = _showNoteOptions.asStateFlow()
 
     private val _isNoteDetailsLoading = MutableStateFlow(false)
     val isNoteDetailsLoading: StateFlow<Boolean> = _isNoteDetailsLoading.asStateFlow()
@@ -111,14 +118,75 @@ class NotesViewModel(
         _errorMessage.value = message
     }
 
-    fun selectNote(note: Note) {
-        Log.d(TAG, "Selecting note ${note.id}")
+    fun selectNote(note: Note, showOptions: Boolean = true) {
+        Log.d(TAG, "========================================")
+        Log.d(TAG, "📝 Selecting note: ${note.id}")
+        Log.d(TAG, "   Note title: ${note.title}")
+        Log.d(TAG, "   Show options: $showOptions")
+        Log.d(TAG, "   SavedStateHandle instance: ${savedStateHandle.hashCode()}")
+
+        // Save to SavedStateHandle to survive rotation
+        savedStateHandle[SELECTED_NOTE_ID_KEY] = note.id
+        savedStateHandle[SHOW_NOTE_OPTIONS_KEY] = showOptions
+
+        Log.d(TAG, "   SavedStateHandle keys after save: ${savedStateHandle.keys()}")
+        Log.d(TAG, "✅ Note ID saved to SavedStateHandle")
+        Log.d(TAG, "========================================")
+
         _selectedNote.value = note
+        _showNoteOptions.value = showOptions
     }
 
     fun clearSelectedNote() {
-        Log.d(TAG, "Clearing selected note")
+        Log.d(TAG, "========================================")
+        Log.d(TAG, "🧹 Clearing selected note")
+        Log.d(TAG, "   Before clear - Keys: ${savedStateHandle.keys()}")
+
+        savedStateHandle.remove<String>(SELECTED_NOTE_ID_KEY)
+        savedStateHandle.remove<Boolean>(SHOW_NOTE_OPTIONS_KEY)
+
+        Log.d(TAG, "   After clear - Keys: ${savedStateHandle.keys()}")
+        Log.d(TAG, "✅ SavedStateHandle cleared")
+        Log.d(TAG, "========================================")
+
         _selectedNote.value = null
+        _showNoteOptions.value = false
+    }
+
+    fun setShowNoteOptions(show: Boolean) {
+        Log.d(TAG, "Setting showNoteOptions: $show")
+        savedStateHandle[SHOW_NOTE_OPTIONS_KEY] = show
+        _showNoteOptions.value = show
+    }
+
+    fun restoreSelectedNoteIfNeeded() {
+        Log.d(TAG, "========================================")
+        Log.d(TAG, "🔄 RESTORE CHECK - restoreSelectedNoteIfNeeded() called")
+        Log.d(TAG, "   SavedStateHandle instance: ${savedStateHandle.hashCode()}")
+        Log.d(TAG, "   SavedStateHandle keys: ${savedStateHandle.keys()}")
+
+        val savedNoteId = savedStateHandle.get<String>(SELECTED_NOTE_ID_KEY)
+        val savedShowOptions = savedStateHandle.get<Boolean>(SHOW_NOTE_OPTIONS_KEY) ?: false
+
+        Log.d(TAG, "   Saved note ID: ${savedNoteId ?: "null"}")
+        Log.d(TAG, "   Saved show options: $savedShowOptions")
+        Log.d(TAG, "   Current selected note: ${_selectedNote.value?.id ?: "null"}")
+
+        if (savedNoteId != null && _selectedNote.value == null) {
+            Log.d(TAG, "✅ RESTORING note after configuration change")
+            Log.d(TAG, "   Note ID to restore: $savedNoteId")
+            Log.d(TAG, "   Calling loadNoteById()...")
+            Log.d(TAG, "========================================")
+
+            loadNoteById(savedNoteId)
+            _showNoteOptions.value = savedShowOptions
+        } else if (savedNoteId == null) {
+            Log.d(TAG, "ℹ️ No saved note ID - nothing to restore")
+            Log.d(TAG, "========================================")
+        } else {
+            Log.d(TAG, "ℹ️ Note already loaded - no need to restore")
+            Log.d(TAG, "========================================")
+        }
     }
 
     fun loadNoteById(noteId: String) {
