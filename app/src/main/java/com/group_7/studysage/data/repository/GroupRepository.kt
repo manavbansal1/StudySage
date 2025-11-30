@@ -453,7 +453,8 @@ class GroupRepository(
                     mapOf(
                         "lastMessage" to message,
                         "lastMessageTime" to System.currentTimeMillis(),
-                        "lastMessageSender" to userName
+                        "lastMessageSender" to userName,
+                        "lastMessageSenderId" to currentUser.uid
                     )
                 )
                 .await()

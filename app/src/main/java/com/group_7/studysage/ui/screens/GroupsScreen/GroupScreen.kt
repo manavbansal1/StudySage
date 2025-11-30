@@ -87,7 +87,7 @@ fun GroupScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
-                .padding(bottom = 16.dp) // Removed top padding
+
         ) {
             // Pull-to-refresh wrapper
             val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -200,8 +200,7 @@ fun GroupScreen(
                     }
                 }
 
-                // Bottom spacing for nav bar
-                Spacer(modifier = Modifier.height(100.dp))
+
             }
         }
 
@@ -314,7 +313,7 @@ fun GroupsList(
     modifier: Modifier = Modifier
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val filteredGroups = viewModel.getFilteredGroups()
+    val filteredGroups by viewModel.filteredGroups.collectAsState()
 
     Column(
         modifier = modifier.fillMaxWidth(),
