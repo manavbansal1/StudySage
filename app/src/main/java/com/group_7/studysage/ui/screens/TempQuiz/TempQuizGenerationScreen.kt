@@ -38,13 +38,15 @@ import com.group_7.studysage.viewmodels.AuthViewModel
 import com.group_7.studysage.viewmodels.GameViewModel
 import com.group_7.studysage.viewmodels.GameViewModelFactory
 import com.group_7.studysage.viewmodels.HomeViewModel
+import com.group_7.studysage.viewmodels.TempQuizViewModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TempQuizGenerationScreen(
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    tempQuizViewModel: TempQuizViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -60,12 +62,11 @@ fun TempQuizGenerationScreen(
     // Create HomeViewModel for task completion
     val homeViewModel: HomeViewModel = viewModel()
 
-    // State variables needed:
+    // Get state from ViewModel
+    val tempQuizState by tempQuizViewModel.uiState.collectAsState()
+    
+    // Local state for PDF URI (can't serialize Uri in ViewModel)
     var selectedPdfUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedFileName by remember { mutableStateOf("") }
-    var quizPreferences by remember { mutableStateOf("") }
-    var showPlayQuizScreen by remember { mutableStateOf(false) }
-    var showSuccessMessage by remember { mutableStateOf(false) }
 
 
     // Observe quiz generation state
@@ -76,20 +77,20 @@ fun TempQuizGenerationScreen(
         if (quizGenerationState.generatedQuestions.isNotEmpty() &&
             !quizGenerationState.isGenerating) {
             // Show success message briefly
-            showSuccessMessage = true
+            tempQuizViewModel.setShowSuccessMessage(true)
             delay(1500) // Show for 1.5 seconds
-            showSuccessMessage = false
-            showPlayQuizScreen = true
+            tempQuizViewModel.setShowSuccessMessage(false)
+            tempQuizViewModel.setShowPlayQuizScreen(true)
         }
     }
 
     // Show PlayQuizScreen when quiz is ready
-    if (showPlayQuizScreen && quizGenerationState.generatedQuestions.isNotEmpty()) {
+    if (tempQuizState.showPlayQuizScreen && quizGenerationState.generatedQuestions.isNotEmpty()) {
         val tempQuiz = remember(quizGenerationState.generatedQuestions) {
             com.group_7.studysage.data.model.Quiz(
                 quizId = "temp_${System.currentTimeMillis()}",
                 noteId = "temp",
-                noteTitle = selectedFileName.removeSuffix(".pdf"),
+                noteTitle = tempQuizState.selectedFileName.removeSuffix(".pdf"),
                 userId = "temp",
                 questions = quizGenerationState.generatedQuestions.map { question ->
                     // Convert data.models.QuizQuestion to data.model.QuizQuestion
@@ -114,7 +115,7 @@ fun TempQuizGenerationScreen(
             onBack = {
                 // User cancelled quiz or quiz completed - go back
                 gameViewModel.clearQuizGenerationState()
-                showPlayQuizScreen = false
+                tempQuizViewModel.clearState()
                 navController.popBackStack()
             }
         )
@@ -132,7 +133,7 @@ fun TempQuizGenerationScreen(
                     // Validate it's a PDF
                     if (fileInfo.name.endsWith(".pdf", ignoreCase = true)) {
                         selectedPdfUri = uri
-                        selectedFileName = fileInfo.name
+                        tempQuizViewModel.setSelectedPdf(uri.toString(), fileInfo.name)
                     } else {
                         Toast.makeText(
                             context,
@@ -327,7 +328,7 @@ fun TempQuizGenerationScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = selectedFileName,
+                                    text = tempQuizState.selectedFileName,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -417,8 +418,8 @@ fun TempQuizGenerationScreen(
 
                         // Text field for preferences
                         OutlinedTextField(
-                            value = quizPreferences,
-                            onValueChange = { quizPreferences = it },
+                            value = tempQuizState.quizPreferences,
+                            onValueChange = { tempQuizViewModel.setQuizPreferences(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Quiz Instructions") },
                             placeholder = {
@@ -458,8 +459,8 @@ fun TempQuizGenerationScreen(
                             gameViewModel.generateTempQuizFromPdf(
                                 context = context,
                                 pdfUri = uri,
-                                fileName = selectedFileName,
-                                userPreferences = quizPreferences
+                                fileName = tempQuizState.selectedFileName,
+                                userPreferences = tempQuizState.quizPreferences
                             )
                         }
                     },
@@ -620,7 +621,7 @@ fun TempQuizGenerationScreen(
     }
 
     // Success message when quiz is ready
-    if (showSuccessMessage) {
+    if (tempQuizState.showSuccessMessage) {
         Dialog(onDismissRequest = {}) {
             Card(
                 modifier = Modifier

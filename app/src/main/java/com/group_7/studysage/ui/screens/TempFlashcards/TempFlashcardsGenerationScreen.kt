@@ -33,6 +33,7 @@ import androidx.navigation.NavController
 import com.group_7.studysage.utils.FileUtils
 import com.group_7.studysage.viewmodels.HomeViewModel
 import com.group_7.studysage.viewmodels.NotesViewModel
+import com.group_7.studysage.viewmodels.TempFlashcardViewModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,43 +41,42 @@ import kotlinx.coroutines.delay
 fun TempFlashcardsGenerationScreen(
     navController: NavController,
     notesViewModel: NotesViewModel = viewModel(),  // We'll use NotesViewModel for flashcard generation
-    homeViewModel: HomeViewModel = viewModel()  // For task completion
+    homeViewModel: HomeViewModel = viewModel(),  // For task completion
+    tempFlashcardViewModel: TempFlashcardViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
-    // State variables needed:
+    // Get state from ViewModel
+    val tempFlashcardState by tempFlashcardViewModel.uiState.collectAsState()
+    
+    // Local state for PDF URI (can't serialize Uri in ViewModel)
     var selectedPdfUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedFileName by remember { mutableStateOf("") }
-    var flashcardPreferences by remember { mutableStateOf("") }
-    var numberOfCards by remember { mutableStateOf(10) }
-    var showFlashcardStudyScreen by remember { mutableStateOf(false) }
-    var showSuccessMessage by remember { mutableStateOf(false) }
 
     // Observe flashcard generation state from ViewModel
-    val tempFlashcardState by notesViewModel.tempFlashcardState.collectAsState()
+    val notesFlashcardState by notesViewModel.tempFlashcardState.collectAsState()
 
     // Watch for successful generation
-    LaunchedEffect(tempFlashcardState.generatedFlashcards) {
-        if (tempFlashcardState.generatedFlashcards.isNotEmpty() &&
-            !tempFlashcardState.isGenerating) {
+    LaunchedEffect(notesFlashcardState.generatedFlashcards) {
+        if (notesFlashcardState.generatedFlashcards.isNotEmpty() &&
+            !notesFlashcardState.isGenerating) {
             // Show success message
-            showSuccessMessage = true
+            tempFlashcardViewModel.setShowSuccessMessage(true)
             delay(1500)
-            showSuccessMessage = false
-            showFlashcardStudyScreen = true
+            tempFlashcardViewModel.setShowSuccessMessage(false)
+            tempFlashcardViewModel.setShowFlashcardStudyScreen(true)
         }
     }
 
     // Show TempFlashcardViewerScreen when ready
-    if (showFlashcardStudyScreen && tempFlashcardState.generatedFlashcards.isNotEmpty()) {
+    if (tempFlashcardState.showFlashcardStudyScreen && notesFlashcardState.generatedFlashcards.isNotEmpty()) {
         TempFlashcardViewerScreen(
-            flashcards = tempFlashcardState.generatedFlashcards,
-            fileName = selectedFileName.substringBeforeLast("."),
+            flashcards = notesFlashcardState.generatedFlashcards,
+            fileName = tempFlashcardState.selectedFileName.substringBeforeLast("."),
             homeViewModel = homeViewModel,
             onBack = {
                 // Clear temp flashcards and go back
                 notesViewModel.clearTempFlashcardState()
-                showFlashcardStudyScreen = false
+                tempFlashcardViewModel.clearState()
                 navController.popBackStack()
             }
         )
@@ -93,7 +93,7 @@ fun TempFlashcardsGenerationScreen(
                     // Validate it's a PDF
                     if (fileInfo.name.endsWith(".pdf", ignoreCase = true)) {
                         selectedPdfUri = uri
-                        selectedFileName = fileInfo.name
+                        tempFlashcardViewModel.setSelectedPdf(uri.toString(), fileInfo.name)
                     } else {
                         Toast.makeText(
                             context,
@@ -284,7 +284,7 @@ fun TempFlashcardsGenerationScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = selectedFileName,
+                                    text = tempFlashcardState.selectedFileName,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -353,7 +353,7 @@ fun TempFlashcardsGenerationScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Generate $numberOfCards flashcards",
+                                    text = "Generate ${tempFlashcardState.numberOfCards} flashcards",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -365,7 +365,7 @@ fun TempFlashcardsGenerationScreen(
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
-                                    text = numberOfCards.toString(),
+                                    text = tempFlashcardState.numberOfCards.toString(),
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
@@ -378,8 +378,8 @@ fun TempFlashcardsGenerationScreen(
 
                         // Slider
                         Slider(
-                            value = numberOfCards.toFloat(),
-                            onValueChange = { numberOfCards = it.toInt() },
+                            value = tempFlashcardState.numberOfCards.toFloat(),
+                            onValueChange = { tempFlashcardViewModel.setNumberOfCards(it.toInt()) },
                             valueRange = 5f..20f,
                             steps = 14, // 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
                             colors = SliderDefaults.colors(
@@ -457,8 +457,8 @@ fun TempFlashcardsGenerationScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         OutlinedTextField(
-                            value = flashcardPreferences,
-                            onValueChange = { flashcardPreferences = it },
+                            value = tempFlashcardState.flashcardPreferences,
+                            onValueChange = { tempFlashcardViewModel.setFlashcardPreferences(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Focus Areas (Optional)") },
                             placeholder = {
@@ -498,16 +498,16 @@ fun TempFlashcardsGenerationScreen(
                             notesViewModel.generateTempFlashcardsFromPdf(
                                 context = context,
                                 pdfUri = uri,
-                                fileName = selectedFileName,
-                                numberOfCards = numberOfCards,
-                                userPreferences = flashcardPreferences
+                                fileName = tempFlashcardState.selectedFileName,
+                                numberOfCards = tempFlashcardState.numberOfCards,
+                                userPreferences = tempFlashcardState.flashcardPreferences
                             )
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    enabled = selectedPdfUri != null && !tempFlashcardState.isGenerating,
+                    enabled = selectedPdfUri != null && !notesFlashcardState.isGenerating,
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary,
@@ -519,7 +519,7 @@ fun TempFlashcardsGenerationScreen(
                         disabledElevation = 0.dp
                     )
                 ) {
-                    if (tempFlashcardState.isGenerating) {
+                    if (notesFlashcardState.isGenerating) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
@@ -568,7 +568,7 @@ fun TempFlashcardsGenerationScreen(
                 }
 
                 // Show error if generation failed
-                tempFlashcardState.error?.let { error ->
+                notesFlashcardState.error?.let { error ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -601,7 +601,7 @@ fun TempFlashcardsGenerationScreen(
     }
 
     // Success dialog
-    if (showSuccessMessage) {
+    if (tempFlashcardState.showSuccessMessage) {
         Dialog(onDismissRequest = {}) {
             Card(
                 modifier = Modifier
@@ -648,7 +648,7 @@ fun TempFlashcardsGenerationScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "${tempFlashcardState.generatedFlashcards.size} flashcards created",
+                            text = "${notesFlashcardState.generatedFlashcards.size} flashcards created",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -659,7 +659,7 @@ fun TempFlashcardsGenerationScreen(
     }
 
     // Loading dialog
-    if (tempFlashcardState.isGenerating) {
+    if (notesFlashcardState.isGenerating) {
         Dialog(onDismissRequest = { /* Can't dismiss while generating */ }) {
             Card(
                 modifier = Modifier
