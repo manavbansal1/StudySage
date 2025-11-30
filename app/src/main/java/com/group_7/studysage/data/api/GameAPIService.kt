@@ -30,39 +30,6 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
         encodeDefaults = true
     }
 
-    // ============================================
-    // HEALTH CHECK
-    // ============================================
-
-    /**
-     * Check backend health status
-     * GET /api/games/health
-     */
-    suspend fun checkHealth(): ApiResponse<HealthResponse> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/health")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val healthResponse = json.decodeFromString<HealthResponse>(body)
-                ApiResponse(success = true, data = healthResponse)
-            } else {
-                ApiResponse(success = false, message = "Health check failed")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
-
-    // ============================================
-    // STANDALONE GAME OPERATIONS (No Group Dependency)
-    // ============================================
-
     /**
      * Host a new standalone game
      * POST /api/games/host
@@ -145,31 +112,6 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
         }
     }
 
-    /**
-     * Get game session by code
-     * GET /api/games/session/{gameCode}
-     */
-    suspend fun getGameByCode(gameCode: String): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/session/$gameCode")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val apiResponse = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                apiResponse
-            } else {
-                ApiResponse(success = false, message = "Game not found")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
-
     // ============================================
     // GAME SESSION MANAGEMENT
     // ============================================
@@ -214,7 +156,8 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
                 val result = json.decodeFromString<ApiResponse<CreateGameSessionResponse>>(body)
                 result
             } else {
-                val errorResponse = json.decodeFromString<ApiResponse<CreateGameSessionResponse>>(body)
+                val errorResponse =
+                    json.decodeFromString<ApiResponse<CreateGameSessionResponse>>(body)
                 errorResponse
             }
         } catch (e: Exception) {
@@ -247,34 +190,6 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
                 ApiResponse(success = false, message = e.message ?: "Unknown error")
             }
         }
-
-    /**
-     * Get specific game session details
-     * GET /api/games/groups/{groupId}/sessions/{sessionId}
-     */
-    suspend fun getGameSession(
-        groupId: String,
-        sessionId: String
-    ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to fetch session")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
 
     /**
      * Join a game session
@@ -314,412 +229,33 @@ class GameApiService(private val baseUrl: String = ApiConfig.BASE_HTTP_URL) {
         }
     }
 
-    /**
-     * Leave a game session
-     * POST /api/games/groups/{groupId}/sessions/{sessionId}/leave
-     */
-    suspend fun leaveGameSession(
-        groupId: String,
-        sessionId: String,
-        userId: String
-    ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val requestBody = LeaveGameRequest(userId = userId)
-            val jsonBody = json.encodeToString(LeaveGameRequest.serializer(), requestBody)
+    @Serializable
+    data class ApiResponse<T>(
+        val success: Boolean,
+        val data: T? = null,
+        val message: String? = null,
+        val timestamp: Long = System.currentTimeMillis()
+    )
 
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/leave")
-                .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                .build()
+    @Serializable
+    data class CreateGameSessionRequest(
+        val documentId: String?,
+        val documentName: String?,
+        val hostId: String,
+        val hostName: String,
+        val gameType: GameType,
+        val settings: GameSettings
+    )
 
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
+    @Serializable
+    data class CreateGameSessionResponse(
+        val gameSessionId: String,
+        val groupId: String
+    )
 
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to leave game")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Failed to leave game")
-        }
-    }
-
-    // ============================================
-    // GAME CONTROL
-    // ============================================
-
-    /**
-     * Start a game (host only)
-     * POST /api/games/groups/{groupId}/sessions/{sessionId}/start
-     */
-    suspend fun startGame(
-        groupId: String,
-        sessionId: String,
-        hostId: String
-    ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val requestBody = StartGameRequest(hostId = hostId)
-            val jsonBody = json.encodeToString(StartGameRequest.serializer(), requestBody)
-
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/start")
-                .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to start game")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Failed to start game")
-        }
-    }
-
-    /**
-     * Pause a game (host only)
-     * POST /api/games/groups/{groupId}/sessions/{sessionId}/pause
-     */
-    suspend fun pauseGame(
-        groupId: String,
-        sessionId: String,
-        hostId: String,
-        reason: String? = null
-    ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val requestBody = PauseGameRequest(hostId = hostId, reason = reason)
-            val jsonBody = json.encodeToString(PauseGameRequest.serializer(), requestBody)
-
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/pause")
-                .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to pause game")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Failed to pause game")
-        }
-    }
-
-    /**
-     * Resume a game (host only)
-     * POST /api/games/groups/{groupId}/sessions/{sessionId}/resume
-     */
-    suspend fun resumeGame(
-        groupId: String,
-        sessionId: String,
-        hostId: String
-    ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val requestBody = ResumeGameRequest(hostId = hostId)
-            val jsonBody = json.encodeToString(ResumeGameRequest.serializer(), requestBody)
-
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/resume")
-                .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to resume game")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Failed to resume game")
-        }
-    }
-
-    /**
-     * End a game early (host only)
-     * POST /api/games/groups/{groupId}/sessions/{sessionId}/end
-     */
-    suspend fun endGame(
-        groupId: String,
-        sessionId: String,
-        hostId: String
-    ): ApiResponse<GameSessionData> = withContext(Dispatchers.IO) {
-        try {
-            val requestBody = EndGameRequest(hostId = hostId)
-            val jsonBody = json.encodeToString(EndGameRequest.serializer(), requestBody)
-
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/end")
-                .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameSessionData>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to end game")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Failed to end game")
-        }
-    }
-
-    // ============================================
-    // GAME RESULTS & STATS
-    // ============================================
-
-    /**
-     * Get game results
-     * GET /api/games/groups/{groupId}/sessions/{sessionId}/results
-     */
-    suspend fun getGameResults(
-        groupId: String,
-        sessionId: String
-    ): ApiResponse<GameResult> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/groups/$groupId/sessions/$sessionId/results")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<GameResult>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to fetch results")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
-
-    /**
-     * Get user game statistics
-     * GET /api/games/users/{userId}/stats
-     */
-    suspend fun getUserStats(userId: String): ApiResponse<GameStats> =
-        withContext(Dispatchers.IO) {
-            try {
-                val request = Request.Builder()
-                    .url("$baseUrl/api/games/users/$userId/stats")
-                    .get()
-                    .build()
-
-                val response = client.newCall(request).execute()
-                val body = response.body?.string() ?: throw Exception("Empty response")
-
-                if (response.isSuccessful) {
-                    val result = json.decodeFromString<ApiResponse<GameStats>>(body)
-                    result
-                } else {
-                    ApiResponse(success = false, message = "Failed to fetch stats")
-                }
-            } catch (e: Exception) {
-                ApiResponse(success = false, message = e.message ?: "Unknown error")
-            }
-        }
-
-    /**
-     * Get user game history
-     * GET /api/games/users/{userId}/history?limit={limit}
-     */
-    suspend fun getUserHistory(
-        userId: String,
-        limit: Int = 20
-    ): ApiResponse<List<GameHistoryEntry>> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/users/$userId/history?limit=$limit")
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<List<GameHistoryEntry>>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to fetch history")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
-
-    /**
-     * Get group leaderboard
-     * GET /api/games/groups/{groupId}/leaderboard?gameType={gameType}&limit={limit}
-     */
-    suspend fun getGroupLeaderboard(
-        groupId: String,
-        gameType: String? = null,
-        limit: Int = 20
-    ): ApiResponse<List<LeaderboardEntry>> = withContext(Dispatchers.IO) {
-        try {
-            val url = buildString {
-                append("$baseUrl/api/games/groups/$groupId/leaderboard?limit=$limit")
-                if (gameType != null) {
-                    append("&gameType=$gameType")
-                }
-            }
-
-            val request = Request.Builder()
-                .url(url)
-                .get()
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<List<LeaderboardEntry>>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to fetch leaderboard")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
-
-    /**
-     * Generate quiz from note content
-     * POST /api/games/quiz/generate
-     */
-    suspend fun generateQuiz(
-        noteId: String,
-        noteTitle: String,
-        content: String,
-        userPreferences: String
-    ): ApiResponse<com.group_7.studysage.data.model.Quiz> = withContext(Dispatchers.IO) {
-        try {
-            val requestBody = json.encodeToString(
-                GenerateQuizRequest.serializer(),
-                GenerateQuizRequest(noteId, noteTitle, content, userPreferences)
-            )
-
-            val request = Request.Builder()
-                .url("$baseUrl/api/games/quiz/generate")
-                .post(requestBody.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: throw Exception("Empty response")
-
-            if (response.isSuccessful) {
-                val result = json.decodeFromString<ApiResponse<com.group_7.studysage.data.model.Quiz>>(body)
-                result
-            } else {
-                ApiResponse(success = false, message = "Failed to generate quiz")
-            }
-        } catch (e: Exception) {
-            ApiResponse(success = false, message = e.message ?: "Unknown error")
-        }
-    }
+    @Serializable
+    data class JoinGameSessionRequest(
+        val userId: String,
+        val userName: String
+    )
 }
-
-// ============================================
-// REQUEST/RESPONSE DATA CLASSES
-// ============================================
-
-@Serializable
-data class ApiResponse<T>(
-    val success: Boolean,
-    val data: T? = null,
-    val message: String? = null,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-@Serializable
-data class HealthResponse(
-    val status: String,
-    val service: String,
-    val version: String,
-    val timestamp: Long,
-    val supportedGameTypes: List<String>
-)
-
-@Serializable
-data class CreateGameSessionRequest(
-    val documentId: String?,
-    val documentName: String?,
-    val hostId: String,
-    val hostName: String,
-    val gameType: GameType,
-    val settings: GameSettings
-)
-
-@Serializable
-data class CreateGameSessionResponse(
-    val gameSessionId: String,
-    val groupId: String
-)
-
-@Serializable
-data class JoinGameSessionRequest(
-    val userId: String,
-    val userName: String
-)
-
-@Serializable
-data class LeaveGameRequest(
-    val userId: String
-)
-
-@Serializable
-data class StartGameRequest(
-    val hostId: String
-)
-
-@Serializable
-data class PauseGameRequest(
-    val hostId: String,
-    val reason: String? = null
-)
-
-@Serializable
-data class ResumeGameRequest(
-    val hostId: String
-)
-
-@Serializable
-data class EndGameRequest(
-    val hostId: String
-)
-
-@Serializable
-data class GameHistoryEntry(
-    val gameSessionId: String,
-    val gameType: GameType,
-    val finalScore: Int,
-    val rank: Int,
-    val playedAt: Long,
-    val duration: Long
-)
-
-@Serializable
-data class GenerateQuizRequest(
-    val noteId: String,
-    val noteTitle: String,
-    val content: String,
-    val userPreferences: String
-)

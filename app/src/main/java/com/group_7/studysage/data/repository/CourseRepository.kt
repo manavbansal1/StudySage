@@ -291,14 +291,18 @@ class CourseRepository {
                 document.getString("year")
             }.distinct().sorted()
 
+            val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            val defaultYears = listOf(currentYear.toString(), (currentYear + 1).toString())
+
             if (years.isEmpty()) {
-                listOf(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString())
+                defaultYears
             } else {
-                years
+                (years + defaultYears).distinct().sorted()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching available years: ${e.message}", e)
-            listOf(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString())
+            val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            listOf(currentYear.toString(), (currentYear + 1).toString())
         }
     }
 }

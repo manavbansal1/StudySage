@@ -19,11 +19,7 @@ enum class GameType {
 @Serializable
 enum class GameStatus {
     WAITING,
-    STARTING,
     IN_PROGRESS,
-    PAUSED,
-    FINISHED,
-    CANCELLED
 }
 
 @Serializable
@@ -38,19 +34,11 @@ enum class MessageType {
     PLAYER_JOINED,
     PLAYER_LEFT,
     PLAYER_READY,
-    PLAYER_RECONNECTED,
-
-    // Team management
-    TEAM_ASSIGNED,
-    TEAM_UPDATE,
 
     // Game flow
     GAME_STARTING,
     GAME_STARTED,
-    GAME_PAUSED,
-    GAME_RESUMED,
     NEXT_QUESTION,
-    QUESTION_TIMEOUT,
     TURN_UPDATE, // For turn-based games like STUDY_TAC_TOE
     BOARD_UPDATE, // For syncing board state in STUDY_TAC_TOE
     GAME_FINISHED,
@@ -59,30 +47,20 @@ enum class MessageType {
     SUBMIT_ANSWER,
     ANSWER_RESULT,
     SCORES_UPDATE,
-    STREAK_UPDATE,
 
     // Flashcard Battle specific
     FLASHCARD_REVEALED,
-    FLASHCARD_FLIP,
-    FLASHCARD_CORRECT,
-    FLASHCARD_INCORRECT,
 
     // Speed Match specific
     MATCH_PAIR,
-    MATCH_RESULT,
-    MATCH_UPDATE,
-
     // Chat
     CHAT_MESSAGE,
 
     // Room management
     ROOM_UPDATE,
-    SETTINGS_UPDATE,
-    HOST_CHANGED,
 
     // Errors
     ERROR,
-    WARNING
 }
 
 // ============================================
@@ -179,7 +157,7 @@ data class GameSessionData(
     val gameCode: String, // Unique code for joining
     val players: Map<String, Player> = emptyMap(),
     val teams: Map<String, Team> = emptyMap(),
-    val maxPlayers: Int = 8,
+    val maxPlayers: Int = 2,
     val status: GameStatus = GameStatus.WAITING,
     val currentQuestionIndex: Int = 0,
     val currentTurn: String? = null, // Player ID whose turn it is (for turn-based games)
@@ -226,12 +204,6 @@ data class PlayerJoinedData(
     val totalPlayers: Int
 )
 
-@Serializable
-data class TeamAssignedData(
-    val playerId: String,
-    val teamId: String,
-    val teamName: String
-)
 
 @Serializable
 data class QuestionData(
@@ -281,27 +253,11 @@ data class LeaderboardEntry(
 )
 
 @Serializable
-data class StreakUpdateData(
-    val playerId: String,
-    val streakCount: Int,
-    val bonusPoints: Int
-)
-
-@Serializable
 data class MatchPairSubmission(
     val playerId: String,
     val termId: String,
     val definitionId: String,
     val timeElapsed: Long
-)
-
-@Serializable
-data class MatchResultData(
-    val playerId: String,
-    val isCorrect: Boolean,
-    val points: Int,
-    val termId: String,
-    val definitionId: String
 )
 
 @Serializable
@@ -320,23 +276,7 @@ data class ErrorData(
     val details: String? = null
 )
 
-@Serializable
-data class GamePausedData(
-    val pausedBy: String,
-    val pausedAt: Long,
-    val reason: String? = null
-)
 
-@Serializable
-data class HostChangedData(
-    val oldHostId: String,
-    val newHostId: String,
-    val newHostName: String
-)
-
-// ============================================
-// GAME RESULT MODELS
-// ============================================
 
 @Serializable
 data class GameResult(
@@ -377,20 +317,6 @@ data class TeamResult(
     val totalQuestions: Int,
     val rank: Int,
     val memberIds: List<String>
-)
-
-@Serializable
-data class GameStats(
-    val userId: String,
-    val totalGamesPlayed: Int = 0,
-    val totalWins: Int = 0,
-    val totalLosses: Int = 0,
-    val totalXp: Int = 0,
-    val averageScore: Double = 0.0,
-    val highestScore: Int = 0,
-    val longestStreak: Int = 0,
-    val favoriteGameType: GameType? = null,
-    val lastPlayedAt: Long? = null
 )
 
 // ============================================
@@ -473,12 +399,5 @@ data class GlobalLeaderboardEntry(
     val bestScore: Int = 0,
     val bestStreak: Int = 0,
     val rank: Int = 0,
-    val lastUpdated: Long = System.currentTimeMillis()
-)
-
-@Serializable
-data class LeaderboardResponse(
-    val entries: List<GlobalLeaderboardEntry>,
-    val totalPlayers: Int,
     val lastUpdated: Long = System.currentTimeMillis()
 )

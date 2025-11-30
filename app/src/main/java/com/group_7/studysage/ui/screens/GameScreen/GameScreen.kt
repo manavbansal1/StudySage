@@ -359,13 +359,31 @@ fun HostGameDialog(
     }
 
     val gameTypes = listOf(
-        GameType.QUIZ_RACE to "Quiz Race",
-        GameType.STUDY_TAC_TOE to "Study-Tac-Toe"
+        Triple(GameType.QUIZ_RACE, "Quiz Race", Icons.Default.Speed),
+        Triple(GameType.STUDY_TAC_TOE, "Study-Tac-Toe", Icons.Default.GridOn)
     )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Host a Game", fontWeight = FontWeight.Bold) },
+        title = { 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.SportsEsports,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Host a Game", 
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -373,58 +391,162 @@ fun HostGameDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 // Game Type Selection
-                Text("Select Game Type", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Select Game Type",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-                gameTypes.forEach { (type, name) ->
-                    Row(
+                gameTypes.forEach { (type, name, icon) ->
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 6.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedGameType == type)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        onClick = { selectedGameType = type }
                     ) {
-                        RadioButton(
-                            selected = selectedGameType == type,
-                            onClick = { selectedGameType = type }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(name)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedGameType == type,
+                                onClick = { selectedGameType = type },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Icon(
+                                icon,
+                                contentDescription = null,
+                                tint = if (selectedGameType == type)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (selectedGameType == type) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Content Source Selection
-                Text("Content Source", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Content Source",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selectedContentSource == ContentSource.TEXT)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    onClick = { selectedContentSource = ContentSource.TEXT }
                 ) {
-                    RadioButton(
-                        selected = selectedContentSource == ContentSource.TEXT,
-                        onClick = { selectedContentSource = ContentSource.TEXT }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Enter Topics as Text")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedContentSource == ContentSource.TEXT,
+                            onClick = { selectedContentSource = ContentSource.TEXT },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Icon(
+                            Icons.Default.TextFields,
+                            contentDescription = null,
+                            tint = if (selectedContentSource == ContentSource.TEXT)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Enter Topics as Text",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (selectedContentSource == ContentSource.TEXT) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selectedContentSource == ContentSource.PDF)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    onClick = { selectedContentSource = ContentSource.PDF }
                 ) {
-                    RadioButton(
-                        selected = selectedContentSource == ContentSource.PDF,
-                        onClick = { selectedContentSource = ContentSource.PDF }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Upload PDF")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedContentSource == ContentSource.PDF,
+                            onClick = { selectedContentSource = ContentSource.PDF },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Icon(
+                            Icons.Default.PictureAsPdf,
+                            contentDescription = null,
+                            tint = if (selectedContentSource == ContentSource.PDF)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Upload PDF",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (selectedContentSource == ContentSource.PDF) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Content Input
                 when (selectedContentSource) {
@@ -433,28 +555,87 @@ fun HostGameDialog(
                             value = topicText,
                             onValueChange = { topicText = it },
                             label = { Text("Describe topics for questions") },
-                            placeholder = { Text("e.g., Photosynthesis, Cell Biology, etc.") },
+                            placeholder = { Text("e.g., Photosynthesis, Cell Biology, Genetics...") },
                             modifier = Modifier.fillMaxWidth(),
-                            minLines = 3,
-                            maxLines = 5
+                            minLines = 4,
+                            maxLines = 6,
+                            shape = RoundedCornerShape(16.dp),
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         )
                     }
                     ContentSource.PDF -> {
-                        Button(
-                            onClick = { pdfPickerLauncher.launch("application/pdf") },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Upload, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(selectedPdfUri?.let { "PDF Selected" } ?: "Choose PDF")
-                        }
-                        selectedPdfUri?.let {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = it.lastPathSegment ?: "Selected PDF",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
                             )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.CloudUpload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = { pdfPickerLauncher.launch("application/pdf") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(vertical = 14.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Upload,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        selectedPdfUri?.let { "PDF Selected ✓" } ?: "Choose PDF",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                selectedPdfUri?.let {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Card(
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.tertiary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = it.lastPathSegment ?: "Selected PDF",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -474,14 +655,25 @@ fun HostGameDialog(
                 enabled = when (selectedContentSource) {
                     ContentSource.TEXT -> topicText.isNotBlank()
                     ContentSource.PDF -> selectedPdfUri != null
-                }
+                },
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
-                Text("Create Game")
+                Icon(
+                    Icons.Default.Rocket,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Create Game", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Medium)
             }
         }
     )
@@ -497,11 +689,60 @@ fun JoinGameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Join a Game", fontWeight = FontWeight.Bold) },
+        title = { 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.Login,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Join a Game", 
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+        },
         text = {
-            Column {
-                Text("Enter the 6-character game code")
-                Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.Key,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Enter the 6-character game code",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
                 OutlinedTextField(
                     value = gameCode,
                     onValueChange = {
@@ -512,21 +753,74 @@ fun JoinGameDialog(
                     label = { Text("Game Code") },
                     placeholder = { Text("ABC123") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Tag,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (gameCode.length == 6) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    },
+                    supportingText = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Code must be 6 characters",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                "${gameCode.length}/6",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = if (gameCode.length == 6) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    )
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { onJoinGame(gameCode) },
-                enabled = gameCode.length == 6
+                enabled = gameCode.length == 6,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
-                Text("Join")
+                Icon(
+                    Icons.Default.Login,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Join", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Medium)
             }
         }
     )
