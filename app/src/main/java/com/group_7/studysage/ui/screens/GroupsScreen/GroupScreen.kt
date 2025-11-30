@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,8 +45,11 @@ fun GroupScreen(
     val pendingInvites by viewModel.pendingInvites.collectAsState()
     val operationStatus by viewModel.operationStatus.collectAsState()
 
-    var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var showCreateGroupDialog by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // ViewModel for create group dialog (scoped to this screen)
+    val addGroupViewModel: com.group_7.studysage.viewmodels.AddGroupViewModel = viewModel()
 
     // Silently refresh groups when user navigates to this screen
     LaunchedEffect(Unit) {
@@ -224,11 +228,16 @@ fun GroupScreen(
     // Create group dialog
     if (showCreateGroupDialog) {
         CreateGroupDialog(
-            onDismiss = { showCreateGroupDialog = false },
+            onDismiss = { 
+                showCreateGroupDialog = false
+                addGroupViewModel.clearState() // Clear state when dialog is dismissed
+            },
             onConfirm = { name, description ->
                 viewModel.createGroup(name, description)
                 showCreateGroupDialog = false
-            }
+                addGroupViewModel.clearState() // Clear state after successful creation
+            },
+            addGroupViewModel = addGroupViewModel
         )
     }
 }
@@ -684,10 +693,11 @@ fun ErrorGroupsState(
 @Composable
 private fun CreateGroupDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String) -> Unit,
+    addGroupViewModel: com.group_7.studysage.viewmodels.AddGroupViewModel = viewModel()
 ) {
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    // Get state from ViewModel
+    val groupState by addGroupViewModel.uiState.collectAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -700,8 +710,8 @@ private fun CreateGroupDialog(
         text = {
             Column {
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
+                    value = groupState.groupName,
+                    onValueChange = { addGroupViewModel.setGroupName(it) },
                     label = { Text("Group Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -712,8 +722,8 @@ private fun CreateGroupDialog(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
+                    value = groupState.groupDescription,
+                    onValueChange = { addGroupViewModel.setGroupDescription(it) },
                     label = { Text("Description (optional)") },
                     maxLines = 3,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -727,11 +737,11 @@ private fun CreateGroupDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(name, description)
+                    if (groupState.groupName.isNotBlank()) {
+                        onConfirm(groupState.groupName, groupState.groupDescription)
                     }
                 },
-                enabled = name.isNotBlank(),
+                enabled = groupState.groupName.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
