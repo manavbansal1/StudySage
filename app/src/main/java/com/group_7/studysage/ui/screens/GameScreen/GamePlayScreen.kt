@@ -39,8 +39,11 @@ fun GamePlayScreen(
     gameCode: String,
     authViewModel: AuthViewModel
 ) {
+    // Remember the WebSocketManager instance to survive recomposition
+    val webSocketManager = remember { GameWebSocketManager() }
+
     val gamePlayViewModel: GamePlayViewModel = viewModel(
-        factory = GamePlayViewModelFactory(GameWebSocketManager(), authViewModel)
+        factory = GamePlayViewModelFactory(webSocketManager, authViewModel)
     )
 
     val gameUiState by gamePlayViewModel.gameUiState.collectAsState()
