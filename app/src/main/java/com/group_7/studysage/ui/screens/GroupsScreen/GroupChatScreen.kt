@@ -33,12 +33,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.DpOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.group_7.studysage.ui.viewmodels.GroupChatViewModel
 import com.group_7.studysage.ui.viewmodels.GroupChatUiState
 import com.group_7.studysage.data.repository.GroupMessage
 import kotlinx.coroutines.delay
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -114,9 +120,41 @@ fun GroupChatScreen(
                     }
 
                     // Message input at bottom
+                    val context = LocalContext.current
                     MessageInputSection(
                         onSendMessage = { message ->
                             viewModel.sendMessage(groupId, message)
+                        },
+                        onSendAttachment = { uri, type ->
+                            viewModel.uploadFile(
+                                context = context,
+                                fileUri = uri,
+                                fileType = type,
+                                onSuccess = { url ->
+                                    if (type == "image") {
+                                        viewModel.sendMessage(
+                                            groupId = groupId,
+                                            message = "",
+                                            images = listOf(url)
+                                        )
+                                    } else {
+                                        viewModel.sendMessage(
+                                            groupId = groupId,
+                                            message = "",
+                                            attachments = listOf(
+                                                com.group_7.studysage.data.repository.Attachment(
+                                                    url = url,
+                                                    type = type,
+                                                    name = "Attachment" // Could extract real name if needed
+                                                )
+                                            )
+                                        )
+                                    }
+                                },
+                                onError = { error ->
+                                    // Handle error (maybe show snackbar)
+                                }
+                            )
                         },
                         backOutEasing = BackOutEasing
                     )
@@ -372,6 +410,8 @@ private fun MessageBubble(
     isCurrentUser: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
@@ -401,12 +441,7 @@ private fun MessageBubble(
                 )
                 .background(
                     if (isCurrentUser) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary
-                            )
-                        )
+                        SolidColor(Color(0xFF4A148C)) // Dark Purple
                     } else {
                         SolidColor(MaterialTheme.colorScheme.surfaceVariant)
                     }
@@ -415,16 +450,98 @@ private fun MessageBubble(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
+                // Images
+                if (message.images.isNotEmpty()) {
+                    message.images.forEach { imageUrl ->
+                        Image(
+                            painter = rememberAsyncImagePainter(imageUrl),
+                            contentDescription = "Sent image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .padding(bottom = 8.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+
+                // Attachments
+                if (message.attachments.isNotEmpty()) {
+                    message.attachments.forEach { attachment ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            shadowElevation = 2.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // PDF Logo (Left)
+                                Icon(
+                                    imageVector = Icons.Default.PictureAsPdf, // Or Description if PictureAsPdf not available
+                                    contentDescription = "PDF",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(32.dp)
+                                )
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // File Name (Middle)
+                                Text(
+                                    text = attachment.name.ifEmpty { "Document.pdf" },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Download Button (Right)
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            uriHandler.openUri(attachment.url)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = "Download",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Message text
-                Text(
-                    text = message.message,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isCurrentUser)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 22.sp
-                )
+                if (message.message.isNotBlank()) {
+                    Text(
+                        text = message.message,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (isCurrentUser)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurface,
+                        lineHeight = 22.sp
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(2.dp))
 
@@ -447,6 +564,7 @@ private fun MessageBubble(
 @Composable
 private fun MessageInputSection(
     onSendMessage: (String) -> Unit,
+    onSendAttachment: (Uri, String) -> Unit,
     backOutEasing: Easing,
     modifier: Modifier = Modifier
 ) {
@@ -469,11 +587,93 @@ private fun MessageInputSection(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
+            // Add Attachment Button
+            Box {
+                var expanded by remember { mutableStateOf(false) }
+                
+                val context = LocalContext.current
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri: Uri? ->
+                    uri?.let {
+                        onSendAttachment(it, "pdf")
+                    }
+                }
+
+                val imageLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri: Uri? ->
+                    uri?.let {
+                        onSendAttachment(it, "image")
+                    }
+                }
+
+                IconButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier.padding(start = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Attachment",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.width(180.dp),
+                    offset = DpOffset(x = (-12).dp, y = 0.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Notes") },
+                        onClick = {
+                            expanded = false
+                            launcher.launch("application/pdf")
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Photos") },
+                        onClick = {
+                            expanded = false
+                            imageLauncher.launch("image/*")
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Photo,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Games") },
+                        onClick = {
+                            expanded = false
+                            // TODO: Handle Games attachment
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.SportsEsports,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
+            }
+
             // Message input field
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                    .padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 if (messageText.isEmpty()) {
