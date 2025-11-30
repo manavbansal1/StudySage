@@ -40,8 +40,22 @@ fun GameLobbyScreen(
     val lobbyUiState by gameLobbyViewModel.lobbyUiState.collectAsState()
     val availableNotes by gameLobbyViewModel.availableNotes.collectAsState()
     val isLoadingNotes by gameLobbyViewModel.isLoadingNotes.collectAsState()
+    val currentUserId = authViewModel.currentUser.value?.uid
 
     var showCreateGameDialog by remember { mutableStateOf(false) }
+
+    // Refresh when coming back to this screen
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            if (destination.route == "game_lobby/{gameType}/{groupId}") {
+                gameLobbyViewModel.loadActiveSessions(groupId)
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
 
     LaunchedEffect(Unit) {
         gameLobbyViewModel.loadActiveSessions(groupId)
@@ -84,7 +98,12 @@ fun GameLobbyScreen(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(lobbyUiState.activeSessions) { session ->
+                // Filter out sessions where current user is the host
+                val sessionsToShow = lobbyUiState.activeSessions.filter { session ->
+                    session.hostId != currentUserId
+                }
+                
+                items(sessionsToShow) { session ->
                     GameSessionCard(session = session) {
                         gameLobbyViewModel.joinGame(groupId, session.id) {
                             navController.navigate("game_play/${session.id}")
@@ -122,9 +141,24 @@ fun GameLobbyScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameSessionCard(session: GameSessionData, onJoin: () -> Unit) {
+    // Determine max players based on game type
+    val maxPlayers = when (session.gameType) {
+        GameType.STUDY_TAC_TOE -> 2
+        GameType.QUIZ_RACE -> 8
+        else -> session.maxPlayers
+    }
+    
+    val isFull = session.players.size >= maxPlayers
+    
     Card(
         onClick = onJoin,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isFull) 
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else 
+                MaterialTheme.colorScheme.surface
+        )
     ) {
         Row(
             modifier = Modifier
@@ -136,8 +170,15 @@ fun GameSessionCard(session: GameSessionData, onJoin: () -> Unit) {
             Column {
                 Text(text = session.name, style = MaterialTheme.typography.titleMedium)
                 Text(text = "Host: ${session.hostId}", style = MaterialTheme.typography.bodySmall)
+                if (isFull) {
+                    Text(
+                        text = "FULL",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
-            Text(text = "${session.players.size}/${session.maxPlayers}")
+            Text(text = "${session.players.size}/$maxPlayers")
         }
     }
 }
@@ -155,6 +196,13 @@ fun CreateGameDialog(
     var questionTimeLimit by remember { mutableStateOf("30") }
     var numberOfQuestions by remember { mutableStateOf("10") }
 
+    // Determine player limits based on game type
+    val playerLimitText = when (gameType) {
+        GameType.STUDY_TAC_TOE -> "2 players only"
+        GameType.QUIZ_RACE -> "1-8 players"
+        else -> "Multiple players"
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create ${gameType.name} Game") },
@@ -165,6 +213,26 @@ fun CreateGameDialog(
                     .padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Player limit info
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Player Limit: $playerLimitText",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                
                 // Document Selection Section
                 Text(
                     text = "Select Document (Optional)",

@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 data class StandaloneGameUiState(
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val gameCode: String? = null,
     val uploadProgress: String? = null
@@ -168,5 +169,24 @@ class StandaloneGameViewModel : ViewModel() {
      */
     fun clearGameCode() {
         _uiState.value = _uiState.value.copy(gameCode = null)
+    }
+
+    /**
+     * Refresh the game screen
+     */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isRefreshing = true)
+            
+            // Add a small delay to show the refresh animation
+            kotlinx.coroutines.delay(1000)
+            
+            // Clear any existing game code and errors
+            _uiState.value = _uiState.value.copy(
+                gameCode = null,
+                error = null,
+                isRefreshing = false
+            )
+        }
     }
 }

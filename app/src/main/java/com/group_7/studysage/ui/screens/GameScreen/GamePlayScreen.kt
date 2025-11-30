@@ -241,8 +241,13 @@ fun WaitingForPlayersScreen(
                         tint = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Spacer(modifier = Modifier.width(4.dp))
+                    val maxPlayers = when (session?.gameType) {
+                        GameType.STUDY_TAC_TOE -> 2
+                        GameType.QUIZ_RACE -> 8
+                        else -> session?.maxPlayers ?: 2
+                    }
                     Text(
-                        text = "${players.size}/${session?.maxPlayers ?: 2}",
+                        text = "${players.size}/$maxPlayers",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -334,10 +339,11 @@ fun WaitingForPlayersScreen(
             
             val allReady = players.all { it.isReady }
             val isStudyTacToe = session?.gameType == com.group_7.studysage.data.models.GameType.STUDY_TAC_TOE
-            val hasCorrectPlayers = if (isStudyTacToe) {
-                players.size == 2  // Study Tac Toe requires exactly 2 players
-            } else {
-                players.size >= 2  // Other games need at least 2 players
+            val isQuizRace = session?.gameType == com.group_7.studysage.data.models.GameType.QUIZ_RACE
+            val hasCorrectPlayers = when {
+                isStudyTacToe -> players.size == 2  // Study Tac Toe requires exactly 2 players
+                isQuizRace -> players.size >= 1 && players.size <= 8  // Quiz Race: 1-8 players
+                else -> players.size >= 2  // Other games need at least 2 players
             }
             
             Button(
@@ -369,7 +375,9 @@ fun WaitingForPlayersScreen(
                     text = when {
                         !hasCorrectPlayers && isStudyTacToe && players.size < 2 -> "Study Tac Toe requires exactly 2 players"
                         !hasCorrectPlayers && isStudyTacToe && players.size > 2 -> "Study Tac Toe is limited to 2 players only"
-                        !hasCorrectPlayers -> "Need 2 players"
+                        !hasCorrectPlayers && isQuizRace && players.size < 1 -> "Quiz Race needs at least 1 player"
+                        !hasCorrectPlayers && isQuizRace && players.size > 8 -> "Quiz Race is limited to 8 players maximum"
+                        !hasCorrectPlayers -> "Need at least 2 players"
                         !allReady -> "Waiting for all players to be ready"
                         else -> ""
                     },
