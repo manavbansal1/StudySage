@@ -212,6 +212,94 @@ class CanvasViewModel : ViewModel() {
     }
     
     /**
+     * Fetch courses from Canvas without syncing
+     */
+    fun fetchCanvasCourses(accessToken: String, semester: String = "Fall", year: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString()) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+            
+            Log.d(TAG, "Fetching Canvas courses...")
+            
+            // Save token first
+            val saveResult = repository.saveCanvasToken(accessToken)
+            
+            saveResult.onSuccess {
+                // Just fetch courses from API without syncing to Firestore
+                val apiService = com.group_7.studysage.data.api.CanvasApiService()
+                val coursesResult = apiService.getUserCourses(accessToken)
+                
+                coursesResult.onSuccess { courses ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isConnected = true,
+                        courses = courses,
+                        successMessage = "Found ${courses.size} courses. Select the ones you want to sync.",
+                        lastSyncTime = System.currentTimeMillis()
+                    )
+                    Log.d(TAG, "Successfully fetched ${courses.size} courses")
+                }.onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "Failed to fetch courses: ${error.message}"
+                    )
+                    Log.e(TAG, "Failed to fetch courses", error)
+                }
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "Failed to save Canvas token: ${error.message}"
+                )
+                Log.e(TAG, "Failed to save token", error)
+            }
+        }
+    }
+    
+    /**
+     * Sync selected courses to Firestore
+     */
+    fun syncSelectedCourses(courseIds: List<String>, semester: String = "Fall", year: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString()) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+            
+            Log.d(TAG, "Syncing selected courses...")
+            
+            val selectedCourses = _uiState.value.courses.filter { courseIds.contains(it.id.toString()) }
+            
+            if (selectedCourses.isNotEmpty()) {
+                val syncResult = repository.syncSelectedCourses(selectedCourses, semester, year)
+                
+                syncResult.onSuccess { syncedCourses ->
+                    // Update the UI state to show only the synced courses
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        courses = syncedCourses, // Update to show only synced courses
+                        successMessage = "Successfully synced ${syncedCourses.size} selected courses!",
+                        lastSyncTime = System.currentTimeMillis()
+                    )
+                    Log.d(TAG, "Successfully synced ${syncedCourses.size} selected courses")
+                }.onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "Failed to sync selected courses: ${error.message}"
+                    )
+                    Log.e(TAG, "Failed to sync selected courses", error)
+                }
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "No courses selected"
+                )
+            }
+        }
+    }
+
+    /**
      * Clear messages
      */
     fun clearMessages() {

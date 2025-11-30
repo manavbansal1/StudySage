@@ -192,6 +192,74 @@ class CanvasRepository {
         }
     }
 
+    /**
+     * Sync selected courses to Firestore
+     */
+    suspend fun syncSelectedCourses(selectedCourses: List<CanvasCourse>, semester: String = "Fall", year: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString()): Result<List<CanvasCourse>> {
+        return try {
+            val userId = auth.currentUser?.uid ?: return Result.failure(Exception("User not logged in"))
+            
+            // First, delete existing Canvas courses to avoid duplicates
+            val existingCourses = firestore.collection(COLLECTION_COURSES)
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("source", "canvas")
+                .get()
+                .await()
+            
+            val batch = firestore.batch()
+            
+            // Delete existing Canvas courses
+            existingCourses.documents.forEach { doc ->
+                batch.delete(doc.reference)
+            }
+            
+            // Add selected courses to Firestore
+            selectedCourses.forEach { course ->
+                val courseData = hashMapOf(
+                    "id" to "${userId}_canvas_${course.id}",
+                    "title" to course.name,
+                    "code" to (course.course_code ?: ""),
+                    "semester" to semester,
+                    "year" to year,
+                    "instructor" to "", // Canvas doesn't provide this in course list
+                    "description" to "Imported from Canvas",
+                    "color" to "#4CAF50", // Green color for Canvas courses
+                    "credits" to 3, // Default credits
+                    "createdAt" to System.currentTimeMillis(),
+                    "updatedAt" to System.currentTimeMillis(),
+                    "userId" to userId,
+                    "isArchived" to false,
+                    "source" to "canvas", // Extra field to identify Canvas courses
+                    "canvasCourseId" to course.id
+                )
+                
+                val courseRef = firestore.collection(COLLECTION_COURSES)
+                    .document("${userId}_canvas_${course.id}")
+                
+                batch.set(courseRef, courseData)
+            }
+            
+            batch.commit().await()
+            Log.d(TAG, "Saved ${selectedCourses.size} selected courses to Firestore")
+            
+            // Update user's canvas sync status
+            firestore.collection(COLLECTION_USERS)
+                .document(userId)
+                .update(
+                    mapOf(
+                        "canvasLastSync" to System.currentTimeMillis(),
+                        "canvasCoursesCount" to selectedCourses.size
+                    )
+                )
+                .await()
+            
+            Result.success(selectedCourses)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to sync selected Canvas courses", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun addToUserCoursesDatabase(course: CanvasCourse){
         try {
             val userId = auth.currentUser?.uid ?: return

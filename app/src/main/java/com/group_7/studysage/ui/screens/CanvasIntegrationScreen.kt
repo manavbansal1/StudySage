@@ -31,6 +31,7 @@ fun CanvasIntegrationScreen(
     
     var showTokenDialog by remember { mutableStateOf(false) }
     var showDisconnectDialog by remember { mutableStateOf(false) }
+    var selectedCourses by remember { mutableStateOf(setOf<String>()) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -264,19 +265,47 @@ fun CanvasIntegrationScreen(
             // Courses List
             if (uiState.isConnected && uiState.courses.isNotEmpty()) {
                 item {
-                    Text(
-                        "Synced Courses",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Select Courses to Sync",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        
+                        if (selectedCourses.isNotEmpty()) {
+                            Button(
+                                onClick = {
+                                    canvasViewModel.syncSelectedCourses(selectedCourses.toList())
+                                    selectedCourses = emptySet() // Clear selection after sync
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Sync (${selectedCourses.size})")
+                            }
+                        }
+                    }
                 }
                 
                 items(uiState.courses) { course ->
+                    val isSelected = selectedCourses.contains(course.id.toString())
+                    
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = if (isSelected) 
+                                MaterialTheme.colorScheme.primaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
                         Row(
@@ -285,6 +314,20 @@ fun CanvasIntegrationScreen(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { checked ->
+                                    selectedCourses = if (checked) {
+                                        selectedCourses + course.id.toString()
+                                    } else {
+                                        selectedCourses - course.id.toString()
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
                             Icon(
                                 Icons.Default.Book,
                                 contentDescription = null,
@@ -306,12 +349,14 @@ fun CanvasIntegrationScreen(
                                     )
                                 }
                             }
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF4CAF50),
-                                modifier = Modifier.size(24.dp)
-                            )
+                            if (isSelected) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -324,7 +369,7 @@ fun CanvasIntegrationScreen(
         CanvasTokenDialog(
             onDismiss = { showTokenDialog = false },
             onSubmit = { token, semester, year ->
-                canvasViewModel.connectCanvas(token, semester, year)
+                canvasViewModel.fetchCanvasCourses(token, semester, year)
                 showTokenDialog = false
             }
         )
