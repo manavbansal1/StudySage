@@ -19,6 +19,8 @@ object ResendEmailService {
     private const val TAG = "ResendEmailService"
     private const val RESEND_API_URL = "https://api.resend.com/emails"
     private const val TIMEOUT_SECONDS = 30L
+    // Course website URL used in the welcome email CTA. Change this value if your course page is different.
+    private const val COURSE_WEBSITE_URL = "https://studysage.vercel.app/"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -313,7 +315,7 @@ object ResendEmailService {
 
             <!-- Call to Action -->
             <div class="cta-container">
-                <a href="#" class="cta-button">Start Studying Smarter →</a>
+                <a href="$COURSE_WEBSITE_URL" class="cta-button">Open Course Website →</a>
             </div>
 
             <div class="divider"></div>
@@ -369,7 +371,7 @@ Collaborate with classmates in real-time with shared notes and chat
 🎮 Gamified Learning
 Earn XP, maintain streaks, and compete with friends while you study
 
-Start Studying Smarter →
+- Open Course Website → $COURSE_WEBSITE_URL
 
 Need help getting started? Check out our tutorials in the app or reach out to our support team anytime.
 
@@ -380,4 +382,3 @@ Privacy Policy · Terms of Service · Help Center
         """.trimIndent()
     }
 }
-

@@ -54,7 +54,6 @@ import com.group_7.studysage.ui.screens.GroupsScreen.GroupChatScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupScreen
 import com.group_7.studysage.ui.screens.HomeScreen.HomeScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.NotificationsScreen
-import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.RecentlyOpened.RecentlyOpenedScreen
 import com.group_7.studysage.ui.screens.TempQuiz.TempQuizGenerationScreen
@@ -200,7 +199,6 @@ fun StudySageNavigation(
 
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
-                currentDestination?.route == "privacy_settings" ||
                 currentDestination?.route == "notification_settings" ||
                 currentDestination?.route == "temp_quiz" || // Hide nav on temp quiz screen
                 currentDestination?.route == "temp_flashcards" || // Hide nav on temp flashcard screen
@@ -299,7 +297,7 @@ fun StudySageNavigation(
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier
+                modifier = Modifier.padding(paddingValues)
             ) {
                 composable(
                     Screen.Home.route,
@@ -493,9 +491,6 @@ fun StudySageNavigation(
                 }
                 
                 // Sub-pages without transitions
-                composable("privacy_settings") {
-                    PrivacyScreen(navController = navController)
-                }
                 composable("notification_settings") {
                     NotificationsScreen(navController = navController)
                 }
