@@ -25,6 +25,9 @@ import com.group_7.studysage.data.models.ContentSource
 import com.group_7.studysage.data.models.GameType
 import com.group_7.studysage.viewmodels.StandaloneGameViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.delay
 
 /**
@@ -40,19 +43,51 @@ fun GameScreen(navController: NavController) {
     var showHostDialog by rememberSaveable { mutableStateOf(false) }
     var showJoinDialog by rememberSaveable { mutableStateOf(false) }
 
+    // Clear game code when navigating back to this screen
+    DisposableEffect(navController) {
+        val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
+            if (destination.route == "games") {
+                viewModel.clearGameCode()
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
+
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        val isRefreshing = uiState.isRefreshing
+        @Suppress("DEPRECATION")
+        val swipeState = rememberSwipeRefreshState(isRefreshing)
+
+        @Suppress("DEPRECATION")
+        SwipeRefresh(
+            state = swipeState,
+            onRefresh = { viewModel.refresh() },
+            indicator = { state, trigger ->
+                @Suppress("DEPRECATION")
+                SwipeRefreshIndicator(
+                    state = state,
+                    refreshTriggerDistance = trigger,
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    elevation = 6.dp
+                )
+            }
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             // Header
             GamesHeader(
                 modifier = Modifier.padding(top = 4.dp)
@@ -176,6 +211,7 @@ fun GameScreen(navController: NavController) {
                     }
                 )
                 Spacer(modifier = Modifier.height(30.dp))
+            }
             }
         }
 
