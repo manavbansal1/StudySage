@@ -105,7 +105,8 @@ fun CoursesScreen(
     authViewModel: com.group_7.studysage.viewmodels.AuthViewModel,
     navCourseId: String? = null,
     navNoteId: String? = null, // NEW optional nav params
-    onNavigateToCanvas: () -> Unit = {}
+    onNavigateToCanvas: () -> Unit = {},
+    navController: androidx.navigation.NavController? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
@@ -156,7 +157,30 @@ fun CoursesScreen(
             courseWithNotes = uiState.selectedCourse!!,
             onBack = {
                 android.util.Log.d("CoursesScreen", "⬅️ Back button explicitly pressed from CourseDetailScreen")
+                android.util.Log.d("CoursesScreen", "   shouldPopBackOnClose: ${uiState.shouldPopBackOnClose}")
+                android.util.Log.d("CoursesScreen", "   navController: ${navController != null}")
+
+                // Check the flag BEFORE clearing state
+                val shouldPopBack = uiState.shouldPopBackOnClose
+
+                // Clear course state first
                 viewModel.clearSelectedCourse()
+                viewModel.setShouldPopBack(false)
+
+                // If we came from Recently Opened, navigate back to home
+                if (shouldPopBack && navController != null) {
+                    android.util.Log.d("CoursesScreen", "🔙 Came from Recently Opened - navigating to home")
+                    // Pop all the way back to home (inclusive = false keeps home in the stack)
+                    navController.navigate("home") {
+                        popUpTo("home") {
+                            inclusive = false
+                        }
+                        launchSingleTop = true
+                    }
+                } else {
+                    android.util.Log.d("CoursesScreen", "📋 Normal course flow - showing courses list")
+                    // Just clearing selectedCourse above will show the courses list
+                }
             },
             courseViewModel = viewModel,
             authViewModel = authViewModel

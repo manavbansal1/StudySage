@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -92,6 +93,11 @@ fun CourseDetailScreen(
 ) {
     val context = LocalContext.current
     val course = courseWithNotes.course
+
+    // Handle device back button - intercept and call onBack callback
+    BackHandler {
+        onBack()
+    }
 
     // Get notes from course - will be empty list if no notes uploaded yet
     val courseNotes = courseWithNotes.notes

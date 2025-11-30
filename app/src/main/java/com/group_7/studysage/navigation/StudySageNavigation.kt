@@ -408,7 +408,8 @@ fun StudySageNavigation(
                         authViewModel,
                         onNavigateToCanvas = {
                             navController.navigate(Screen.CanvasIntegration.route)
-                        }
+                        },
+                        navController = navController
                     )
                 }
 
@@ -458,7 +459,8 @@ fun StudySageNavigation(
                         navNoteId,
                         onNavigateToCanvas = {
                             navController.navigate(Screen.CanvasIntegration.route)
-                        }
+                        },
+                        navController = navController
                     )
                 }
                 composable(
@@ -539,7 +541,11 @@ fun StudySageNavigation(
                     NotificationsScreen(navController = navController)
                 }
                 composable("recently_opened") {
-                    RecentlyOpenedScreen(navController = navController)
+                    RecentlyOpenedScreen(
+                        navController = navController,
+                        homeViewModel = homeViewModel,
+                        courseViewModel = courseViewModel
+                    )
                 }
 
                 // Temporary Quiz Generation Screen

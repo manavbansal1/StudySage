@@ -159,7 +159,7 @@ fun HomeScreen(
     val userFullName by homeViewModel.userFullName
     val userProfile by homeViewModel.userProfile
     val isLoadingProfile by homeViewModel.isLoadingProfile
-    val recentPdfs by homeViewModel.recentlyOpenedPdfs
+    val recentPdfs by homeViewModel.recentlyOpenedPdfs.collectAsState()
 
     // Pull-to-refresh state
     val isRefreshing by homeViewModel.isRefreshing
@@ -480,7 +480,6 @@ fun HomeScreen(
 
 
             // RECENTLY OPENED PDFs SECTION
-            val recentPdfs by homeViewModel.recentlyOpenedPdfs
 
             if (recentPdfs.isNotEmpty()) {
                 Row(
@@ -496,7 +495,15 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    TextButton(onClick = { navController.navigate("recently_opened") }) {
+                    TextButton(onClick = {
+                        android.util.Log.d("HomeScreen", "========================================")
+                        android.util.Log.d("HomeScreen", "👆 'See All' clicked - navigating to recently_opened")
+                        android.util.Log.d("HomeScreen", "   Current destination: ${navController.currentDestination?.route}")
+                        android.util.Log.d("HomeScreen", "   Previous entry: ${navController.previousBackStackEntry?.destination?.route}")
+                        navController.navigate("recently_opened")
+                        android.util.Log.d("HomeScreen", "   After navigation - destination: ${navController.currentDestination?.route}")
+                        android.util.Log.d("HomeScreen", "========================================")
+                    }) {
                         Text(
                             text = "See All",
                             fontSize = 14.sp,

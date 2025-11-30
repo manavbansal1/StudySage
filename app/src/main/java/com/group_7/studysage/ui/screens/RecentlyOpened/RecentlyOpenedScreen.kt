@@ -1,5 +1,6 @@
 package com.group_7.studysage.ui.screens.RecentlyOpened
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,7 +24,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.group_7.studysage.viewmodels.HomeViewModel
 
@@ -30,10 +31,71 @@ import com.group_7.studysage.viewmodels.HomeViewModel
 @Composable
 fun RecentlyOpenedScreen(
     navController: NavController,
-    homeViewModel: HomeViewModel = viewModel(),
-    courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel = viewModel()
+    homeViewModel: HomeViewModel,
+    courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel
 ) {
-    val recentPdfs by homeViewModel.recentlyOpenedPdfs
+    val recentPdfs by homeViewModel.recentlyOpenedPdfs.collectAsState()
+    val isLoading by homeViewModel.isLoading
+
+    // Log screen composition and navigation state
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        android.util.Log.d("RecentlyOpenedScreen", "========================================")
+        android.util.Log.d("RecentlyOpenedScreen", "🎬 SCREEN COMPOSED")
+        android.util.Log.d("RecentlyOpenedScreen", "   Current destination: ${navController.currentDestination?.route}")
+        android.util.Log.d("RecentlyOpenedScreen", "   Previous back stack entry: ${navController.previousBackStackEntry?.destination?.route}")
+        android.util.Log.d("RecentlyOpenedScreen", "========================================")
+    }
+
+    // Handle device back button - pop back stack to return to previous screen (home)
+    BackHandler {
+        android.util.Log.d("RecentlyOpenedScreen", "========================================")
+        android.util.Log.d("RecentlyOpenedScreen", "🔙 DEVICE BACK BUTTON PRESSED")
+        android.util.Log.d("RecentlyOpenedScreen", "   Current destination: ${navController.currentDestination?.route}")
+        android.util.Log.d("RecentlyOpenedScreen", "   Previous entry: ${navController.previousBackStackEntry?.destination?.route}")
+        android.util.Log.d("RecentlyOpenedScreen", "   Calling popBackStack()...")
+
+        val popped = navController.popBackStack()
+        android.util.Log.d("RecentlyOpenedScreen", "   Pop result: $popped")
+        android.util.Log.d("RecentlyOpenedScreen", "   After pop - destination: ${navController.currentDestination?.route}")
+        android.util.Log.d("RecentlyOpenedScreen", "========================================")
+    }
+
+    // Load recently opened PDFs when screen opens
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        android.util.Log.d("RecentlyOpenedScreen", "LaunchedEffect triggered - Loading recently opened PDFs...")
+        homeViewModel.loadRecentlyOpenedPdfs()
+    }
+
+    // Log when recentPdfs changes
+    androidx.compose.runtime.LaunchedEffect(recentPdfs) {
+        android.util.Log.d("RecentlyOpenedScreen", "Recent PDFs updated: ${recentPdfs.size} items")
+        recentPdfs.forEachIndexed { index, pdf ->
+            android.util.Log.d("RecentlyOpenedScreen", "  [$index] ${pdf["title"]} (${pdf["courseId"]})")
+        }
+    }
+
+    // Add DisposableEffect to handle configuration changes
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            // Cleanup if needed
+        }
+    }
+
+    // Show loading indicator while data is loading
+    if (isLoading && recentPdfs.isEmpty()) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        return
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -50,12 +112,19 @@ fun RecentlyOpenedScreen(
             ) {
                 // Back button
                 IconButton(
-                    onClick = { navController.navigateUp() },
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                    onClick = {
+                        android.util.Log.d("RecentlyOpenedScreen", "========================================")
+                        android.util.Log.d("RecentlyOpenedScreen", "⬅️ UI BACK BUTTON CLICKED")
+                        android.util.Log.d("RecentlyOpenedScreen", "   Current destination: ${navController.currentDestination?.route}")
+                        android.util.Log.d("RecentlyOpenedScreen", "   Attempting to navigate to 'home'...")
+
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        android.util.Log.d("RecentlyOpenedScreen", "   After navigation - destination: ${navController.currentDestination?.route}")
+                        android.util.Log.d("RecentlyOpenedScreen", "========================================")
+                    }
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -169,9 +238,38 @@ fun RecentlyOpenedScreen(
                             lastOpenedAt = (pdf["lastOpenedAt"] as? Number)?.toLong() ?: 0L,
                             openCount = (pdf["openCount"] as? Number)?.toInt() ?: 0,
                             onClick = {
+                                android.util.Log.d("RecentlyOpenedScreen", "========================================")
+                                android.util.Log.d("RecentlyOpenedScreen", "📄 PDF CARD CLICKED")
                                 val noteId = pdf["noteId"] as? String
+                                android.util.Log.d("RecentlyOpenedScreen", "   Course ID: $courseId")
+                                android.util.Log.d("RecentlyOpenedScreen", "   Note ID: $noteId")
+
                                 if (!courseId.isNullOrBlank()) {
-                                    homeViewModel.openCourse(courseId, noteId, courseViewModel, navController)
+                                    android.util.Log.d("RecentlyOpenedScreen", "   Setting shouldPopBack = true")
+                                    courseViewModel.setShouldPopBack(true)
+                                    android.util.Log.d("RecentlyOpenedScreen", "   ✅ Flag set! Current value: ${courseViewModel.uiState.value.shouldPopBackOnClose}")
+
+                                    android.util.Log.d("RecentlyOpenedScreen", "   Setting pending note ID: $noteId")
+                                    courseViewModel.setPendingOpenNote(noteId)
+
+                                    val route = if (!noteId.isNullOrBlank()) {
+                                        "course/$courseId?noteId=$noteId"
+                                    } else {
+                                        "course/$courseId"
+                                    }
+
+                                    android.util.Log.d("RecentlyOpenedScreen", "   Navigating to route: $route")
+                                    android.util.Log.d("RecentlyOpenedScreen", "   Current destination before: ${navController.currentDestination?.route}")
+
+                                    navController.navigate(route) {
+                                        // Don't pop recently_opened here - let the back button handle it
+                                    }
+
+                                    android.util.Log.d("RecentlyOpenedScreen", "   Current destination after: ${navController.currentDestination?.route}")
+                                    android.util.Log.d("RecentlyOpenedScreen", "========================================")
+                                } else {
+                                    android.util.Log.e("RecentlyOpenedScreen", "   ❌ Course ID is blank!")
+                                    android.util.Log.d("RecentlyOpenedScreen", "========================================")
                                 }
                             }
                         )

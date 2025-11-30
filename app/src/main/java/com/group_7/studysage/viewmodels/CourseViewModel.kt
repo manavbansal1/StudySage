@@ -30,7 +30,8 @@ data class CourseUiState(
     val selectedCourse: CourseWithNotes? = null,
     val pendingOpenNoteId: String? = null, // NEW: hold a noteId to open when course loads
     val isShowingFullscreenOverlay: Boolean = false, // NEW: track if quiz/NFC screens are showing
-    val isRestoringState: Boolean = false // NEW: track if we're restoring state after rotation
+    val isRestoringState: Boolean = false, // NEW: track if we're restoring state after rotation
+    val shouldPopBackOnClose: Boolean = false // NEW: track if back button should pop navigation stack
 )
 
 class CourseViewModel(
@@ -40,6 +41,7 @@ class CourseViewModel(
 
     companion object {
         private const val SELECTED_COURSE_ID_KEY = "selected_course_id"
+        private const val SHOULD_POP_BACK_KEY = "should_pop_back"
     }
 
     private val _uiState = MutableStateFlow(CourseUiState())
@@ -53,13 +55,22 @@ class CourseViewModel(
 
         // Check if there's a saved course ID
         val savedCourseId = savedStateHandle.get<String>(SELECTED_COURSE_ID_KEY)
+        val savedShouldPopBack = savedStateHandle.get<Boolean>(SHOULD_POP_BACK_KEY) ?: false
         android.util.Log.d("CourseViewModel", "   Saved course ID: ${savedCourseId ?: "null"}")
+        android.util.Log.d("CourseViewModel", "   Saved shouldPopBack: $savedShouldPopBack")
 
         if (savedCourseId != null) {
             android.util.Log.d("CourseViewModel", "✅ FOUND saved course ID - will restore after loading")
         } else {
             android.util.Log.d("CourseViewModel", "ℹ️ No saved course ID found - fresh start")
         }
+
+        // Restore shouldPopBack flag to UI state if it exists
+        if (savedShouldPopBack) {
+            android.util.Log.d("CourseViewModel", "🔄 Restoring shouldPopBack flag to UI state")
+            _uiState.update { it.copy(shouldPopBackOnClose = savedShouldPopBack) }
+        }
+
         android.util.Log.d("CourseViewModel", "========================================")
 
         loadAvailableYears()
@@ -179,11 +190,16 @@ class CourseViewModel(
                     android.util.Log.d("CourseViewModel", "ℹ️ Course has no notes yet - this is normal for new courses")
                 }
 
+                // Restore shouldPopBack flag from SavedStateHandle if it exists
+                val savedShouldPopBack = savedStateHandle.get<Boolean>(SHOULD_POP_BACK_KEY) ?: false
+                android.util.Log.d("CourseViewModel", "🔄 Restoring shouldPopBack flag: $savedShouldPopBack")
+
                 _uiState.update {
                     it.copy(
                         selectedCourse = courseWithNotes,
                         isLoading = false,
                         isRestoringState = false, // Clear restoration flag
+                        shouldPopBackOnClose = savedShouldPopBack, // Restore the flag
                         error = null
                     )
                 }
@@ -352,21 +368,41 @@ class CourseViewModel(
         }
     }
 
+    fun setShouldPopBack(shouldPop: Boolean) {
+        android.util.Log.d("CourseViewModel", "========================================")
+        android.util.Log.d("CourseViewModel", "🚩 Setting shouldPopBackOnClose: $shouldPop")
+        android.util.Log.d("CourseViewModel", "   SavedStateHandle keys before: ${savedStateHandle.keys()}")
+
+        // Save to SavedStateHandle for persistence
+        savedStateHandle[SHOULD_POP_BACK_KEY] = shouldPop
+
+        android.util.Log.d("CourseViewModel", "   SavedStateHandle keys after: ${savedStateHandle.keys()}")
+        android.util.Log.d("CourseViewModel", "   Verification - Get value: ${savedStateHandle.get<Boolean>(SHOULD_POP_BACK_KEY)}")
+
+        // Also update UI state
+        _uiState.update { it.copy(shouldPopBackOnClose = shouldPop) }
+        android.util.Log.d("CourseViewModel", "✅ shouldPopBack flag saved")
+        android.util.Log.d("CourseViewModel", "========================================")
+    }
+
     fun clearSelectedCourse() {
         android.util.Log.d("CourseViewModel", "========================================")
         android.util.Log.d("CourseViewModel", "🧹 CLEARING selected course")
         android.util.Log.d("CourseViewModel", "   Called from: ${Thread.currentThread().stackTrace.getOrNull(3)?.methodName}")
         android.util.Log.d("CourseViewModel", "   Before clear - Keys: ${savedStateHandle.keys()}")
         android.util.Log.d("CourseViewModel", "   Before clear - Course ID: ${savedStateHandle.get<String>(SELECTED_COURSE_ID_KEY)}")
+        android.util.Log.d("CourseViewModel", "   Before clear - ShouldPopBack: ${savedStateHandle.get<Boolean>(SHOULD_POP_BACK_KEY)}")
 
         savedStateHandle.remove<String>(SELECTED_COURSE_ID_KEY)
+        savedStateHandle.remove<Boolean>(SHOULD_POP_BACK_KEY)
 
         android.util.Log.d("CourseViewModel", "   After clear - Keys: ${savedStateHandle.keys()}")
         android.util.Log.d("CourseViewModel", "   After clear - Course ID: ${savedStateHandle.get<String>(SELECTED_COURSE_ID_KEY)}")
+        android.util.Log.d("CourseViewModel", "   After clear - ShouldPopBack: ${savedStateHandle.get<Boolean>(SHOULD_POP_BACK_KEY)}")
         android.util.Log.d("CourseViewModel", "✅ SavedStateHandle cleared")
         android.util.Log.d("CourseViewModel", "========================================")
 
-        _uiState.update { it.copy(selectedCourse = null) }
+        _uiState.update { it.copy(selectedCourse = null, shouldPopBackOnClose = false) }
     }
 
     fun clearMessage() {
