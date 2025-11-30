@@ -324,30 +324,6 @@ class GameWebSocketManager(
     }
 
     /**
-     * Submit match pair (for Speed Match game)
-     */
-    fun submitMatchPair(
-        playerId: String,
-        termId: String,
-        definitionId: String,
-        timeElapsed: Long
-    ) {
-        val matchData = MatchPairSubmission(
-            playerId = playerId,
-            termId = termId,
-            definitionId = definitionId,
-            timeElapsed = timeElapsed
-        )
-
-        val dataString = json.encodeToString(MatchPairSubmission.serializer(), matchData)
-
-        sendMessage(WebSocketMessage(
-            type = MessageType.MATCH_PAIR,
-            data = dataString
-        ))
-    }
-
-    /**
      * Generic message sender
      */
     private fun sendMessage(message: WebSocketMessage) {
@@ -368,12 +344,6 @@ class GameWebSocketManager(
         _connectionState.value = ConnectionState.Disconnected
     }
 
-    /**
-     * Clean up resources
-     */
-    fun cleanup() {
-        disconnect()
-    }
 }
 
 /**

@@ -12,19 +12,6 @@ data class DailyTaskItem(
     val xpReward: Int = 0,
     val isCompleted: Boolean = false,
     val completedAt: Timestamp? = null,
-    val taskType: String = "", // e.g., "quiz", "study", "flashcards", "reading"
+    val taskType: String = "",
     val createdAt: Timestamp = Timestamp.now()
 )
-
-/**
- * Represents a set of daily tasks for a specific user and date
- */
-data class DailyTaskSet(
-    val userId: String = "",
-    val date: String = "", // Format: "YYYY-MM-DD"
-    val tasks: List<DailyTaskItem> = emptyList(),
-    val totalXP: Int = 0,
-    val completedCount: Int = 0,
-    val createdAt: Timestamp = Timestamp.now()
-)
-

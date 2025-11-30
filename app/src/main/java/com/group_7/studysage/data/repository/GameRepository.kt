@@ -3,7 +3,6 @@ package com.group_7.studysage.data.repository
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.group_7.studysage.data.api.ApiResponse
 import com.group_7.studysage.data.api.GameApiService
 import com.group_7.studysage.data.model.Quiz
 import com.group_7.studysage.data.model.QuizGenerationResponse
@@ -18,7 +17,6 @@ import kotlinx.coroutines.tasks.await
  * Combines REST API calls and WebSocket real-time communication
  */
 class GameRepository(
-    private val apiService: GameApiService = GameApiService(),
     private val wsManager: GameWebSocketManager = GameWebSocketManager()
 ) {
     val errorMessage: StateFlow<ErrorData?> = wsManager.errorMessage

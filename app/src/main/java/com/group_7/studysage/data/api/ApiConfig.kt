@@ -6,7 +6,7 @@ package com.group_7.studysage.data.api
  * To use ngrok:
  * 1. Start your backend: cd studysage-backend && ./gradlew run
  * 2. In another terminal, run: ngrok http 8080
- * 3. Copy the https URL from ngrok (e.g., https://abc123.ngrok.io)
+ * 3. Copy the https URL from ngrok
  * 4. Paste it in NGROK_URL below
  * 5. Set USE_NGROK = true
  */
@@ -28,7 +28,6 @@ object ApiConfig {
     private const val LOCAL_HTTP_URL = "http://10.0.2.2:8080"
     private const val LOCAL_WS_URL = "ws://10.0.2.2:8080"
 
-    // Active URLs based on configuration
     val BASE_HTTP_URL: String
         get() = if (USE_NGROK) NGROK_URL else LOCAL_HTTP_URL
 

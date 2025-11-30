@@ -567,63 +567,6 @@ class GroupRepository(
         }
     }
 
-    /**
-     * Get messages for a group (with pagination)
-     */
-    suspend fun getMessages(groupId: String, limit: Int = 50): List<GroupMessage> {
-        return try {
-            val snapshot = firestore.collection("groups")
-                .document(groupId)
-                .collection("messages")
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .limit(limit.toLong())
-                .get()
-                .await()
-
-            snapshot.documents.mapNotNull { doc ->
-                try {
-                    @Suppress("UNCHECKED_CAST")
-                    val imagesList = (doc.get("images") as? List<String>) ?: emptyList()
-                    GroupMessage(
-                        messageId = doc.getString("messageId") ?: "",
-                        senderId = doc.getString("senderId") ?: "",
-                        senderName = doc.getString("senderName") ?: "",
-                        senderProfilePic = doc.getString("senderProfilePic") ?: "",
-                        message = doc.getString("message") ?: "",
-                        timestamp = doc.getLong("timestamp") ?: 0L,
-                        images = imagesList
-                    )
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse message: ${e.message}", e)
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch messages for group $groupId: ${e.message}", e)
-            emptyList()
-        }
-    }
-
-    /**
-     * Delete a message (admin only)
-     */
-    suspend fun deleteMessage(groupId: String, messageId: String): Result<Unit> {
-        return try {
-            firestore.collection("groups")
-                .document(groupId)
-                .collection("messages")
-                .document(messageId)
-                .delete()
-                .await()
-
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete message $messageId: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-
 
     /**
      * Check if user is a member of a group
