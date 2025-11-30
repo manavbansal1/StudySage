@@ -30,9 +30,17 @@ data class GroupInvite(
 )
 
 /**
+ * @Attachment data class to represent a file attachment
+ */
+data class Attachment(
+    val url: String = "",
+    val type: String = "", // "pdf", "image", etc.
+    val name: String = ""
+)
+
+/**
  * @GroupMessage data class to represent a message in a group
- * Includes sender details, message content, timestamp, and optional images
- * Images are represented as a list of URLs
+ * Includes sender details, message content, timestamp, and optional images/attachments
  */
 data class GroupMessage(
     val messageId: String = "",
@@ -41,7 +49,8 @@ data class GroupMessage(
     val senderProfilePic: String = "",
     val message: String = "",
     val timestamp: Long = 0L,
-    val images: List<String> = emptyList()
+    val images: List<String> = emptyList(),
+    val attachments: List<Attachment> = emptyList()
 )
 
 data class GroupMember(
@@ -399,7 +408,8 @@ class GroupRepository(
     suspend fun sendMessage(
         groupId: String,
         message: String,
-        images: List<String> = emptyList()
+        images: List<String> = emptyList(),
+        attachments: List<Attachment> = emptyList()
     ): Result<String> {
         return try {
             val currentUser = firebaseAuth.currentUser
@@ -436,7 +446,14 @@ class GroupRepository(
                 "senderProfilePic" to userProfilePic,
                 "message" to message,
                 "timestamp" to System.currentTimeMillis(),
-                "images" to images
+                "images" to images,
+                "attachments" to attachments.map { 
+                    mapOf(
+                        "url" to it.url,
+                        "type" to it.type,
+                        "name" to it.name
+                    )
+                }
             )
 
             // Add message to subcollection
@@ -448,10 +465,12 @@ class GroupRepository(
                 .await()
 
             // Update group's last message info
+            val lastMsgText = if (message.isNotBlank()) message else if (attachments.isNotEmpty()) "Sent an attachment" else "Sent an image"
+            
             firestore.collection("groups").document(groupId)
                 .update(
                     mapOf(
-                        "lastMessage" to message,
+                        "lastMessage" to lastMsgText,
                         "lastMessageTime" to System.currentTimeMillis(),
                         "lastMessageSender" to userName,
                         "lastMessageSenderId" to currentUser.uid
@@ -464,7 +483,7 @@ class GroupRepository(
                 groupId = groupId,
                 senderId = currentUser.uid,
                 senderName = userName,
-                messageText = message
+                messageText = lastMsgText
             )
 
             Result.success(messageId)
@@ -585,6 +604,16 @@ class GroupRepository(
                 try {
                     @Suppress("UNCHECKED_CAST")
                     val imagesList = (doc.get("images") as? List<String>) ?: emptyList()
+                    
+                    @Suppress("UNCHECKED_CAST")
+                    val attachmentsList = (doc.get("attachments") as? List<Map<String, String>>)?.map {
+                        Attachment(
+                            url = it["url"] ?: "",
+                            type = it["type"] ?: "",
+                            name = it["name"] ?: ""
+                        )
+                    } ?: emptyList()
+
                     GroupMessage(
                         messageId = doc.getString("messageId") ?: "",
                         senderId = doc.getString("senderId") ?: "",
@@ -592,7 +621,8 @@ class GroupRepository(
                         senderProfilePic = doc.getString("senderProfilePic") ?: "",
                         message = doc.getString("message") ?: "",
                         timestamp = doc.getLong("timestamp") ?: 0L,
-                        images = imagesList
+                        images = imagesList,
+                        attachments = attachmentsList
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to parse message: ${e.message}", e)
@@ -728,6 +758,16 @@ class GroupRepository(
                     try {
                         @Suppress("UNCHECKED_CAST")
                         val imagesList = (doc.get("images") as? List<String>) ?: emptyList()
+                        
+                        @Suppress("UNCHECKED_CAST")
+                        val attachmentsList = (doc.get("attachments") as? List<Map<String, String>>)?.map {
+                            Attachment(
+                                url = it["url"] ?: "",
+                                type = it["type"] ?: "",
+                                name = it["name"] ?: ""
+                            )
+                        } ?: emptyList()
+
                         GroupMessage(
                             messageId = doc.getString("messageId") ?: "",
                             senderId = doc.getString("senderId") ?: "",
@@ -735,7 +775,8 @@ class GroupRepository(
                             senderProfilePic = doc.getString("senderProfilePic") ?: "",
                             message = doc.getString("message") ?: "",
                             timestamp = doc.getLong("timestamp") ?: 0L,
-                            images = imagesList
+                            images = imagesList,
+                            attachments = attachmentsList
                         )
                     } catch (e: Exception) {
                         null
