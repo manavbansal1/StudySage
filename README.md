@@ -23,7 +23,7 @@
 
 **Transform your study experience with AI-powered content processing, collaborative study groups, and competitive multiplayer games.**
 
-[**View Quick Setup →**](QUICK_SETUP.md)
+[**View Quick Setup →**](SETUP.md)
 
 </div>
 
