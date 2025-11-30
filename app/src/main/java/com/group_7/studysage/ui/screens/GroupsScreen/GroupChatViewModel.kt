@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.group_7.studysage.data.repository.AuthRepository
 import com.group_7.studysage.data.repository.GroupRepository
 import com.group_7.studysage.data.repository.GroupMessage
+import com.group_7.studysage.data.repository.Attachment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -114,10 +115,10 @@ class GroupChatViewModel(
         }
     }
 
-    fun sendMessage(groupId: String, message: String, images: List<String> = emptyList()) {
+    fun sendMessage(groupId: String, message: String, images: List<String> = emptyList(), attachments: List<Attachment> = emptyList()) {
         viewModelScope.launch {
             try {
-                val result = groupRepository.sendMessage(groupId, message, images)
+                val result = groupRepository.sendMessage(groupId, message, images, attachments)
 
                 result.onSuccess {
                     // Last message is now updated globally in GroupRepository.sendMessage()
@@ -139,6 +140,47 @@ class GroupChatViewModel(
             } catch (e: Exception) {
                 // Handle error
                 Log.e("GroupChatViewModel", "Error sending message: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Upload a file (PDF, etc.) to Cloudinary
+     */
+    fun uploadFile(
+        context: android.content.Context,
+        fileUri: android.net.Uri,
+        fileType: String, // "pdf", etc.
+        onSuccess: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                _isUploadingImage.value = true // Reuse existing loading state or create a new one
+                
+                // Upload to Cloudinary
+                // For PDFs, we use "raw" resource type usually
+                val resourceType = if (fileType == "pdf") "raw" else "auto"
+                val folder = "studysage/chat_attachments"
+                
+                val url = com.group_7.studysage.utils.CloudinaryUploader.uploadFile(
+                    context = context,
+                    fileUri = fileUri,
+                    fileType = "raw", 
+                    folder = folder,
+                    resourceType = resourceType
+                )
+
+                _isUploadingImage.value = false
+
+                if (url != null) {
+                    onSuccess(url)
+                } else {
+                    onError("Failed to upload file")
+                }
+            } catch (e: Exception) {
+                _isUploadingImage.value = false
+                onError(e.message ?: "Unknown error during upload")
             }
         }
     }
