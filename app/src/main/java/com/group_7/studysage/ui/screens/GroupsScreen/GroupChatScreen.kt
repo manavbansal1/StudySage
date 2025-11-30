@@ -754,7 +754,7 @@ private fun MessageInputSection(
                         onSendCode = { code ->
                             showGameDialog = false
                             onSendAttachment(Uri.parse(code), "game_invite")
-                        }
+              }
                     )
                 }
 
