@@ -90,7 +90,8 @@ fun CoursesScreen(
     viewModel: CourseViewModel = viewModel(),
     authViewModel: com.group_7.studysage.viewmodels.AuthViewModel,
     navCourseId: String? = null,
-    navNoteId: String? = null // NEW optional nav params
+    navNoteId: String? = null, // NEW optional nav params
+    onNavigateToCanvas: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
@@ -156,6 +157,7 @@ fun CoursesScreen(
                     item(span = { GridItemSpan(this.maxLineSpan) }) {
                         CoursesHeader(
                             onAddClick = { showAddCourseDialog = true },
+                            onCanvasClick = onNavigateToCanvas,
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
@@ -330,6 +332,7 @@ fun CoursesScreen(
 @Composable
 fun CoursesHeader(
     onAddClick: () -> Unit,
+    onCanvasClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -353,17 +356,32 @@ fun CoursesHeader(
                 letterSpacing = (-0.5).sp
             )
 
-            // Add button without background
-            IconButton(
-                onClick = onAddClick,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Course",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(26.dp)
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Canvas button
+                IconButton(
+                    onClick = onCanvasClick,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.School,
+                        contentDescription = "Connect Canvas",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                
+                // Add button
+                IconButton(
+                    onClick = onAddClick,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Course",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
     }
