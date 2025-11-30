@@ -205,6 +205,7 @@ fun StudySageNavigation(
                 currentDestination?.route == "temp_quiz" || // Hide nav on temp quiz screen
                 currentDestination?.route == "temp_flashcards" || // Hide nav on temp flashcard screen
                 currentDestination?.route == "recently_opened" ||
+                currentDestination?.route == "canvas_integration" ||
                 currentDestination?.route?.startsWith("game_") == true ||
                 courseUiState.isShowingFullscreenOverlay || // Hide nav when quiz/NFC screens are showing
                 courseUiState.selectedCourse != null // Hide nav when viewing course details
