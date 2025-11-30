@@ -28,8 +28,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.models.GameUiState
 import com.group_7.studysage.data.models.QuizQuestion
+import com.group_7.studysage.ui.screens.GameScreen.StudyTacToeViewModel
 
 /**
  * Study-Tac-Toe Game Screen
@@ -39,7 +41,8 @@ import com.group_7.studysage.data.models.QuizQuestion
 fun StudyTacToeScreen(
     gameUiState: GameUiState,
     onSquareClick: (Int) -> Unit,
-    onAnswerSubmit: (Int, Int, List<String>) -> Unit // (squareIndex, answerIndex, boardState)
+    onAnswerSubmit: (Int, Int, List<String>) -> Unit, // (squareIndex, answerIndex, boardState)
+    viewModel: StudyTacToeViewModel = viewModel()
 ) {
     val session = gameUiState.currentSession
     val players = session?.players?.values?.toList() ?: emptyList()
@@ -93,46 +96,39 @@ fun StudyTacToeScreen(
     val currentTurnPlayerId = session?.currentTurn
     val isCurrentPlayerTurn = currentTurnPlayerId == currentUserId
 
-    var selectedSquare by rememberSaveable { mutableStateOf<Int?>(null) }
-    var showQuestionDialog by rememberSaveable { mutableStateOf(false) }
-    var waitingForAnswer by rememberSaveable { mutableStateOf(false) }
-    var selectedQuestionIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    // Collect ViewModel state
+    val selectedSquare by viewModel.selectedSquare.collectAsState()
+    val showQuestionDialog by viewModel.showQuestionDialog.collectAsState()
+    val waitingForAnswer by viewModel.waitingForAnswer.collectAsState()
+    val selectedQuestionIndex by viewModel.selectedQuestionIndex.collectAsState()
+    val attemptedSquares by viewModel.attemptedSquares.collectAsState()
+    val currentQuestion by viewModel.currentQuestion.collectAsState()
+    val selectedAnswerIndex by viewModel.selectedAnswerIndex.collectAsState()
 
-    // Derive currentQuestion from selectedQuestionIndex to handle rotation properly
-    val currentQuestion = selectedQuestionIndex?.let { index ->
-        val question = questions.getOrNull(index)
-        android.util.Log.d("StudyTacToe", "Deriving currentQuestion - index: $index, questions.size: ${questions.size}, question: ${question?.question}")
-        question
+    // Update turn in ViewModel when it changes (to reset attempted squares)
+    LaunchedEffect(currentTurnPlayerId) {
+        android.util.Log.d("StudyTacToe", "=== TURN UPDATE LaunchedEffect ===")
+        android.util.Log.d("StudyTacToe", "Current turn ID: $currentTurnPlayerId")
+        viewModel.updateCurrentTurn(currentTurnPlayerId)
     }
 
-    // Log dialog state for debugging rotation issues
-    LaunchedEffect(showQuestionDialog, selectedQuestionIndex, currentQuestion) {
-        android.util.Log.d("StudyTacToe", "Dialog State - showDialog: $showQuestionDialog, selectedIndex: $selectedQuestionIndex, hasQuestion: ${currentQuestion != null}")
+    // Log ViewModel state changes
+    LaunchedEffect(showQuestionDialog, waitingForAnswer, attemptedSquares) {
+        android.util.Log.d("StudyTacToe", "=== ViewModel State Changed ===")
+        android.util.Log.d("StudyTacToe", "showDialog: $showQuestionDialog")
+        android.util.Log.d("StudyTacToe", "waitingForAnswer: $waitingForAnswer")
+        android.util.Log.d("StudyTacToe", "attemptedSquares: $attemptedSquares")
+        android.util.Log.d("StudyTacToe", "selectedSquare: $selectedSquare")
+        android.util.Log.d("StudyTacToe", "hasQuestion: ${currentQuestion != null}")
     }
 
-    // Handle case where dialog is open but question data is lost (e.g., after rotation before questions load)
-    LaunchedEffect(showQuestionDialog, selectedQuestionIndex, questions.size) {
-        if (showQuestionDialog && selectedQuestionIndex != null && questions.isEmpty()) {
-            android.util.Log.w("StudyTacToe", "Dialog is open but questions list is empty - waiting for questions to load")
-        }
-        if (showQuestionDialog && selectedQuestionIndex != null && currentQuestion == null && questions.isNotEmpty()) {
-            android.util.Log.e("StudyTacToe", "Dialog is open but question is null despite having questions - this shouldn't happen!")
-            // Reset dialog state to prevent being stuck
-            showQuestionDialog = false
-            selectedSquare = null
-            selectedQuestionIndex = null
-            waitingForAnswer = false
-        }
+    // Log current player turn state
+    LaunchedEffect(isCurrentPlayerTurn, currentTurnPlayerId, currentUserId) {
+        android.util.Log.d("StudyTacToe", "=== Player Turn State ===")
+        android.util.Log.d("StudyTacToe", "Current User ID: $currentUserId")
+        android.util.Log.d("StudyTacToe", "Current Turn Player ID: $currentTurnPlayerId")
+        android.util.Log.d("StudyTacToe", "Is Current Player Turn: $isCurrentPlayerTurn")
     }
-
-    // Track attempted squares per player - reset when turn changes
-    var attemptedSquares by rememberSaveable(
-        currentTurnPlayerId,
-        stateSaver = androidx.compose.runtime.saveable.listSaver<Set<Int>, Int>(
-            save = { it.toList() },
-            restore = { it.toSet() }
-        )
-    ) { mutableStateOf(setOf<Int>()) }
 
     // Compute winner and draw status from current board state
     // Use boardStateList for better change detection
@@ -142,8 +138,8 @@ fun StudyTacToeScreen(
     // Expose winner and draw as val instead of var for reactive updates
     val winner = winResult
 
-    // State to control showing the result screen
-    var showResultScreen by rememberSaveable { mutableStateOf(false) }
+    // Collect result screen state from ViewModel
+    val showResultScreen by viewModel.showResultScreen.collectAsState()
 
     // Detect when game is finished and trigger result screen
     LaunchedEffect(winner, isDraw) {
@@ -151,7 +147,7 @@ fun StudyTacToeScreen(
             android.util.Log.d("StudyTacToe", "Game finished! Winner: $winner, Draw: $isDraw")
             // Delay to show the final move briefly before transitioning
             kotlinx.coroutines.delay(1500)
-            showResultScreen = true
+            viewModel.showResultScreen()
         }
     }
 
@@ -161,9 +157,10 @@ fun StudyTacToeScreen(
             gameUiState = gameUiState,
             onBackClick = {
                 // Reset the flag and navigate back
-                showResultScreen = false
+                viewModel.hideResultScreen()
                 // This will be handled by the parent's back navigation
-            }
+            },
+            viewModel = viewModel
         )
         return
     }
@@ -289,19 +286,38 @@ fun StudyTacToeScreen(
                 TicTacToeGrid(
                     boardState = boardState,
                     onSquareClick = { index ->
-                    android.util.Log.d("StudyTacToe", "=== Square Click Debug ===")
-                    android.util.Log.d("StudyTacToe", "Square clicked: $index")
-                    android.util.Log.d("StudyTacToe", "Board[index] empty: ${boardState[index].isEmpty()}")
-                    android.util.Log.d("StudyTacToe", "Board[index] value: '${boardState[index]}'")
-                    android.util.Log.d("StudyTacToe", "Already attempted: ${attemptedSquares.contains(index)}")
-                    android.util.Log.d("StudyTacToe", "All attempted squares: $attemptedSquares")
-                    android.util.Log.d("StudyTacToe", "Winner: $winner")
-                    android.util.Log.d("StudyTacToe", "Is draw: $isDraw")
-                    android.util.Log.d("StudyTacToe", "Is current player turn: $isCurrentPlayerTurn")
-                    android.util.Log.d("StudyTacToe", "Current turn ID: $currentTurnPlayerId")
-                    android.util.Log.d("StudyTacToe", "Waiting for answer: $waitingForAnswer")
-                    android.util.Log.d("StudyTacToe", "Show question dialog: $showQuestionDialog")
-                    android.util.Log.d("StudyTacToe", "Questions size: ${questions.size}")
+                    android.util.Log.d("StudyTacToe", "")
+                    android.util.Log.d("StudyTacToe", "╔════════════════════════════════════════")
+                    android.util.Log.d("StudyTacToe", "║ SQUARE $index CLICKED")
+                    android.util.Log.d("StudyTacToe", "╠════════════════════════════════════════")
+                    android.util.Log.d("StudyTacToe", "║ Board State:")
+                    android.util.Log.d("StudyTacToe", "║   Square[$index] empty: ${boardState[index].isEmpty()}")
+                    android.util.Log.d("StudyTacToe", "║   Square[$index] value: '${boardState[index]}'")
+                    android.util.Log.d("StudyTacToe", "║   Full board: ${boardState.contentToString()}")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Player State:")
+                    android.util.Log.d("StudyTacToe", "║   Current user ID: $currentUserId")
+                    android.util.Log.d("StudyTacToe", "║   Current turn player ID: $currentTurnPlayerId")
+                    android.util.Log.d("StudyTacToe", "║   Is current player turn: $isCurrentPlayerTurn")
+                    android.util.Log.d("StudyTacToe", "║   Current player symbol: $currentPlayer")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Attempt Tracking:")
+                    android.util.Log.d("StudyTacToe", "║   Square already attempted: ${attemptedSquares.contains(index)}")
+                    android.util.Log.d("StudyTacToe", "║   All attempted squares: $attemptedSquares")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Game State:")
+                    android.util.Log.d("StudyTacToe", "║   Winner: $winner")
+                    android.util.Log.d("StudyTacToe", "║   Is draw: $isDraw")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Dialog State:")
+                    android.util.Log.d("StudyTacToe", "║   Waiting for answer: $waitingForAnswer")
+                    android.util.Log.d("StudyTacToe", "║   Show question dialog: $showQuestionDialog")
+                    android.util.Log.d("StudyTacToe", "║   Selected square: $selectedSquare")
+                    android.util.Log.d("StudyTacToe", "║   Has current question: ${currentQuestion != null}")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Questions:")
+                    android.util.Log.d("StudyTacToe", "║   Questions available: ${questions.size}")
+                    android.util.Log.d("StudyTacToe", "╠════════════════════════════════════════")
 
                     val canClick = boardState[index].isEmpty() &&
                         !attemptedSquares.contains(index) &&
@@ -311,27 +327,43 @@ fun StudyTacToeScreen(
                         !waitingForAnswer &&
                         questions.isNotEmpty()
 
-                    android.util.Log.d("StudyTacToe", "Can click: $canClick")
+                    android.util.Log.d("StudyTacToe", "║ EVALUATION:")
+                    android.util.Log.d("StudyTacToe", "║   Square empty? ${boardState[index].isEmpty()}")
+                    android.util.Log.d("StudyTacToe", "║   Not attempted? ${!attemptedSquares.contains(index)}")
+                    android.util.Log.d("StudyTacToe", "║   No winner? ${winner == null}")
+                    android.util.Log.d("StudyTacToe", "║   Not draw? ${!isDraw}")
+                    android.util.Log.d("StudyTacToe", "║   Is player turn? $isCurrentPlayerTurn")
+                    android.util.Log.d("StudyTacToe", "║   Not waiting? ${!waitingForAnswer}")
+                    android.util.Log.d("StudyTacToe", "║   Has questions? ${questions.isNotEmpty()}")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ CAN CLICK: $canClick")
 
                     if (canClick) {
-                        selectedSquare = index
                         val questionIndex = squareToQuestionMap[index] ?: 0
-                        selectedQuestionIndex = questionIndex
+                        val question = questions.getOrNull(questionIndex)
 
-                        android.util.Log.d("StudyTacToe", "Opening dialog - Question index: $questionIndex")
-                        android.util.Log.d("StudyTacToe", "Question: ${questions.getOrNull(questionIndex)?.question}")
+                        android.util.Log.d("StudyTacToe", "║ ")
+                        android.util.Log.d("StudyTacToe", "║ ✓ OPENING DIALOG")
+                        android.util.Log.d("StudyTacToe", "║   Question index: $questionIndex")
+                        android.util.Log.d("StudyTacToe", "║   Question: ${question?.question}")
+                        android.util.Log.d("StudyTacToe", "╚════════════════════════════════════════")
 
-                        showQuestionDialog = true
-                        waitingForAnswer = true
+                        if (question != null) {
+                            viewModel.openQuestionDialog(index, questionIndex, question)
+                        } else {
+                            android.util.Log.e("StudyTacToe", "ERROR: Cannot open dialog - question is null!")
+                        }
                     } else {
-                        android.util.Log.w("StudyTacToe", "Cannot click square $index - checking why:")
-                        if (!boardState[index].isEmpty()) android.util.Log.w("StudyTacToe", "  - Square is occupied")
-                        if (attemptedSquares.contains(index)) android.util.Log.w("StudyTacToe", "  - Square already attempted")
-                        if (winner != null) android.util.Log.w("StudyTacToe", "  - Game has winner")
-                        if (isDraw) android.util.Log.w("StudyTacToe", "  - Game is draw")
-                        if (!isCurrentPlayerTurn) android.util.Log.w("StudyTacToe", "  - Not your turn")
-                        if (waitingForAnswer) android.util.Log.w("StudyTacToe", "  - Still waiting for previous answer")
-                        if (questions.isEmpty()) android.util.Log.w("StudyTacToe", "  - No questions loaded")
+                        android.util.Log.d("StudyTacToe", "║ ")
+                        android.util.Log.d("StudyTacToe", "║ ✗ CANNOT CLICK - Reasons:")
+                        if (!boardState[index].isEmpty()) android.util.Log.d("StudyTacToe", "║   ✗ Square is occupied with '${boardState[index]}'")
+                        if (attemptedSquares.contains(index)) android.util.Log.d("StudyTacToe", "║   ✗ Square already attempted this turn")
+                        if (winner != null) android.util.Log.d("StudyTacToe", "║   ✗ Game has winner: $winner")
+                        if (isDraw) android.util.Log.d("StudyTacToe", "║   ✗ Game is draw")
+                        if (!isCurrentPlayerTurn) android.util.Log.d("StudyTacToe", "║   ✗ Not your turn (turn: $currentTurnPlayerId, you: $currentUserId)")
+                        if (waitingForAnswer) android.util.Log.d("StudyTacToe", "║   ✗ Still waiting for previous answer")
+                        if (questions.isEmpty()) android.util.Log.d("StudyTacToe", "║   ✗ No questions loaded")
+                        android.util.Log.d("StudyTacToe", "╚════════════════════════════════════════")
                     }
                 },
                 enabled = winner == null && !isDraw && isCurrentPlayerTurn && !waitingForAnswer
@@ -365,58 +397,67 @@ fun StudyTacToeScreen(
     }
 
 
-    // Question Dialog
-    if (showQuestionDialog && currentQuestion != null) {
-        // Capture values that won't change during callback execution
-        val questionToShow = currentQuestion
-        val squareToAnswer = selectedSquare
+    // Question Dialog - only show if we have both the dialog flag and question data
+    currentQuestion?.let { question ->
+        if (showQuestionDialog) {
+            // Capture values that won't change during callback execution
+            val squareToAnswer = selectedSquare
 
-        QuestionDialog(
-            question = questionToShow,
-            onDismiss = {
-                android.util.Log.d("StudyTacToe", "Dialog dismissed")
-                showQuestionDialog = false
-                selectedSquare = null
-                selectedQuestionIndex = null
-                waitingForAnswer = false
-            },
-            onAnswerSelected = { answerIndex ->
-                android.util.Log.d("StudyTacToe", "Answer selected: $answerIndex, correct: ${questionToShow.correctAnswer}")
-                val isCorrect = answerIndex == questionToShow.correctAnswer
+            QuestionDialog(
+                question = question,
+                selectedAnswer = selectedAnswerIndex,
+                onAnswerChanged = { viewModel.updateSelectedAnswer(it) },
+                onDismiss = {
+                    android.util.Log.d("StudyTacToe", "=== DIALOG DISMISSED ===")
+                    viewModel.closeQuestionDialog()
+                },
+                onAnswerSelected = { answerIndex ->
+                    android.util.Log.d("StudyTacToe", "=== ANSWER SELECTED ===")
+                    android.util.Log.d("StudyTacToe", "Answer index: $answerIndex")
+                    android.util.Log.d("StudyTacToe", "Correct answer: ${question.correctAnswer}")
+                    android.util.Log.d("StudyTacToe", "Question: ${question.question}")
 
-                squareToAnswer?.let { square ->
-                    android.util.Log.d("StudyTacToe", "Processing answer for square $square")
+                    val isCorrect = answerIndex == question.correctAnswer
+                    android.util.Log.d("StudyTacToe", "Is correct: $isCorrect")
 
-                    // Track the attempt locally regardless of correctness
-                    attemptedSquares = attemptedSquares + square
+                    squareToAnswer?.let { square ->
+                        android.util.Log.d("StudyTacToe", "=== PROCESSING ANSWER for square $square ===")
+                        android.util.Log.d("StudyTacToe", "Current player: $currentPlayer")
+                        android.util.Log.d("StudyTacToe", "Current board state: ${boardState.contentToString()}")
 
-                    if (isCorrect) {
-                        // Correct answer - build new board with this player's move
-                        val newBoard = boardState.copyOf()
-                        newBoard[square] = currentPlayer
-                        
-                        android.util.Log.d("StudyTacToe", "Correct answer! Placing $currentPlayer at square $square")
+                        // Track the attempt in ViewModel regardless of correctness
+                        viewModel.markSquareAttempted(square)
 
-                        // Submit answer and new board state to backend
-                        // Backend will validate, update Firebase, switch turn, and broadcast ROOM_UPDATE
-                        onAnswerSubmit(square, answerIndex, newBoard.toList())
-                    } else {
-                        // Incorrect answer - still submit but board won't change
-                        android.util.Log.d("StudyTacToe", "Incorrect answer for square $square")
-                        // Submit answer to backend with current board (unchanged)
-                        onAnswerSubmit(square, answerIndex, boardState.toList())
-                    }
+                        if (isCorrect) {
+                            // Correct answer - build new board with this player's move
+                            val newBoard = boardState.copyOf()
+                            newBoard[square] = currentPlayer
 
-                    android.util.Log.d("StudyTacToe", "Closing dialog after answer submission")
-                    // Close dialog immediately after submission
-                    showQuestionDialog = false
-                    selectedSquare = null
-                    selectedQuestionIndex = null
-                    waitingForAnswer = false
+                            android.util.Log.d("StudyTacToe", "✓ CORRECT ANSWER! Placing $currentPlayer at square $square")
+                            android.util.Log.d("StudyTacToe", "New board state: ${newBoard.contentToString()}")
 
-                } ?: android.util.Log.e("StudyTacToe", "ERROR: selectedSquare is null when submitting answer!")
-            }
-        )
+                            // Submit answer and new board state to backend
+                            // Backend will validate, update Firebase, switch turn, and broadcast ROOM_UPDATE
+                            android.util.Log.d("StudyTacToe", "Submitting answer to backend...")
+                            onAnswerSubmit(square, answerIndex, newBoard.toList())
+                        } else {
+                            // Incorrect answer - still submit but board won't change
+                            android.util.Log.d("StudyTacToe", "✗ INCORRECT ANSWER for square $square")
+                            android.util.Log.d("StudyTacToe", "Board state unchanged: ${boardState.contentToString()}")
+
+                            // Submit answer to backend with current board (unchanged)
+                            android.util.Log.d("StudyTacToe", "Submitting incorrect answer to backend...")
+                            onAnswerSubmit(square, answerIndex, boardState.toList())
+                        }
+
+                        android.util.Log.d("StudyTacToe", "=== CLOSING DIALOG after answer submission ===")
+                        // Close dialog immediately after submission
+                        viewModel.closeQuestionDialog()
+
+                    } ?: android.util.Log.e("StudyTacToe", "ERROR: selectedSquare is null when submitting answer!")
+                }
+            )
+        }
     }
 }
 
@@ -606,10 +647,11 @@ fun PlayerCard(
 @Composable
 fun QuestionDialog(
     question: QuizQuestion,
+    selectedAnswer: Int?,
+    onAnswerChanged: (Int?) -> Unit,
     onDismiss: () -> Unit,
     onAnswerSelected: (Int) -> Unit
 ) {
-    var selectedAnswer by rememberSaveable(question.question) { mutableStateOf<Int?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -693,7 +735,7 @@ fun QuestionDialog(
                                 elevation = if (isSelected) 8.dp else 2.dp,
                                 shape = RoundedCornerShape(12.dp)
                             ),
-                        onClick = { selectedAnswer = index },
+                        onClick = { onAnswerChanged(index) },
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (isSelected)
@@ -895,7 +937,8 @@ private fun checkWinner(board: Array<String>): String? {
 @Composable
 fun StudyTacToeResultScreen(
     gameUiState: GameUiState,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: StudyTacToeViewModel = viewModel()
 ) {
     val session = gameUiState.currentSession
     val players = session?.players?.values?.toList() ?: emptyList()
