@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -22,10 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.group_7.studysage.data.models.GameUiState
 import com.group_7.studysage.data.models.QuizQuestion
 
@@ -106,6 +107,32 @@ fun StudyTacToeScreen(
 
     // Expose winner and draw as val instead of var for reactive updates
     val winner = winResult
+
+    // State to control showing the result screen
+    var showResultScreen by remember { mutableStateOf(false) }
+
+    // Detect when game is finished and trigger result screen
+    LaunchedEffect(winner, isDraw) {
+        if (winner != null || isDraw) {
+            android.util.Log.d("StudyTacToe", "Game finished! Winner: $winner, Draw: $isDraw")
+            // Delay to show the final move briefly before transitioning
+            kotlinx.coroutines.delay(1500)
+            showResultScreen = true
+        }
+    }
+
+    // Show result screen if game is finished
+    if (showResultScreen) {
+        StudyTacToeResultScreen(
+            gameUiState = gameUiState,
+            onBackClick = {
+                // Reset the flag and navigate back
+                showResultScreen = false
+                // This will be handled by the parent's back navigation
+            }
+        )
+        return
+    }
 
     // Map each square (0-8) to a question index
     // Use at least 9 questions for the 9 squares
@@ -259,52 +286,31 @@ fun StudyTacToeScreen(
         }
         }
 
-        // Turn indicator
-        if (winner == null && !isDraw) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isCurrentPlayerTurn)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Text(
-                    text = if (isCurrentPlayerTurn)
-                        "Your Turn! (${if (isPlayerX) "X" else "O"})"
-                    else
-                        "Opponent's Turn (${currentPlayer})",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        // Winner/Draw announcement
-        AnimatedVisibility(
-            visible = winner != null || isDraw,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) + fadeIn(animationSpec = tween(300)),
-            exit = slideOutVertically() + fadeOut()
+        // Turn indicator - always show during active game
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isCurrentPlayerTurn)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            GameResultCard(
-                winner = winner,
-                isDraw = isDraw,
-                player1Name = player1Name,
-                player2Name = player2Name
+            Text(
+                text = if (isCurrentPlayerTurn)
+                    "Your Turn! (${if (isPlayerX) "X" else "O"})"
+                else
+                    "Opponent's Turn (${currentPlayer})",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
         }
     }
+
 
     // Question Dialog
     if (showQuestionDialog && currentQuestion != null) {
@@ -720,190 +726,6 @@ fun QuestionDialog(
     )
 }
 
-@Composable
-fun GameResultCard(
-    winner: String?,
-    isDraw: Boolean,
-    player1Name: String,
-    player2Name: String
-) {
-    // Animated values
-    val infiniteTransition = rememberInfiniteTransition(label = "result_shimmer")
-
-
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
-
-    val iconRotation by infiniteTransition.animateFloat(
-        initialValue = -10f,
-        targetValue = 10f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "rotation"
-    )
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                winner != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-                isDraw -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = when {
-                            winner != null -> listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                            )
-                            isDraw -> listOf(
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                            )
-                            else -> listOf(Color.Transparent, Color.Transparent)
-                        }
-                    )
-                )
-                .padding(32.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Animated icon
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (winner != null)
-                                Color(0xFFFFD700).copy(alpha = 0.2f)
-                            else
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (winner != null) Icons.Default.EmojiEvents else Icons.Default.Handshake,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(60.dp)
-                            .then(
-                                if (winner != null) {
-                                    Modifier.graphicsLayer {
-                                        rotationZ = iconRotation
-                                    }
-                                } else Modifier
-                            ),
-                        tint = if (winner != null) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Result text with gradient effect
-                Text(
-                    text = when {
-                        winner == "X" -> "🎉 Victory! 🎉"
-                        winner == "O" -> "🎉 Victory! 🎉"
-                        isDraw -> "🤝 It's a Draw! 🤝"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    textAlign = TextAlign.Center,
-                    color = if (winner != null)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Winner name with animated background
-                if (winner != null) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Text(
-                            text = when (winner) {
-                                "X" -> player1Name
-                                "O" -> player2Name
-                                else -> ""
-                            },
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
-                            color = when (winner) {
-                                "X" -> Color(0xFF2196F3)
-                                "O" -> Color(0xFFE91E63)
-                                else -> MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                    }
-                } else if (isDraw) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Text(
-                            text = "Well Played!",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Subtitle
-                Text(
-                    text = when {
-                        winner != null -> "Congratulations on the win!"
-                        isDraw -> "Both players showed great skills!"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun GameInfoDialog(onDismiss: () -> Unit) {
@@ -1006,3 +828,368 @@ private fun checkWinner(board: Array<String>): String? {
 
     return null
 }
+
+/**
+ * Study-Tac-Toe Result Screen
+ * Displays the winner or draw result with beautiful animations - matching QuizRace style
+ */
+@Composable
+fun StudyTacToeResultScreen(
+    gameUiState: GameUiState,
+    onBackClick: () -> Unit
+) {
+    val session = gameUiState.currentSession
+    val players = session?.players?.values?.toList() ?: emptyList()
+    val boardState = session?.boardState?.toTypedArray() ?: Array(9) { "" }
+
+    val winner = checkWinner(boardState)
+    val isDraw = winner == null && boardState.all { it.isNotEmpty() }
+
+    val player1Name = players.getOrNull(0)?.name ?: "Player 1"
+    val player2Name = players.getOrNull(1)?.name ?: "Player 2"
+
+    val winnerName = when (winner) {
+        "X" -> player1Name
+        "O" -> player2Name
+        else -> null
+    }
+
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(200)
+        visible = true
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Trophy icon with bounce animation (matching QuizRace)
+        val trophyScale by animateFloatAsState(
+            targetValue = if (visible) 1f else 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "trophy_scale"
+        )
+
+        Text(
+            text = if (winner != null) "🏆" else "🤝",
+            style = MaterialTheme.typography.displayLarge,
+            fontSize = 80.sp,
+            modifier = Modifier.scale(trophyScale)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Title with slide-in animation (matching QuizRace)
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { 50 },
+                animationSpec = tween(400, delayMillis = 300, easing = EaseOut)
+            ) + fadeIn(tween(400, delayMillis = 300))
+        ) {
+            Text(
+                text = if (winner != null) "Game Complete!" else "It's a Draw!",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Winner/Results card (matching QuizRace leaderboard style)
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { 100 },
+                animationSpec = tween(500, delayMillis = 500, easing = EaseOut)
+            ) + fadeIn(tween(500, delayMillis = 500))
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (winnerName != null) {
+                    // Winner display
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "Winner",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Gold medal badge
+                                    Surface(
+                                        modifier = Modifier.size(48.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color(0xFFFFD700)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = "🏆",
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontSize = 24.sp
+                                            )
+                                        }
+                                    }
+
+                                    Column {
+                                        Text(
+                                            text = winnerName,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 24.sp
+                                        )
+                                        Text(
+                                            text = if (winner == "X") "Player X" else "Player O",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (winner == "X") Color(0xFF2196F3) else Color(0xFFE91E63),
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (isDraw) {
+                    // Draw display
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Handshake,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "Results",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Show both players with equal standing
+                            listOf(
+                                Triple(player1Name, "Player X", Color(0xFF2196F3)),
+                                Triple(player2Name, "Player O", Color(0xFFE91E63))
+                            ).forEachIndexed { index, (name, role, color) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier.size(40.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = color.copy(alpha = 0.2f)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = if (role == "Player X") "X" else "O",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = color
+                                                )
+                                            }
+                                        }
+
+                                        Column {
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 18.sp
+                                            )
+                                            Text(
+                                                text = role,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = color,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+                                if (index == 0) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Well played by both!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                }
+
+                // Final board state
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Final Board",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        for (row in 0..2) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                for (col in 0..2) {
+                                    val index = row * 3 + col
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .padding(4.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                                            .border(
+                                                width = 2.dp,
+                                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (boardState[index].isNotEmpty()) {
+                                            Text(
+                                                text = boardState[index],
+                                                style = MaterialTheme.typography.displayMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (boardState[index] == "X")
+                                                    Color(0xFF2196F3)
+                                                else
+                                                    Color(0xFFE91E63)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Back button (matching QuizRace)
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { 100 },
+                animationSpec = tween(500, delayMillis = 700, easing = EaseOut)
+            ) + fadeIn(tween(500, delayMillis = 700))
+        ) {
+            Button(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Back to Lobby",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
