@@ -728,7 +728,10 @@ private fun CreateGroupDialog(
         },
         text = {
             Column(
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(max = 300.dp) // Limit max height to ensure scrolling works in landscape
             ) {
                 OutlinedTextField(
                     value = groupState.groupName,
