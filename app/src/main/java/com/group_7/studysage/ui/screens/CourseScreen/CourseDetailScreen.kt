@@ -217,6 +217,8 @@ fun CourseDetailScreen(
             onBack = {
                 showShareNFCScreen = false
                 noteToShare = null
+                // Explicitly reset overlay state to ensure navbar shows again
+                courseViewModel.setFullscreenOverlay(false)
             }
         )
         return
@@ -227,6 +229,8 @@ fun CourseDetailScreen(
             courseId = course.id,
             onBack = {
                 showReceiveNFCScreen = false
+                // Explicitly reset overlay state to ensure navbar shows again
+                courseViewModel.setFullscreenOverlay(false)
             }
         )
         return
@@ -243,6 +247,8 @@ fun CourseDetailScreen(
                 onBack = {
                     showPlayQuizScreen = false
                     gameViewModel.resetQuizGeneration()
+                    // Explicitly reset overlay state to ensure navbar shows again
+                    courseViewModel.setFullscreenOverlay(false)
                 }
             )
         }

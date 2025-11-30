@@ -1,5 +1,6 @@
 package com.group_7.studysage.ui.screens.GameScreen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -55,6 +56,11 @@ fun PlayQuizScreen(
             homeViewModel.checkAndCompleteTaskByType("quiz")
             taskCompleted = true
         }
+    }
+
+    // Handle system back button to properly cleanup quiz state
+    BackHandler {
+        onBack()
     }
 
     Scaffold(
