@@ -271,7 +271,7 @@ fun GroupsHeader(
                         Icon(
                             imageVector = Icons.Default.Notifications,
                             contentDescription = "Notifications",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     if (pendingInviteCount > 0) {
