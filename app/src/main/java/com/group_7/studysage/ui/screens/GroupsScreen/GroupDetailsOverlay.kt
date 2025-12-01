@@ -110,52 +110,32 @@ fun GroupDetailsOverlay(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // Header with gradient background
-                Box(
+                // Header
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                    MaterialTheme.colorScheme.background
-                                )
-                            )
-                        )
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Group Details",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Text(
-                                text = "Manage members and settings",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    Text(
+                        text = "Group Details",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
 
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
 
@@ -340,20 +320,24 @@ fun GroupDetailsOverlay(
                                 onClick = { groupChatViewModel.setShowLeaveConfirmation(true) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp),
+                                    .height(56.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                                    contentColor = MaterialTheme.colorScheme.error
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp)
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ExitToApp,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Leave Group", fontSize = 16.sp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Leave Group",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
 
@@ -370,20 +354,24 @@ fun GroupDetailsOverlay(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp),
+                                    .height(56.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                                    contentColor = MaterialTheme.colorScheme.error
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(16.dp)
                             ) {
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Delete Group", fontSize = 16.sp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Delete Group",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
                     }
@@ -538,30 +526,29 @@ private fun GroupProfileSection(
     onProfilePicClick: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Profile Picture
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(140.dp)
                 .clip(CircleShape)
                 .clickable(enabled = isAdmin && !isUploading) { onProfilePicClick() }
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary
-                        )
-                    )
-                )
-                .border(4.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .border(
+                    width = 4.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (isUploading) {
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(40.dp)
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(48.dp)
                 )
             } else if (groupPic.isNotEmpty()) {
                 AsyncImage(
@@ -576,13 +563,13 @@ private fun GroupProfileSection(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f)),
+                            .background(Color.Black.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.CameraAlt,
                             contentDescription = "Change picture",
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -591,63 +578,53 @@ private fun GroupProfileSection(
                 Icon(
                     Icons.Default.Group,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(48.dp)
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp)
                 )
 
                 if (isAdmin) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(8.dp)
-                            .size(32.dp)
+                            .padding(12.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.CameraAlt,
+                            Icons.Default.Edit,
                             contentDescription = "Add picture",
                             tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = groupName,
-            fontSize = 24.sp,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "$memberCount members",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        if (isAdmin) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-            ) {
-                Text(
-                    text = "Admin",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-            }
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ) {
+            Text(
+                text = "$memberCount members",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
     }
 }
@@ -668,40 +645,29 @@ private fun MemberItem(
     var showOptions by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 6.dp
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            defaultElevation = 0.dp
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Member Avatar
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                            )
-                        )
-                    )
-                    .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 if (memberPic.isNotEmpty()) {
@@ -714,128 +680,101 @@ private fun MemberItem(
                 } else {
                     Text(
                         text = memberName.firstOrNull()?.uppercase() ?: "?",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 20.sp,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             // Member Info
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = if (isCurrentUser) "$memberName (You)" else memberName,
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-
+                    
                     if (isThisUserAdmin) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
+                            color = MaterialTheme.colorScheme.primaryContainer
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Admin",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            Text(
+                                text = "Admin",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
                         }
                     }
                 }
+                
+                Text(
+                    text = if (isThisUserAdmin) "Group Admin" else "Member",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            // Actions (for admins, not on themselves)
+            // Actions
             if (isAdmin && !isCurrentUser) {
-                IconButton(
-                    onClick = { showOptions = !showOptions }
-                ) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-
-        // Member Actions Dropdown
-        if (showOptions) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (!isThisUserAdmin) {
-                    TextButton(
-                        onClick = {
-                            showOptions = false
-                            onPromote()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                Box {
+                    IconButton(onClick = { showOptions = true }) {
                         Icon(
-                            Icons.Default.AdminPanelSettings,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Make Admin",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Start
+                    }
+
+                    DropdownMenu(
+                        expanded = showOptions,
+                        onDismissRequest = { showOptions = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
+                    ) {
+                        if (!isThisUserAdmin) {
+                            DropdownMenuItem(
+                                text = { Text("Promote to Admin") },
+                                onClick = {
+                                    showOptions = false
+                                    onPromote()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Shield, contentDescription = null)
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Remove from Group", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showOptions = false
+                                onRemove()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.PersonRemove,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         )
                     }
                 }
-
-                TextButton(
-                    onClick = {
-                        showOptions = false
-                        onRemove()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.PersonRemove,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Remove from Group",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Start
-                    )
-                }
+            } else if (isThisUserAdmin) {
+                Icon(
+                    Icons.Default.Shield,
+                    contentDescription = "Admin",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(20.dp)
+                )
             }
         }
     }

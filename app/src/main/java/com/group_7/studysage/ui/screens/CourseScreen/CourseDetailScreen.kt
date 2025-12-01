@@ -3,7 +3,7 @@ package com.group_7.studysage.ui.screens.CourseScreen
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
@@ -101,9 +101,19 @@ fun CourseDetailScreen(
 
     // Get notes from course - will be empty list if no notes uploaded yet
     val courseNotes = courseWithNotes.notes
+    val liveCourseNotes by notesViewModel.courseNotes.collectAsState()
+    val isCourseNotesLoaded by notesViewModel.isCourseNotesLoaded.collectAsState()
+    
+    // Trigger initial load of notes for this course to ensure we have live data
+    LaunchedEffect(course.id) {
+        notesViewModel.loadNotes(course.id)
+    }
+
     android.util.Log.d("CourseDetailScreen", "========================================")
     android.util.Log.d("CourseDetailScreen", "📚 Course: ${course.title} (${course.id})")
-    android.util.Log.d("CourseDetailScreen", "   Course notes count: ${courseNotes.size}")
+    android.util.Log.d("CourseDetailScreen", "   Course notes count (static): ${courseNotes.size}")
+    android.util.Log.d("CourseDetailScreen", "   Live notes count: ${liveCourseNotes.size}")
+    android.util.Log.d("CourseDetailScreen", "   Is live loaded: $isCourseNotesLoaded")
 
     val notesMap = homeViewModel.getNotesForCourseFromLibrary(course.id)
     android.util.Log.d("CourseDetailScreen", "   Library notes count: ${notesMap.size}")
@@ -118,9 +128,12 @@ fun CourseDetailScreen(
         )
     }
 
-    // Use course notes if available, otherwise fall back to library notes
-    val notes = if (courseNotes.isNotEmpty()) {
-        android.util.Log.d("CourseDetailScreen", "   Using course notes: ${courseNotes.size}")
+    // Prioritize live notes if loaded, otherwise fallback to static/library
+    val notes = if (isCourseNotesLoaded) {
+        android.util.Log.d("CourseDetailScreen", "   Using live course notes (loaded): ${liveCourseNotes.size}")
+        liveCourseNotes
+    } else if (courseNotes.isNotEmpty()) {
+        android.util.Log.d("CourseDetailScreen", "   Using static course notes: ${courseNotes.size}")
         courseNotes
     } else if (libraryNotes.isNotEmpty()) {
         android.util.Log.d("CourseDetailScreen", "   Using library notes: ${libraryNotes.size}")
@@ -402,14 +415,14 @@ fun CourseDetailScreen(
                                 showUploadDialog = true
                             }
                             is FileUtils.ValidationResult.Error -> {
-                                Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
+
                             }
                         }
                     } else {
-                        Toast.makeText(context, "Only PDF files are supported", Toast.LENGTH_LONG).show()
+
                     }
                 } else {
-                    Toast.makeText(context, "Could not read file", Toast.LENGTH_SHORT).show()
+
                 }
             }
         }
@@ -421,18 +434,20 @@ fun CourseDetailScreen(
         if (!isLoading && uploadStatus?.contains("processed successfully", ignoreCase = true) == true) {
             // Refresh course to show newly uploaded document immediately after loading finishes
             courseViewModel.refreshCourse(course.id)
+            // Also refresh notesViewModel to update the list
+            notesViewModel.loadNotes(course.id)
         }
         
         uploadStatus?.let { message ->
             if (!isLoading) {
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
             }
         }
     }
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
         }
     }
 
@@ -798,23 +813,13 @@ fun CourseDetailScreen(
                 NoteOptionItem(
                     title = "View AI summary",
                     subtitle = if (note.summary.isNotBlank()) "Read the generated summary" else "Summary will appear here when available",
-                    icon = Icons.Default.Description,
+                    icon = Icons.Default.AutoAwesome,
                     onClick = {
-                        notesViewModel.setShowNoteOptions(false)
-                        if (note.id.isBlank()) {
-                            Toast.makeText(context, "Note details not available yet.", Toast.LENGTH_SHORT).show()
-                        } else {
-                            notesViewModel.selectNote(note, showOptions = false)
-                            if (note.summary.isNotBlank()) {
-                                notesViewModel.setShowAiSummaryScreen(true)
-                                if (note.summary.isBlank()) notesViewModel.loadNoteById(note.id)
-                            } else {
-                                showGenerateSummaryDialog = true
-                                notesViewModel.loadNoteById(note.id)
-                            }
-                        }
+                        notesViewModel.setShowAiSummaryScreen(true)
                     }
                 )
+
+
 
                 NoteOptionItem(
                     title = "View Flashcards",
@@ -854,6 +859,19 @@ fun CourseDetailScreen(
                     onClick = {
                         notesViewModel.setShowNoteOptions(false)
                         notesViewModel.setShowPodcastScreen(true)
+                    }
+                )
+
+                NoteOptionItem(
+                    title = "Delete note",
+                    subtitle = "Permanently remove this note",
+                    icon = Icons.Default.Delete,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    iconTint = MaterialTheme.colorScheme.onErrorContainer,
+                    onClick = {
+                        notesViewModel.deleteNote(note.id, course.id)
+                        homeViewModel.removeRecentlyOpened(note.id)
+                        notesViewModel.clearSelectedNote()
                     }
                 )
             }
@@ -1104,7 +1122,7 @@ fun CourseDetailScreen(
     // Handle quiz generation errors
     LaunchedEffect(quizGenerationState.error) {
         quizGenerationState.error?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+
         }
     }
 

@@ -6,7 +6,7 @@ import android.nfc.Tag
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
+
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -265,11 +265,9 @@ fun StudySageApp() {
     ) { isGranted ->
         if (isGranted) {
             // Permission granted
-            Toast.makeText(context, "Notifications enabled!", Toast.LENGTH_SHORT).show()
             Log.d("NotificationPermission", "Permission GRANTED")
         } else {
             // Permission denied
-            Toast.makeText(context, "Notifications disabled", Toast.LENGTH_SHORT).show()
             Log.d("NotificationPermission", "Permission DENIED")
         }
     }

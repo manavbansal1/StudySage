@@ -20,10 +20,13 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.GameViewModel
-import android.widget.Toast
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +48,7 @@ fun QuizGenerationScreen(
     // Show error as toast
     LaunchedEffect(quizState.error) {
         quizState.error?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+
             gameViewModel.clearError()
         }
     }
@@ -74,7 +77,7 @@ fun QuizGenerationScreen(
                     val json = gameViewModel.getQuizJson()
                     if (json != null) {
                         clipboardManager.setText(AnnotatedString(json))
-                        Toast.makeText(context, "Quiz JSON copied to clipboard", Toast.LENGTH_SHORT).show()
+
                     }
                 },
                 onSaveQuiz = {
@@ -262,6 +265,60 @@ fun QuizGenerationScreen(
                         Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Generate Quiz", fontSize = 16.sp)
+                    }
+                }
+            }
+        }
+    }
+    // Show animated loading dialog while generating quiz
+    if (quizState.isGenerating) {
+        Dialog(onDismissRequest = { }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 12.dp
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                    modifier = Modifier.padding(40.dp)
+                ) {
+                    Text(
+                        "Generating Quiz",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Text(
+                            "AI is creating quiz questions...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }

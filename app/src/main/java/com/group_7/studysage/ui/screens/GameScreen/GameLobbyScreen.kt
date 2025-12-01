@@ -14,6 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.group_7.studysage.data.models.GameSessionData
@@ -135,6 +139,61 @@ fun GameLobbyScreen(
                 }
             )
         }
+
+        // Show animated loading dialog while creating game
+        if (lobbyUiState.isCreating) {
+            Dialog(onDismissRequest = { }) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 12.dp
+                    )
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(28.dp),
+                        modifier = Modifier.padding(40.dp)
+                    ) {
+                        Text(
+                            "Creating Game",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            )
+
+                            Spacer(Modifier.height(16.dp))
+
+                            Text(
+                                "Setting up the lobby...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -241,11 +300,14 @@ fun CreateGameDialog(
                 )
 
                 if (isLoadingNotes) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .align(Alignment.CenterHorizontally)
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 } else if (availableNotes.isEmpty()) {
                     Text(
                         text = "No documents available. You can still create a game without a document.",

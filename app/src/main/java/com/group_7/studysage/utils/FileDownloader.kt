@@ -6,7 +6,7 @@ import android.net.Uri
 import androidx.core.net.toUri
 import android.os.Environment
 import android.util.Log
-import android.widget.Toast
+
 
 object FileDownloader {
 
@@ -25,10 +25,10 @@ object FileDownloader {
             downloadManager.enqueue(request)
 
             Log.d("kss", "Download started for URL: $url")
-            Toast.makeText(context, "Download started...", Toast.LENGTH_SHORT).show()
+
 
         } catch (e: Exception) {
-            Toast.makeText(context, "Download failed for URL: $url. Error: ${e.message}", Toast.LENGTH_LONG).show()
+
         }
     }
 
@@ -36,7 +36,7 @@ object FileDownloader {
         try {
             val sourceFile = java.io.File(sourceFilePath)
             if (!sourceFile.exists()) {
-                Toast.makeText(context, "File not found", Toast.LENGTH_SHORT).show()
+
                 return
             }
 
@@ -61,11 +61,11 @@ object FileDownloader {
             sourceFile.copyTo(destinationFile, overwrite = false)
 
             Log.d("FileDownloader", "File downloaded to: ${destinationFile.absolutePath}")
-            Toast.makeText(context, "Downloaded to Downloads/${destinationFile.name}", Toast.LENGTH_SHORT).show()
+
 
         } catch (e: Exception) {
             Log.e("FileDownloader", "Download failed: ${e.message}", e)
-            Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+
         }
     }
 }

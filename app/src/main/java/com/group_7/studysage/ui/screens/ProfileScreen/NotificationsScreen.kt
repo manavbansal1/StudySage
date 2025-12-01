@@ -2,7 +2,7 @@ package com.group_7.studysage.ui.screens.ProfileScreen
 
 import android.Manifest
 import android.os.Build
-import android.widget.Toast
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -42,14 +42,10 @@ fun NotificationsScreen(
         if (isGranted) {
             // Permission granted, enable notifications
             viewModel.updateNotificationsEnabled(context, true)
-            Toast.makeText(context, "Notifications enabled!", Toast.LENGTH_SHORT).show()
+
         } else {
             // Permission denied, show error message
-            Toast.makeText(
-                context,
-                "Notification permission is required for study reminders. You can enable it in app settings.",
-                Toast.LENGTH_LONG
-            ).show()
+
         }
     }
 
@@ -209,11 +205,7 @@ fun NotificationsScreen(
                                 Button(
                                     onClick = {
                                         ReminderScheduler.scheduleDailyReminder(context, hourOfDay = 9)
-                                        Toast.makeText(
-                                            context,
-                                            "Daily reminders scheduled for 9:00 AM",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -223,11 +215,7 @@ fun NotificationsScreen(
                                 OutlinedButton(
                                     onClick = {
                                         ReminderScheduler.cancelDailyReminder(context)
-                                        Toast.makeText(
-                                            context,
-                                            "Daily reminders canceled",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {

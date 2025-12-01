@@ -59,10 +59,18 @@ fun GroupScreen(
     // Show operation status in snackbar
     LaunchedEffect(operationStatus) {
         operationStatus?.let { message ->
-            snackbarHostState.showSnackbar(
-                message = message,
-                duration = SnackbarDuration.Short
-            )
+            // Filter out success and loading messages
+            if (!message.contains("success", ignoreCase = true) && 
+                !message.contains("created", ignoreCase = true) &&
+                !message.contains("creating", ignoreCase = true) &&
+                !message.contains("deleting", ignoreCase = true) &&
+                !message.contains("leaving", ignoreCase = true) &&
+                !message.contains("processing", ignoreCase = true)) {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
+                )
+            }
         }
     }
 

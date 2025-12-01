@@ -1,7 +1,7 @@
 package com.group_7.studysage.ui.screens.nfc
 
 import android.util.Log
-import android.widget.Toast
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -437,20 +437,12 @@ fun ReceiveNFCScreen(
 
                                 notesViewModel.updateNfcReceiveState(noteAdded = true, isProcessing = false)
 
-                                Toast.makeText(
-                                    context,
-                                    "Note added to course!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+
 
                                 Log.d("NFC_RECEIVE", "Note added to course: $courseId")
                             } catch (e: Exception) {
                                 Log.e("NFC_RECEIVE", "Error adding note", e)
-                                Toast.makeText(
-                                    context,
-                                    "Failed to add note: ${e.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
+
                                 notesViewModel.updateNfcReceiveState(isProcessing = false)
                             }
                         }

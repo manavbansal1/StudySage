@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1600" height="1200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Modern Gradients -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1e1b4b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#020617;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="uiCardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:0.8" />
+    </linearGradient>
+
+    <linearGradient id="bgCardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#312e81;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#1e1b4b;stop-opacity:0.6" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="nodeGradientUI" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#334155;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="nodeGradientBG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4338ca;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#312e81;stop-opacity:0.5" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft Shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="rgba(0,0,0,0.4)"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+  
+  <!-- Subtle Grid -->
+  <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+  </pattern>
+  <rect width="100%" height="100%" fill="url(#grid)" />
+
+  <!-- Header -->
+  <text x="800" y="60" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-size="42" font-weight="800" fill="#f8fafc" filter="url(#glow)">
+    StudySage Architecture
+  </text>
+  <text x="800" y="95" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-size="16" fill="#94a3b8" letter-spacing="1">
+    CONCURRENT THREADING MODEL &amp; COMPONENT MAP
+  </text>
+
+  <!-- ================================================================================== -->
+  <!-- LEFT PANEL: UI THREAD -->
+  <!-- ================================================================================== -->
+  <g transform="translate(50, 140)">
+    <!-- Panel Container -->
+    <rect width="720" height="600" rx="24" fill="url(#uiCardGradient)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="1" filter="url(#shadow)"/>
+    
+    <!-- Header -->
+    <text x="360" y="50" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#38bdf8">UI THREAD</text>
+    <text x="360" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#94a3b8">Main Thread • Dispatchers.Main</text>
+
+    <!-- Section: Android Components -->
+    <g transform="translate(40, 110)">
+      <text x="0" y="0" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e2e8f0">ANDROID COMPONENTS</text>
+      <rect x="0" y="15" width="140" height="40" rx="8" fill="url(#nodeGradientUI)" stroke="#475569" stroke-width="1"/>
+      <text x="70" y="40" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">MainActivity.kt</text>
+      
+      <rect x="160" y="15" width="140" height="40" rx="8" fill="url(#nodeGradientUI)" stroke="#475569" stroke-width="1"/>
+      <text x="230" y="40" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">StudySageNavigation</text>
+    </g>
+
+    <!-- Section: Compose Screens -->
+    <g transform="translate(40, 200)">
+      <text x="0" y="0" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e2e8f0">COMPOSE SCREENS</text>
+      
+      <!-- Screen Grid -->
+      <g transform="translate(0, 20)">
+        <!-- Row 1 -->
+        <rect x="0" y="0" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="75" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">HomeScreen</text>
+        
+        <rect x="165" y="0" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="240" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">CourseScreen</text>
+        
+        <rect x="330" y="0" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="405" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">CourseDetailScreen</text>
+        
+        <rect x="495" y="0" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="570" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">ProfileScreen</text>
+
+        <!-- Row 2 -->
+        <rect x="0" y="45" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="75" y="67" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">GroupScreen</text>
+        
+        <rect x="165" y="45" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="240" y="67" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">GroupChatScreen</text>
+        
+        <rect x="330" y="45" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="405" y="67" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">GameLobbyScreen</text>
+        
+        <rect x="495" y="45" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="570" y="67" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">GamePlayScreen</text>
+
+        <!-- Row 3 -->
+        <rect x="0" y="90" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="75" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">FlashcardScreen</text>
+        
+        <rect x="165" y="90" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="240" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">TempFlashcardsGen...</text>
+        
+        <rect x="330" y="90" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="405" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">PodcastScreen</text>
+        
+        <rect x="495" y="90" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="570" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">CanvasIntegration...</text>
+
+        <!-- Row 4 -->
+        <rect x="0" y="135" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="75" y="157" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">SignIn/SignUp</text>
+        
+        <rect x="165" y="135" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="240" y="157" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">Share/ReceiveNFC</text>
+        
+        <rect x="330" y="135" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="405" y="157" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">NotificationsScreen</text>
+        
+        <rect x="495" y="135" width="150" height="36" rx="6" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="1"/>
+        <text x="570" y="157" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0f2fe">PrivacyScreen</text>
+      </g>
+    </g>
+
+    <!-- Section: Responsibilities -->
+    <g transform="translate(40, 420)">
+      <text x="0" y="0" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e2e8f0">RESPONSIBILITIES</text>
+      <rect x="0" y="15" width="645" height="120" rx="12" fill="rgba(15, 23, 42, 0.5)" stroke="#334155" stroke-width="1"/>
+      
+      <g transform="translate(20, 45)">
+        <circle cx="10" cy="10" r="4" fill="#38bdf8"/>
+        <text x="25" y="14" font-family="Inter, sans-serif" font-size="13" fill="#cbd5e1">Rendering UI components (Composable functions)</text>
+        
+        <circle cx="10" cy="35" r="4" fill="#38bdf8"/>
+        <text x="25" y="39" font-family="Inter, sans-serif" font-size="13" fill="#cbd5e1">Handling User Input (Clicks, Gestures, Text Entry)</text>
+        
+        <circle cx="10" cy="60" r="4" fill="#38bdf8"/>
+        <text x="25" y="64" font-family="Inter, sans-serif" font-size="13" fill="#cbd5e1">Navigation &amp; Screen Transitions</text>
+        
+        <circle cx="350" cy="10" r="4" fill="#38bdf8"/>
+        <text x="365" y="14" font-family="Inter, sans-serif" font-size="13" fill="#cbd5e1">Observing StateFlow (collectAsState)</text>
+        
+        <circle cx="350" cy="35" r="4" fill="#38bdf8"/>
+        <text x="365" y="39" font-family="Inter, sans-serif" font-size="13" fill="#cbd5e1">Displaying Animations &amp; Toasts</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================================================================================== -->
+  <!-- RIGHT PANEL: BACKGROUND THREAD -->
+  <!-- ================================================================================== -->
+  <g transform="translate(830, 140)">
+    <!-- Panel Container -->
+    <rect width="720" height="600" rx="24" fill="url(#bgCardGradient)" stroke="rgba(129, 140, 248, 0.3)" stroke-width="1" filter="url(#shadow)"/>
+    
+    <!-- Header -->
+    <text x="360" y="50" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#818cf8">BACKGROUND THREADS</text>
+    <text x="360" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#a5b4fc">viewModelScope • Dispatchers.IO • Dispatchers.Default</text>
+
+    <!-- Section: ViewModels -->
+    <g transform="translate(40, 110)">
+      <text x="0" y="0" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e0e7ff">VIEWMODELS (State Holders)</text>
+      
+      <!-- ViewModel Grid -->
+      <g transform="translate(0, 20)">
+        <!-- Row 1 -->
+        <rect x="0" y="0" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="75" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">AuthViewModel</text>
+        
+        <rect x="165" y="0" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="240" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">HomeViewModel</text>
+        
+        <rect x="330" y="0" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="405" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">CourseViewModel</text>
+        
+        <rect x="495" y="0" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="570" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">NotesViewModel</text>
+
+        <!-- Row 2 -->
+        <rect x="0" y="40" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="75" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">GroupViewModel</text>
+        
+        <rect x="165" y="40" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="240" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">GameViewModel</text>
+        
+        <rect x="330" y="40" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="405" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">GamePlayViewModel</text>
+        
+        <rect x="495" y="40" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="570" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">FlashcardViewModel</text>
+
+        <!-- Row 3 -->
+        <rect x="0" y="80" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="75" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">CanvasViewModel</text>
+        
+        <rect x="165" y="80" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="240" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">TempQuizViewModel</text>
+        
+        <rect x="330" y="80" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="405" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">ProfileViewModel</text>
+        
+        <rect x="495" y="80" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="570" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">NotificationsViewModel</text>
+
+        <!-- Row 4 -->
+        <rect x="0" y="120" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="75" y="139" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">QuizGameViewModel</text>
+        
+        <rect x="165" y="120" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="240" y="139" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">StudyTacToeViewModel</text>
+        
+        <rect x="330" y="120" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="405" y="139" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">GroupChatViewModel</text>
+        
+        <rect x="495" y="120" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="570" y="139" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">AddCourseViewModel</text>
+
+        <!-- Row 5 -->
+        <rect x="0" y="160" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="75" y="179" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">AddGroupViewModel</text>
+        
+        <rect x="165" y="160" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="240" y="179" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">GameLobbyViewModel</text>
+        
+        <rect x="330" y="160" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="405" y="179" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">StandaloneGameVM</text>
+        
+        <rect x="495" y="160" width="150" height="30" rx="6" fill="url(#nodeGradientBG)" stroke="#4f46e5" stroke-width="1"/>
+        <text x="570" y="179" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#e0e7ff">TempFlashcardVM</text>
+      </g>
+    </g>
+
+    <!-- Section: Repositories -->
+    <g transform="translate(40, 320)">
+      <text x="0" y="0" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e0e7ff">REPOSITORIES (Data Layer)</text>
+      
+      <!-- Repository Grid -->
+      <g transform="translate(0, 20)">
+        <rect x="0" y="0" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="75" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">AuthRepository</text>
+        
+        <rect x="165" y="0" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="240" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">CourseRepository</text>
+        
+        <rect x="330" y="0" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="405" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">NotesRepository</text>
+        
+        <rect x="495" y="0" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="570" y="19" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">GroupRepository</text>
+
+        <rect x="0" y="40" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="75" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">GameRepository</text>
+        
+        <rect x="165" y="40" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="240" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">QuizRepository</text>
+        
+        <rect x="330" y="40" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="405" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">FlashcardRepository</text>
+        
+        <rect x="495" y="40" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="570" y="59" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">TasksRepository</text>
+
+        <rect x="0" y="80" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="75" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">CanvasRepository</text>
+        
+        <rect x="165" y="80" width="150" height="30" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+        <text x="240" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#d1fae5">PodcastRepository</text>
+      </g>
+    </g>
+
+    <!-- Section: External Services -->
+    <g transform="translate(40, 460)">
+      <text x="0" y="0" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e0e7ff">EXTERNAL SERVICES &amp; APIS</text>
+      <rect x="0" y="15" width="645" height="80" rx="12" fill="rgba(15, 23, 42, 0.5)" stroke="#312e81" stroke-width="1"/>
+      
+      <g transform="translate(20, 20)">
+        <rect x="0" y="10" width="130" height="36" rx="18" fill="rgba(220, 38, 38, 0.2)" stroke="#ef4444" stroke-width="1"/>
+        <text x="65" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#fca5a5">Firebase Firestore</text>
+        
+        <rect x="150" y="10" width="130" height="36" rx="18" fill="rgba(220, 38, 38, 0.2)" stroke="#ef4444" stroke-width="1"/>
+        <text x="215" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#fca5a5">Firebase Auth</text>
+        
+        <rect x="300" y="10" width="130" height="36" rx="18" fill="rgba(220, 38, 38, 0.2)" stroke="#ef4444" stroke-width="1"/>
+        <text x="365" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#fca5a5">Gemini AI API</text>
+        
+        <rect x="450" y="10" width="130" height="36" rx="18" fill="rgba(220, 38, 38, 0.2)" stroke="#ef4444" stroke-width="1"/>
+        <text x="515" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#fca5a5">Cloudinary CDN</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================================================================================== -->
+  <!-- BOTTOM PANEL: EXAMPLE FLOW -->
+  <!-- ================================================================================== -->
+  <g transform="translate(50, 780)">
+    <rect width="1500" height="250" rx="24" fill="#0f172a" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+    
+    <text x="750" y="40" text-anchor="middle" font-family="Inter, sans-serif" font-size="20" font-weight="700" fill="#f8fafc">
+      THREADING EXAMPLE: PDF UPLOAD → AI QUIZ GENERATION
+    </text>
+
+    <!-- Flow Steps -->
+    <g transform="translate(70, 80)">
+      
+      <!-- Step 1 -->
+      <g>
+        <rect x="0" y="0" width="180" height="100" rx="12" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#38bdf8">1. UI THREAD</text>
+        <text x="90" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">User selects PDF</text>
+        <text x="90" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">Clicks "Upload"</text>
+      </g>
+      
+      <!-- Arrow -->
+      <path d="M 190 50 L 220 50" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+      
+      <!-- Step 2 -->
+      <g transform="translate(230, 0)">
+        <rect x="0" y="0" width="180" height="100" rx="12" fill="rgba(129, 140, 248, 0.1)" stroke="#818cf8" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#818cf8">2. VIEWMODEL</text>
+        <text x="90" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">NotesViewModel</text>
+        <text x="90" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">launches Coroutine</text>
+      </g>
+
+      <!-- Arrow -->
+      <path d="M 420 50 L 450 50" stroke="#475569" stroke-width="2"/>
+
+      <!-- Step 3 -->
+      <g transform="translate(460, 0)">
+        <rect x="0" y="0" width="180" height="100" rx="12" fill="rgba(245, 158, 11, 0.1)" stroke="#f59e0b" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#f59e0b">3. I/O THREAD</text>
+        <text x="90" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">PDFBox extracts text</text>
+        <text x="90" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">(Blocking I/O)</text>
+      </g>
+
+      <!-- Arrow -->
+      <path d="M 650 50 L 680 50" stroke="#475569" stroke-width="2"/>
+
+      <!-- Step 4 -->
+      <g transform="translate(690, 0)">
+        <rect x="0" y="0" width="180" height="100" rx="12" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#ef4444">4. NETWORK</text>
+        <text x="90" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">Gemini API Call</text>
+        <text x="90" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">Generates Quiz</text>
+      </g>
+
+      <!-- Arrow -->
+      <path d="M 880 50 L 910 50" stroke="#475569" stroke-width="2"/>
+
+      <!-- Step 5 -->
+      <g transform="translate(920, 0)">
+        <rect x="0" y="0" width="180" height="100" rx="12" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#10b981">5. DATABASE</text>
+        <text x="90" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">Save to Firestore</text>
+        <text x="90" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">Update User Lib</text>
+      </g>
+
+      <!-- Arrow -->
+      <path d="M 1110 50 L 1140 50" stroke="#475569" stroke-width="2"/>
+
+      <!-- Step 6 -->
+      <g transform="translate(1150, 0)">
+        <rect x="0" y="0" width="180" height="100" rx="12" fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#38bdf8">6. UI UPDATE</text>
+        <text x="90" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">StateFlow emits</text>
+        <text x="90" y="75" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#cbd5e1">UI Recomposes</text>
+      </g>
+    </g>
+    
+    <text x="750" y="210" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#64748b" font-style="italic">
+      Seamlessly handling heavy operations without freezing the UI
+    </text>
+  </g>
+
+  <!-- Footer -->
+  <text x="800" y="1100" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#475569">
+    Generated for StudySage • 2025
+  </text>
+
+</svg>
