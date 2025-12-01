@@ -1,5 +1,6 @@
 package com.group_7.studysage.ui.screens.GameScreen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -34,10 +36,10 @@ fun PlayQuizScreen(
     onBack: () -> Unit,
     homeViewModel: HomeViewModel = viewModel()
 ) {
-    var currentQuestionIndex by remember { mutableIntStateOf(0) }
-    var selectedAnswers by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) } // questionIndex -> optionIndex
-    var showFeedback by remember { mutableStateOf(false) }
-    var quizCompleted by remember { mutableStateOf(false) }
+    var currentQuestionIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedAnswers by rememberSaveable { mutableStateOf<Map<Int, Int>>(emptyMap()) } // questionIndex -> optionIndex
+    var showFeedback by rememberSaveable { mutableStateOf(false) }
+    var quizCompleted by rememberSaveable { mutableStateOf(false) }
     var questionVisible by remember { mutableStateOf(true) }
     var taskCompleted by remember { mutableStateOf(false) }
 
@@ -55,6 +57,11 @@ fun PlayQuizScreen(
             homeViewModel.checkAndCompleteTaskByType("quiz")
             taskCompleted = true
         }
+    }
+
+    // Handle system back button to properly cleanup quiz state
+    BackHandler {
+        onBack()
     }
 
     Scaffold(

@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -13,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.createSavedStateHandle
 import kotlinx.coroutines.delay
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
@@ -64,7 +70,17 @@ fun CourseDetailScreen(
     courseWithNotes: CourseWithNotes,
     onBack: () -> Unit,
     homeViewModel: HomeViewModel = viewModel(),
-    notesViewModel: NotesViewModel = viewModel(),
+    notesViewModel: NotesViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                val app = this[androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as android.app.Application
+                NotesViewModel(
+                    application = app,
+                    savedStateHandle = createSavedStateHandle()
+                )
+            }
+        }
+    ),
     courseViewModel: CourseViewModel = viewModel(),
     authViewModel: AuthViewModel,
     gameViewModel: GameViewModel = viewModel(
@@ -78,8 +94,20 @@ fun CourseDetailScreen(
     val context = LocalContext.current
     val course = courseWithNotes.course
 
+    // Handle device back button - intercept and call onBack callback
+    BackHandler {
+        onBack()
+    }
+
+    // Get notes from course - will be empty list if no notes uploaded yet
     val courseNotes = courseWithNotes.notes
+    android.util.Log.d("CourseDetailScreen", "========================================")
+    android.util.Log.d("CourseDetailScreen", "📚 Course: ${course.title} (${course.id})")
+    android.util.Log.d("CourseDetailScreen", "   Course notes count: ${courseNotes.size}")
+
     val notesMap = homeViewModel.getNotesForCourseFromLibrary(course.id)
+    android.util.Log.d("CourseDetailScreen", "   Library notes count: ${notesMap.size}")
+
     val libraryNotes = notesMap.map { noteMap ->
         Note(
             id = noteMap["noteId"] as? String ?: "",
@@ -89,23 +117,41 @@ fun CourseDetailScreen(
             originalFileName = noteMap["fileName"] as? String ?: ""
         )
     }
-    val notes = if (courseNotes.isNotEmpty()) courseNotes else libraryNotes
 
-    var noteToShare by remember { mutableStateOf<Note?>(null) }
+    // Use course notes if available, otherwise fall back to library notes
+    val notes = if (courseNotes.isNotEmpty()) {
+        android.util.Log.d("CourseDetailScreen", "   Using course notes: ${courseNotes.size}")
+        courseNotes
+    } else if (libraryNotes.isNotEmpty()) {
+        android.util.Log.d("CourseDetailScreen", "   Using library notes: ${libraryNotes.size}")
+        libraryNotes
+    } else {
+        android.util.Log.d("CourseDetailScreen", "   ℹ️ No notes available - will show empty state")
+        emptyList()
+    }
+    android.util.Log.d("CourseDetailScreen", "========================================")
+
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
-    var selectedNote by remember { mutableStateOf<Note?>(null) }
-    var showNoteOptions by remember { mutableStateOf(false) }
-    var showSummaryScreen by remember { mutableStateOf(false) }
+
+    // Use ViewModel state for selected note and showNoteOptions to survive rotation
+    val selectedNote by notesViewModel.selectedNote.collectAsState()
+    val showNoteOptions by notesViewModel.showNoteOptions.collectAsState()
+
+    // States preserved across rotation via NotesViewModel
+    val showSummaryScreen by notesViewModel.showAiSummaryScreen.collectAsState()
+    val showFlashcardScreen by notesViewModel.showFlashcardsScreen.collectAsState()
+    val showShareNFCScreen by notesViewModel.showNfcShareDialog.collectAsState()
+    val showPodcastScreen by notesViewModel.showPodcastScreen.collectAsState()
+    val noteToShare by notesViewModel.nfcShareNote.collectAsState()
+
+    // Local states (not preserved on rotation)
     var showGenerateSummaryDialog by remember { mutableStateOf(false) }
-    var showFlashcardScreen by remember { mutableStateOf(false) }
     var showUploadOptionsSheet by remember { mutableStateOf(false) }
-    var showShareNFCScreen by remember { mutableStateOf(false) }
     var showReceiveNFCScreen by remember { mutableStateOf(false) }
     var showPlayQuizScreen by remember { mutableStateOf(false) }
     var showQuizGeneratingDialog by remember { mutableStateOf(false) }
-    var showPodcastScreen by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -117,6 +163,12 @@ fun CourseDetailScreen(
 
     // Observe pending note id from CourseViewModel
     val pendingNoteId = courseViewModel.uiState.collectAsState().value.pendingOpenNoteId
+
+    // Restore note state after configuration change (rotation)
+    LaunchedEffect(Unit) {
+        android.util.Log.d("CourseDetailScreen", "🔄 Restoring note state if needed...")
+        notesViewModel.restoreSelectedNoteIfNeeded()
+    }
 
     // When course notes are loaded and there's a pending note id, auto-open it
     LaunchedEffect(courseWithNotes, pendingNoteId) {
@@ -141,7 +193,7 @@ fun CourseDetailScreen(
                 try {
                     if (note.id.isNotBlank()) {
                         android.util.Log.d("CourseDetailScreen", "Auto-opening note id=${note.id}")
-                        notesViewModel.selectNote(note)
+                        notesViewModel.selectNote(note, showOptions = true)
                         // Kick off full load if content or summary isn't present
                         if (note.summary.isBlank() || note.content.isBlank()) {
                             notesViewModel.loadNoteById(note.id)
@@ -150,9 +202,6 @@ fun CourseDetailScreen(
                 } catch (e: Exception) {
                     android.util.Log.e("CourseDetailScreen", "Error selecting/loading note: ${e.message}", e)
                 }
-
-                selectedNote = note
-                showNoteOptions = true
             }
             // Clear the pending request so it doesn't re-open
             courseViewModel.clearPendingOpenNote()
@@ -169,8 +218,10 @@ fun CourseDetailScreen(
         ShareNFCScreen(
             note = noteToShare!!,
             onBack = {
-                showShareNFCScreen = false
-                noteToShare = null
+                notesViewModel.setShowNfcShareDialog(false)
+                notesViewModel.setNfcShareNote(null)
+                // Explicitly reset overlay state to ensure navbar shows again
+                courseViewModel.setFullscreenOverlay(false)
             }
         )
         return
@@ -181,6 +232,8 @@ fun CourseDetailScreen(
             courseId = course.id,
             onBack = {
                 showReceiveNFCScreen = false
+                // Explicitly reset overlay state to ensure navbar shows again
+                courseViewModel.setFullscreenOverlay(false)
             }
         )
         return
@@ -197,6 +250,8 @@ fun CourseDetailScreen(
                 onBack = {
                     showPlayQuizScreen = false
                     gameViewModel.resetQuizGeneration()
+                    // Explicitly reset overlay state to ensure navbar shows again
+                    courseViewModel.setFullscreenOverlay(false)
                 }
             )
         }
@@ -208,8 +263,8 @@ fun CourseDetailScreen(
             note = selectedNote!!,
             notesViewModel = notesViewModel,
             onBack = {
-                showPodcastScreen = false
-                selectedNote = null
+                notesViewModel.setShowPodcastScreen(false)
+                notesViewModel.clearSelectedNote()
             }
         )
         return
@@ -229,7 +284,7 @@ fun CourseDetailScreen(
                 note = summaryNote,
                 isLoading = isSummaryLoading,
                 onBack = {
-                    showSummaryScreen = false
+                    notesViewModel.setShowAiSummaryScreen(false)
                     notesViewModel.clearSelectedNote()
                 },
                 onDownload = { notesViewModel.downloadNote(context, summaryNote) },
@@ -245,7 +300,7 @@ fun CourseDetailScreen(
                         title = { Text("AI Summary") },
                         navigationIcon = {
                             IconButton(onClick = {
-                                showSummaryScreen = false
+                                notesViewModel.setShowAiSummaryScreen(false)
                                 notesViewModel.clearSelectedNote()
                             }) {
                                 Icon(
@@ -322,8 +377,8 @@ fun CourseDetailScreen(
         com.group_7.studysage.ui.screens.Flashcards.FlashcardScreen(
             note = selectedNote!!,
             onBack = {
-                showFlashcardScreen = false
-                selectedNote = null
+                notesViewModel.setShowFlashcardsScreen(false)
+                notesViewModel.clearSelectedNote()
             }
         )
         return
@@ -496,8 +551,7 @@ fun CourseDetailScreen(
                                 courseId = note.courseId
                             )
 
-                            selectedNote = note
-                            showNoteOptions = true
+                            notesViewModel.selectNote(note, showOptions = true)
                         })
                     }
                 }
@@ -646,8 +700,7 @@ fun CourseDetailScreen(
         val note = selectedNote!!
         ModalBottomSheet(
             onDismissRequest = {
-                showNoteOptions = false
-                selectedNote = null
+                notesViewModel.clearSelectedNote()
             },
             sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surface,
@@ -657,6 +710,7 @@ fun CourseDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(bottom = 48.dp)
             ) {
                 Text(
@@ -737,8 +791,7 @@ fun CourseDetailScreen(
                     icon = Icons.Default.FileDownload,
                     onClick = {
                         notesViewModel.downloadNote(context, note)
-                        showNoteOptions = false
-                        selectedNote = null
+                        notesViewModel.clearSelectedNote()
                     }
                 )
 
@@ -747,14 +800,13 @@ fun CourseDetailScreen(
                     subtitle = if (note.summary.isNotBlank()) "Read the generated summary" else "Summary will appear here when available",
                     icon = Icons.Default.Description,
                     onClick = {
-                        showNoteOptions = false
-                        selectedNote = null
+                        notesViewModel.setShowNoteOptions(false)
                         if (note.id.isBlank()) {
                             Toast.makeText(context, "Note details not available yet.", Toast.LENGTH_SHORT).show()
                         } else {
-                            notesViewModel.selectNote(note)
+                            notesViewModel.selectNote(note, showOptions = false)
                             if (note.summary.isNotBlank()) {
-                                showSummaryScreen = true
+                                notesViewModel.setShowAiSummaryScreen(true)
                                 if (note.summary.isBlank()) notesViewModel.loadNoteById(note.id)
                             } else {
                                 showGenerateSummaryDialog = true
@@ -769,9 +821,8 @@ fun CourseDetailScreen(
                     subtitle = "Study with flashcards",
                     icon = Icons.Default.Style, // Changed to Style for cards
                     onClick = {
-                        showNoteOptions = false
-                        selectedNote = note
-                        showFlashcardScreen = true
+                        notesViewModel.setShowNoteOptions(false)
+                        notesViewModel.setShowFlashcardsScreen(true)
                     }
                 )
 
@@ -780,8 +831,7 @@ fun CourseDetailScreen(
                     subtitle = "Create an interactive quiz",
                     icon = Icons.Default.Quiz,
                     onClick = {
-                        showNoteOptions = false
-                        selectedNote = note
+                        notesViewModel.setShowNoteOptions(false)
                         showQuizGeneratingDialog = true
                     }
                 )
@@ -791,10 +841,9 @@ fun CourseDetailScreen(
                     subtitle = "Share with another device",
                     icon = Icons.Default.Nfc,
                     onClick = {
-                        showNoteOptions = false
-                        noteToShare = selectedNote
-                        selectedNote = null
-                        showShareNFCScreen = true
+                        notesViewModel.setNfcShareNote(selectedNote)
+                        notesViewModel.clearSelectedNote()
+                        notesViewModel.setShowNfcShareDialog(true)
                     }
                 )
 
@@ -803,9 +852,8 @@ fun CourseDetailScreen(
                     subtitle = "Generate and listen to AI podcast",
                     icon = Icons.Default.Headphones,
                     onClick = {
-                        showNoteOptions = false
-                        selectedNote = note
-                        showPodcastScreen = true
+                        notesViewModel.setShowNoteOptions(false)
+                        notesViewModel.setShowPodcastScreen(true)
                     }
                 )
             }
@@ -840,7 +888,7 @@ fun CourseDetailScreen(
                         preferences
                     )
                     showGenerateSummaryDialog = false
-                    showSummaryScreen = true
+                    notesViewModel.setShowAiSummaryScreen(true)
                 } else {
                     selectedNoteState?.id?.let { notesViewModel.loadNoteById(it) }
                 }
@@ -855,7 +903,7 @@ fun CourseDetailScreen(
         AlertDialog(
             onDismissRequest = {
                 showQuizGeneratingDialog = false
-                selectedNote = null
+                notesViewModel.clearSelectedNote()
             },
             icon = {
                 Icon(
@@ -980,7 +1028,7 @@ fun CourseDetailScreen(
                 TextButton(
                     onClick = {
                         showQuizGeneratingDialog = false
-                        selectedNote = null
+                        notesViewModel.clearSelectedNote()
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {

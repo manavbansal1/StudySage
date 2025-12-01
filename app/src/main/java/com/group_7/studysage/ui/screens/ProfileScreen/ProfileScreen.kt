@@ -342,12 +342,6 @@ fun ProfileScreen(
                                 onClick = { showChangePasswordDialog = true }
                             )
 
-                            SettingsOption(
-                                icon = Icons.Default.Shield,
-                                title = "Privacy",
-                                subtitle = "Manage your privacy settings",
-                                onClick = { navController.navigate("privacy_settings") }
-                            )
 
                             SettingsOption(
                                 icon = Icons.Default.Notifications,
@@ -357,7 +351,7 @@ fun ProfileScreen(
                             )
 
                             SettingsOption(
-                                Icons.AutoMirrored.Filled.ExitToApp,
+                                icon = Icons.AutoMirrored.Filled.ExitToApp,
                                 title = "Sign Out",
                                 subtitle = "Log out from your account",
                                 onClick = { showSignOutDialog = true },
@@ -706,13 +700,13 @@ private fun StatCard(
 
 @Composable
 private fun SettingsOption(
+    modifier: Modifier = Modifier,
     icon: ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
     showChevron: Boolean = true,
-    isDestructive: Boolean = false,
-    modifier: Modifier = Modifier
+    isDestructive: Boolean = false
 ) {
     Card(
         modifier = modifier

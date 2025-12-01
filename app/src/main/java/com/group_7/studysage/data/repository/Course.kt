@@ -28,8 +28,8 @@ data class Course(
 enum class Semester(val displayName: String) {
     SPRING("Spring"),
     SUMMER("Summer"),
-    FALL("Fall"),
-    WINTER("Winter")
+    FALL( "Fall"),
+
 }
 
 data class CourseWithNotes(

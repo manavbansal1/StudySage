@@ -68,9 +68,6 @@ class AuthRepository(
                     "darkMode" to false,
                     "notifications" to true
                 ),
-                "privacy" to mapOf(
-                    "profileVisibility" to "everyone"
-                ),
                 "notifications" to mapOf(
                     "enabled" to true
                 ),
@@ -560,41 +557,6 @@ class AuthRepository(
         }
     }
 
-    /**
-     * Used to update profile visibility setting
-     * Possible values: "everyone", "friends", "only me"
-     * Returns Result<Unit> indicating success or failure
-     */
-    suspend fun updateProfileVisibility(visibility: String): Result<Unit> {
-        return try {
-            val userId = currentUser?.uid ?: return Result.failure(Exception("Not signed in"))
-            firestore.collection("users")
-                .document(userId)
-                .update("privacy.profileVisibility", visibility)
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update profile visibility: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Get profile visibility setting
-     * Returns the visibility setting as a String
-     * Defaults to "everyone" if not set or on error
-     */
-    suspend fun getProfileVisibility(): String {
-        return try {
-            val userId = currentUser?.uid ?: return "everyone"
-            val doc = firestore.collection("users").document(userId).get().await()
-            val privacy = doc.get("privacy") as? Map<*, *>
-            (privacy?.get("profileVisibility") as? String) ?: "everyone"
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch profile visibility: ${e.message}", e)
-            "everyone"
-        }
-    }
 
     /**
      * Update notifications enabled/disabled setting

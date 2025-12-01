@@ -14,6 +14,8 @@ import com.group_7.studysage.data.repository.CourseRepository
 import java.net.URLEncoder
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class HomeViewModel(
     application: Application
@@ -51,8 +53,8 @@ class HomeViewModel(
     private val _isLoadingProfile = mutableStateOf(true)
     val isLoadingProfile: State<Boolean> = _isLoadingProfile
 
-    private val _recentlyOpenedPdfs = mutableStateOf<List<Map<String, Any>>>(emptyList())
-    val recentlyOpenedPdfs: State<List<Map<String, Any>>> = _recentlyOpenedPdfs
+    private val _recentlyOpenedPdfs = MutableStateFlow<List<Map<String, Any>>>(emptyList())
+    val recentlyOpenedPdfs: StateFlow<List<Map<String, Any>>> = _recentlyOpenedPdfs
 
     // Store course ID to name mapping
     private val _courseNameMap = mutableStateOf<Map<String, String>>(emptyMap())
@@ -259,19 +261,21 @@ class HomeViewModel(
         }
     }
 
-    private fun loadRecentlyOpenedPdfs() {
+    fun loadRecentlyOpenedPdfs() {
         viewModelScope.launch {
+            android.util.Log.d("HomeViewModel", "Loading recently opened PDFs...")
             try {
                 val result = authRepository.getRecentlyOpened(limit = 10)
                 result.onSuccess { pdfs ->
+                    android.util.Log.d("HomeViewModel", "Loaded ${pdfs.size} recently opened PDFs")
                     _recentlyOpenedPdfs.value = pdfs
                 }.onFailure { exception ->
                     android.util.Log.e("HomeViewModel", "Failed to load recently opened: ${exception.message}")
-                    _recentlyOpenedPdfs.value = emptyList()
+                    _recentlyOpenedPdfs.value = emptyList<Map<String, Any>>()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("HomeViewModel", "Error loading recently opened: ${e.message}")
-                _recentlyOpenedPdfs.value = emptyList()
+                _recentlyOpenedPdfs.value = emptyList<Map<String, Any>>()
             }
         }
     }
@@ -290,7 +294,7 @@ class HomeViewModel(
                 val result = authRepository.clearRecentlyOpened()
                 result.onSuccess {
                     // Update local state immediately
-                    _recentlyOpenedPdfs.value = emptyList()
+                    _recentlyOpenedPdfs.value = emptyList<Map<String, Any>>()
                     android.util.Log.d("HomeViewModel", "Successfully cleared all recently opened PDFs")
                 }.onFailure { exception ->
                     android.util.Log.e("HomeViewModel", "Failed to clear recently opened: ${exception.message}")
@@ -326,6 +330,13 @@ class HomeViewModel(
     fun openCourse(courseId: String, noteId: String?, courseViewModel: com.group_7.studysage.viewmodels.CourseViewModel, navController: androidx.navigation.NavController) {
         try {
             android.util.Log.d("HomeViewModel", "openCourse called: courseId=$courseId noteId=$noteId")
+
+            // Set flag to indicate we came from Home screen
+            // This helps back button navigate back to home instead of courses list
+            android.util.Log.d("HomeViewModel", "Setting shouldPopBack = true")
+            courseViewModel.setShouldPopBack(true)
+            android.util.Log.d("HomeViewModel", "✅ Flag set! Current value: ${courseViewModel.uiState.value.shouldPopBackOnClose}")
+
             // Tell the CourseViewModel which note should be opened when the course loads
             courseViewModel.setPendingOpenNote(noteId)
             // Load the course with its notes
@@ -548,7 +559,7 @@ class HomeViewModel(
         _userLevel.value = 0
         _userFullName.value = "User"
         _userProfile.value = null
-        _recentlyOpenedPdfs.value = emptyList()
+        _recentlyOpenedPdfs.value = emptyList<Map<String, Any>>()
 
         // Remove Firestore listener if it exists
         firestoreListener?.remove()

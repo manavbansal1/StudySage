@@ -14,7 +14,9 @@ data class TempFlashcardUiState(
     val flashcardPreferences: String = "",
     val numberOfCards: Int = 10,
     val showFlashcardStudyScreen: Boolean = false,
-    val showSuccessMessage: Boolean = false
+    val showSuccessMessage: Boolean = false,
+    val currentCardIndex: Int = 0,
+    val flipStates: Map<Int, Boolean> = emptyMap()
 )
 
 class TempFlashcardViewModel : ViewModel() {
@@ -45,6 +47,17 @@ class TempFlashcardViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(showSuccessMessage = show)
     }
     
+    fun setCurrentCardIndex(index: Int) {
+        _uiState.value = _uiState.value.copy(currentCardIndex = index)
+    }
+
+    fun toggleFlipState(index: Int) {
+        val currentFlipStates = _uiState.value.flipStates.toMutableMap()
+        val currentState = currentFlipStates[index] ?: false
+        currentFlipStates[index] = !currentState
+        _uiState.value = _uiState.value.copy(flipStates = currentFlipStates)
+    }
+
     fun clearState() {
         _uiState.value = TempFlashcardUiState()
     }

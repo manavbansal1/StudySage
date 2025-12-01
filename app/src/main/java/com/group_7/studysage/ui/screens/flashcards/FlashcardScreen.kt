@@ -4,15 +4,17 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,8 +48,8 @@ fun FlashcardScreen(
     val errorMessage by flashcardViewModel.errorMessage.collectAsState()
     val generationProgress by flashcardViewModel.generationProgress.collectAsState()
 
-    var currentIndex by remember { mutableIntStateOf(0) }
-    var isFlipped by remember { mutableStateOf(false) }
+    var currentIndex by rememberSaveable { mutableIntStateOf(0) }
+    var isFlipped by rememberSaveable { mutableStateOf(false) }
     var showCompletionDialog by remember { mutableStateOf(false) }
     var showGenerateDialog by remember { mutableStateOf(false) }
     var taskCompleted by remember { mutableStateOf(false) }
@@ -240,11 +242,14 @@ fun FlashcardScreen(
             }
 
             else -> {
+                val scrollState = rememberScrollState()
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .verticalScroll(scrollState),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Progress bar (of flashcards completed)
@@ -286,8 +291,8 @@ fun FlashcardScreen(
                         isFlipped = isFlipped,
                         onFlip = { isFlipped = !isFlipped },
                         modifier = Modifier
-                            .weight(1f)
                             .fillMaxWidth()
+                            .heightIn(min = 300.dp, max = 500.dp)
                     )
 
                     Spacer(Modifier.height(32.dp))
@@ -477,9 +482,11 @@ fun FlashcardView(
         ),
         shape = RoundedCornerShape(24.dp)
     ) {
+        val cardScrollState = rememberScrollState()
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(cardScrollState)
                 .padding(32.dp),
             contentAlignment = Alignment.Center
         ) {

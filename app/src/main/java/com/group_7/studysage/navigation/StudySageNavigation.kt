@@ -54,7 +54,6 @@ import com.group_7.studysage.ui.screens.GroupsScreen.GroupChatScreen
 import com.group_7.studysage.ui.screens.GroupsScreen.GroupScreen
 import com.group_7.studysage.ui.screens.HomeScreen.HomeScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.NotificationsScreen
-import com.group_7.studysage.ui.screens.ProfileScreen.PrivacyScreen
 import com.group_7.studysage.ui.screens.ProfileScreen.ProfileScreen
 import com.group_7.studysage.ui.screens.RecentlyOpened.RecentlyOpenedScreen
 import com.group_7.studysage.ui.screens.TempQuiz.TempQuizGenerationScreen
@@ -69,7 +68,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.createSavedStateHandle
 import com.group_7.studysage.data.models.GameType
+import com.group_7.studysage.data.repository.CourseRepository
 import com.group_7.studysage.ui.theme.*
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
@@ -136,7 +139,39 @@ fun StudySageNavigation(
     if (isUserSignedIn) {
         // Create a fresh NavController for authenticated users
         val navController = androidx.navigation.compose.rememberNavController()
-        val courseViewModel: CourseViewModel = viewModel()
+
+        // Create courseViewModel scoped to the activity to share across course routes
+        // and ensure SavedStateHandle works properly for configuration changes
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val activity = context as androidx.activity.ComponentActivity
+
+        // Remember the factory to avoid recreating ViewModel on every recomposition
+        val courseViewModelFactory = remember {
+            android.util.Log.d("StudySageNavigation", "========================================")
+            android.util.Log.d("StudySageNavigation", "🏗️ Creating CourseViewModel Factory")
+            android.util.Log.d("StudySageNavigation", "   Context: ${context::class.simpleName}")
+            viewModelFactory {
+                initializer {
+                    android.util.Log.d("StudySageNavigation", "   📦 Factory initializer called")
+                    android.util.Log.d("StudySageNavigation", "   Creating SavedStateHandle...")
+                    val handle = createSavedStateHandle()
+                    android.util.Log.d("StudySageNavigation", "   SavedStateHandle created: ${handle.hashCode()}")
+                    android.util.Log.d("StudySageNavigation", "   SavedStateHandle keys: ${handle.keys()}")
+                    CourseViewModel(
+                        courseRepository = CourseRepository(),
+                        savedStateHandle = handle
+                    )
+                }
+            }
+        }
+
+        val courseViewModel: CourseViewModel = viewModel(
+            viewModelStoreOwner = activity,
+            factory = courseViewModelFactory
+        )
+        android.util.Log.d("StudySageNavigation", "✅ CourseViewModel instance: ${courseViewModel.hashCode()}")
+        android.util.Log.d("StudySageNavigation", "========================================")
+
         val homeViewModel: HomeViewModel = viewModel()
 
         // Track the current user ID to detect when a different user logs in
@@ -145,7 +180,7 @@ fun StudySageNavigation(
         // Track previous user ID to detect changes - use remember with a key to persist across recomposition
         val previousUserId = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
-        // Detect when user ID changes (different user logs in) and reload study time data
+        // Detect when user ID changes (different user logs in) and refresh all screens
         androidx.compose.runtime.LaunchedEffect(currentUserId) {
             android.util.Log.d("StudySageNav", "========================================")
             android.util.Log.d("StudySageNav", "🔍 LaunchedEffect triggered")
@@ -161,13 +196,30 @@ fun StudySageNavigation(
                     android.util.Log.d("StudySageNav", "👤 DIFFERENT USER DETECTED!")
                     android.util.Log.d("StudySageNav", "   Previous: ${previousUserId.value}")
                     android.util.Log.d("StudySageNav", "   Current:  $currentUserId")
-                    android.util.Log.d("StudySageNav", "🧹 Calling reloadStudyTimeForCurrentUser()...")
-                    homeViewModel.reloadStudyTimeForCurrentUser()
-                    android.util.Log.d("StudySageNav", "✅ reloadStudyTimeForCurrentUser() completed")
+                    android.util.Log.d("StudySageNav", "🔄 Refreshing all screens...")
+
+                    // Refresh Home screen data
+                    homeViewModel.refreshHomeData()
+                    android.util.Log.d("StudySageNav", "✅ Home screen refreshed")
+
+                    // Refresh Course screen data
+                    courseViewModel.refreshCourses()
+                    android.util.Log.d("StudySageNav", "✅ Course screen refreshed")
+
+                    android.util.Log.d("StudySageNav", "✅ All screens refreshed")
                 } else if (isFirstLogin) {
                     android.util.Log.d("StudySageNav", "🔐 First user login: $currentUserId")
-                    android.util.Log.d("StudySageNav", "📂 Loading initial data...")
-                    homeViewModel.reloadStudyTimeForCurrentUser()
+                    android.util.Log.d("StudySageNav", "📂 Loading all screen data...")
+
+                    // Load Home screen data
+                    homeViewModel.refreshHomeData()
+                    android.util.Log.d("StudySageNav", "✅ Home screen loaded")
+
+                    // Load Course screen data
+                    courseViewModel.loadCourses()
+                    android.util.Log.d("StudySageNav", "✅ Course screen loaded")
+
+                    android.util.Log.d("StudySageNav", "✅ All screens loaded")
                 } else {
                     android.util.Log.d("StudySageNav", "ℹ️ Same user, no reset needed ($currentUserId)")
                 }
@@ -191,16 +243,23 @@ fun StudySageNavigation(
         // Collect fullscreen overlay state from courseViewModel
         val courseUiState by courseViewModel.uiState.collectAsState()
 
-        // Clear selected course when navigating away from course screen
+        // Clear selected course when navigating away from course screen to a different tab
+        // BUT not during rotation or when navigating between course routes
         androidx.compose.runtime.LaunchedEffect(currentDestination?.route) {
-            if (currentDestination?.route != Screen.Course.route && courseUiState.selectedCourse != null) {
+            val currentRoute = currentDestination?.route
+            val isCourseRoute = currentRoute == Screen.Course.route ||
+                               currentRoute?.startsWith("${Screen.Course.route}/") == true
+
+            // Only clear if we have a selected course AND we're navigating to a non-course screen
+            if (!isCourseRoute && courseUiState.selectedCourse != null && currentRoute != null) {
+                android.util.Log.d("StudySageNavigation", "📍 Navigating away from courses to: $currentRoute")
+                android.util.Log.d("StudySageNavigation", "🧹 Clearing selected course due to navigation")
                 courseViewModel.clearSelectedCourse()
             }
         }
 
         val shouldHideBottomNav = currentDestination?.route?.startsWith("group_chat/") == true ||
                 currentDestination?.route == "profile" ||
-                currentDestination?.route == "privacy_settings" ||
                 currentDestination?.route == "notification_settings" ||
                 currentDestination?.route == "temp_quiz" || // Hide nav on temp quiz screen
                 currentDestination?.route == "temp_flashcards" || // Hide nav on temp flashcard screen
@@ -300,7 +359,7 @@ fun StudySageNavigation(
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier
+                modifier = Modifier.padding(paddingValues)
             ) {
                 composable(
                     Screen.Home.route,
@@ -367,7 +426,8 @@ fun StudySageNavigation(
                         authViewModel,
                         onNavigateToCanvas = {
                             navController.navigate(Screen.CanvasIntegration.route)
-                        }
+                        },
+                        navController = navController
                     )
                 }
 
@@ -417,7 +477,8 @@ fun StudySageNavigation(
                         navNoteId,
                         onNavigateToCanvas = {
                             navController.navigate(Screen.CanvasIntegration.route)
-                        }
+                        },
+                        navController = navController
                     )
                 }
                 composable(
@@ -494,14 +555,15 @@ fun StudySageNavigation(
                 }
                 
                 // Sub-pages without transitions
-                composable("privacy_settings") {
-                    PrivacyScreen(navController = navController)
-                }
                 composable("notification_settings") {
                     NotificationsScreen(navController = navController)
                 }
                 composable("recently_opened") {
-                    RecentlyOpenedScreen(navController = navController)
+                    RecentlyOpenedScreen(
+                        navController = navController,
+                        homeViewModel = homeViewModel,
+                        courseViewModel = courseViewModel
+                    )
                 }
 
                 // Temporary Quiz Generation Screen

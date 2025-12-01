@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-class GamePlayViewModel(
+class  GamePlayViewModel(
     private val webSocketManager: GameWebSocketManager,
     private val authViewModel: AuthViewModel
 ) : ViewModel() {
