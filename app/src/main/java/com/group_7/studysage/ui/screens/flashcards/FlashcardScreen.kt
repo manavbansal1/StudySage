@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,8 +48,8 @@ fun FlashcardScreen(
     val errorMessage by flashcardViewModel.errorMessage.collectAsState()
     val generationProgress by flashcardViewModel.generationProgress.collectAsState()
 
-    var currentIndex by remember { mutableIntStateOf(0) }
-    var isFlipped by remember { mutableStateOf(false) }
+    var currentIndex by rememberSaveable { mutableIntStateOf(0) }
+    var isFlipped by rememberSaveable { mutableStateOf(false) }
     var showCompletionDialog by remember { mutableStateOf(false) }
     var showGenerateDialog by remember { mutableStateOf(false) }
     var taskCompleted by remember { mutableStateOf(false) }
