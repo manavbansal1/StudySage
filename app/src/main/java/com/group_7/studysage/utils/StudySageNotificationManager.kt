@@ -21,7 +21,6 @@ import com.group_7.studysage.R
  *
  * A centralized notification manager for StudySage app that handles:
  * - Study reminders
- * - Group messages
  * - Learning progress updates
  *
  * Automatically creates notification channels for Android O+ and manages
@@ -33,17 +32,14 @@ object StudySageNotificationManager {
 
     // Notification Channel IDs
     private const val CHANNEL_STUDY_REMINDERS = "study_reminders"
-    private const val CHANNEL_GROUP_MESSAGES = "group_messages"
     private const val CHANNEL_LEARNING_PROGRESS = "learning_progress"
 
     // Channel Names
     private const val CHANNEL_NAME_STUDY = "Study Reminders"
-    private const val CHANNEL_NAME_GROUPS = "Group Messages"
     private const val CHANNEL_NAME_PROGRESS = "Learning Progress"
 
     // Channel Descriptions
     private const val CHANNEL_DESC_STUDY = "Notifications for study reminders and schedules"
-    private const val CHANNEL_DESC_GROUPS = "Messages from study groups and collaborations"
     private const val CHANNEL_DESC_PROGRESS = "Updates on your learning progress and achievements"
 
     /**
@@ -71,17 +67,6 @@ object StudySageNotificationManager {
                     enableVibration(true)
                 }
 
-                // Create Group Messages Channel
-                val groupChannel = NotificationChannel(
-                    CHANNEL_GROUP_MESSAGES,
-                    CHANNEL_NAME_GROUPS,
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = CHANNEL_DESC_GROUPS
-                    enableLights(true)
-                    enableVibration(true)
-                }
-
                 // Create Learning Progress Channel
                 val progressChannel = NotificationChannel(
                     CHANNEL_LEARNING_PROGRESS,
@@ -95,7 +80,6 @@ object StudySageNotificationManager {
 
                 // Register all channels
                 notificationManager.createNotificationChannel(studyChannel)
-                notificationManager.createNotificationChannel(groupChannel)
                 notificationManager.createNotificationChannel(progressChannel)
 
                 Log.d(TAG, "Notification channels created successfully")
@@ -176,70 +160,6 @@ object StudySageNotificationManager {
             Log.d(TAG, "Study reminder notification shown successfully with ID: $notificationId")
         } catch (e: Exception) {
             Log.e(TAG, "Error showing study reminder notification", e)
-        }
-    }
-
-    /**
-     * Show a group message notification.
-     *
-     * @param context Application or Activity context
-     * @param groupName The name of the study group
-     * @param senderName The name of the person who sent the message
-     * @param message The message content
-     */
-    @SuppressLint("MissingPermission") // Permission is checked before calling notify()
-    fun showGroupMessage(context: Context, groupName: String, senderName: String, message: String) {
-        try {
-            Log.d(TAG, "Showing group message from $senderName in $groupName")
-
-            // Check notification permission
-            if (!hasNotificationPermission(context)) {
-                Log.w(TAG, "Notification permission not granted. Cannot show notification.")
-                return
-            }
-
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            if (notificationManager == null) {
-                Log.e(TAG, "NotificationManager is null. Cannot show notification.")
-                return
-            }
-
-            // Create intent to open MainActivity
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("openGroup", groupName)
-            }
-
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            // Build notification with messaging style
-            val notification = NotificationCompat.Builder(context, CHANNEL_GROUP_MESSAGES)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle(groupName)
-                .setContentText("$senderName: $message")
-                .setStyle(
-                    NotificationCompat.BigTextStyle()
-                        .bigText("$senderName: $message")
-                        .setBigContentTitle(groupName)
-                )
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .build()
-
-            // Generate unique notification ID
-            val notificationId = System.currentTimeMillis().toInt()
-            notificationManager.notify(notificationId, notification)
-
-            Log.d(TAG, "Group message notification shown successfully with ID: $notificationId")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error showing group message notification", e)
         }
     }
 
