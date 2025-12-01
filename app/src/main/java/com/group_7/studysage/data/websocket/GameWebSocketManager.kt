@@ -324,6 +324,26 @@ class GameWebSocketManager(
     }
 
     /**
+     * Send acknowledgement that question has been received and displayed
+     */
+    fun sendQuestionAck(playerId: String, questionId: String) {
+        val ackData = QuestionAckData(
+            playerId = playerId,
+            questionId = questionId,
+            timestamp = System.currentTimeMillis()
+        )
+
+        val dataString = json.encodeToString(QuestionAckData.serializer(), ackData)
+
+        sendMessage(WebSocketMessage(
+            type = MessageType.QUESTION_ACK,
+            data = dataString
+        ))
+
+        android.util.Log.d("GameWebSocketManager", "Sent QUESTION_ACK for question $questionId from player $playerId")
+    }
+
+    /**
      * Generic message sender
      */
     private fun sendMessage(message: WebSocketMessage) {

@@ -19,7 +19,11 @@ enum class GameType {
 @Serializable
 enum class GameStatus {
     WAITING,
+    STARTING,
     IN_PROGRESS,
+    PAUSED,
+    FINISHED,
+    CANCELLED
 }
 
 @Serializable
@@ -39,6 +43,7 @@ enum class MessageType {
     GAME_STARTING,
     GAME_STARTED,
     NEXT_QUESTION,
+    QUESTION_ACK, // Acknowledgement that player received and displayed the question
     TURN_UPDATE, // For turn-based games like STUDY_TAC_TOE
     BOARD_UPDATE, // For syncing board state in STUDY_TAC_TOE
     GAME_FINISHED,
@@ -220,6 +225,13 @@ data class FlashcardData(
     val totalFlashcards: Int,
     val timeLimit: Int,
     val showAnswer: Boolean = false
+)
+
+@Serializable
+data class QuestionAckData(
+    val playerId: String,
+    val questionId: String,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 @Serializable
