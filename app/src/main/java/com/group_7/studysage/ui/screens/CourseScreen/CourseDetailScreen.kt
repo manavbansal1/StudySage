@@ -3,7 +3,7 @@ package com.group_7.studysage.ui.screens.CourseScreen
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
@@ -402,14 +402,14 @@ fun CourseDetailScreen(
                                 showUploadDialog = true
                             }
                             is FileUtils.ValidationResult.Error -> {
-                                Toast.makeText(context, validationResult.message, Toast.LENGTH_LONG).show()
+
                             }
                         }
                     } else {
-                        Toast.makeText(context, "Only PDF files are supported", Toast.LENGTH_LONG).show()
+
                     }
                 } else {
-                    Toast.makeText(context, "Could not read file", Toast.LENGTH_SHORT).show()
+
                 }
             }
         }
@@ -425,14 +425,14 @@ fun CourseDetailScreen(
         
         uploadStatus?.let { message ->
             if (!isLoading) {
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
             }
         }
     }
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
         }
     }
 
@@ -802,7 +802,7 @@ fun CourseDetailScreen(
                     onClick = {
                         notesViewModel.setShowNoteOptions(false)
                         if (note.id.isBlank()) {
-                            Toast.makeText(context, "Note details not available yet.", Toast.LENGTH_SHORT).show()
+
                         } else {
                             notesViewModel.selectNote(note, showOptions = false)
                             if (note.summary.isNotBlank()) {
@@ -1104,7 +1104,7 @@ fun CourseDetailScreen(
     // Handle quiz generation errors
     LaunchedEffect(quizGenerationState.error) {
         quizGenerationState.error?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+
         }
     }
 

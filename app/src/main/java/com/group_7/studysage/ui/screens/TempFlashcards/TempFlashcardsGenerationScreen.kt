@@ -3,7 +3,7 @@ package com.group_7.studysage.ui.screens.TempFlashcards
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -95,11 +95,7 @@ fun TempFlashcardsGenerationScreen(
                         selectedPdfUri = uri
                         tempFlashcardViewModel.setSelectedPdf(uri.toString(), fileInfo.name)
                     } else {
-                        Toast.makeText(
-                            context,
-                            "Please select a PDF file",
-                            Toast.LENGTH_SHORT
-                        ).show()
+
                     }
                 }
             }

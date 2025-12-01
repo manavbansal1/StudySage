@@ -58,7 +58,7 @@ import android.content.ContentValues
 import android.provider.MediaStore
 import android.os.Environment
 import android.os.Build
-import android.widget.Toast
+
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -1246,18 +1246,18 @@ private suspend fun saveImageToGallery(context: android.content.Context, imageUr
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
                 }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(context, "Image saved to gallery", Toast.LENGTH_SHORT).show()
+
                 }
             }
         } else {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
+
             }
         }
     } catch (e: Exception) {
         e.printStackTrace()
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-            Toast.makeText(context, "Error saving image: ${e.message}", Toast.LENGTH_SHORT).show()
+
         }
     }
 }

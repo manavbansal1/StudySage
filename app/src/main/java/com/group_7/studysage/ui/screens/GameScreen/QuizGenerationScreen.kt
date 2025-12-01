@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.GameViewModel
-import android.widget.Toast
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +45,7 @@ fun QuizGenerationScreen(
     // Show error as toast
     LaunchedEffect(quizState.error) {
         quizState.error?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+
             gameViewModel.clearError()
         }
     }
@@ -74,7 +74,7 @@ fun QuizGenerationScreen(
                     val json = gameViewModel.getQuizJson()
                     if (json != null) {
                         clipboardManager.setText(AnnotatedString(json))
-                        Toast.makeText(context, "Quiz JSON copied to clipboard", Toast.LENGTH_SHORT).show()
+
                     }
                 },
                 onSaveQuiz = {
