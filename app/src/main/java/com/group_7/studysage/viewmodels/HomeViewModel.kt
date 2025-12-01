@@ -525,6 +525,54 @@ class HomeViewModel(
     }
 
     /**
+     * Remove all recently opened notes associated with a specific course.
+     * This is typically called when a course is deleted.
+     */
+    fun removeRecentlyOpenedForCourse(courseId: String) {
+        viewModelScope.launch {
+            try {
+                val recentlyOpened = authRepository.getRecentlyOpened()
+                val filteredList = recentlyOpened.getOrNull()?.filter { it["courseId"] != courseId } ?: emptyList()
+                // Note: authRepository.updateRecentlyOpened doesn't exist directly, we used update("recentlyOpened", ...) in repo
+                // Wait, the repo method I added earlier was removeRecentlyOpenedForCourse in AuthRepository?
+                // No, I added removeRecentlyOpened(noteId).
+                // Let me check AuthRepository again to see if removeRecentlyOpenedForCourse exists there.
+                // Ah, I see removeRecentlyOpenedByCourseId in AuthRepository in the view_file output from step 471.
+                // So I should call authRepository.removeRecentlyOpenedByCourseId(courseId)
+                
+                val result = authRepository.removeRecentlyOpenedByCourseId(courseId)
+                result.onSuccess {
+                     android.util.Log.d(TAG, "Successfully removed recently opened notes for course $courseId")
+                }.onFailure { exception ->
+                     android.util.Log.e(TAG, "Failed to remove recently opened notes for course $courseId: ${exception.message}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to remove recently opened notes for course $courseId: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Remove a specific note from recently opened list
+     */
+    fun removeRecentlyOpened(noteId: String) {
+        viewModelScope.launch {
+            try {
+                val result = authRepository.removeRecentlyOpened(noteId)
+                result.onSuccess {
+                    // Refresh the recently opened list
+                    loadRecentlyOpenedPdfs()
+                    android.util.Log.d("HomeViewModel", "Successfully removed note $noteId from recently opened")
+                }.onFailure { exception ->
+                    android.util.Log.e("HomeViewModel", "Failed to remove note from recently opened: ${exception.message}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Error removing note from recently opened: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Update user XP and level from profile
      */
     private fun updateUserXPAndLevel() {

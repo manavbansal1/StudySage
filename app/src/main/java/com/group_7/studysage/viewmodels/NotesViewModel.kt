@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 
 class NotesViewModel(
@@ -74,6 +75,9 @@ class NotesViewModel(
 
     private val _courseNotes = MutableStateFlow<List<Note>>(emptyList())
     val courseNotes: StateFlow<List<Note>> = _courseNotes.asStateFlow()
+
+    private val _isCourseNotesLoaded = MutableStateFlow(false)
+    val isCourseNotesLoaded: StateFlow<Boolean> = _isCourseNotesLoaded.asStateFlow()
 
     private val _podcastGenerationStatus = MutableStateFlow<String?>(null)
     val podcastGenerationStatus: StateFlow<String?> = _podcastGenerationStatus.asStateFlow()
@@ -169,6 +173,7 @@ class NotesViewModel(
                 val userNotes = notesRepository.getUserNotes(courseId)
                 if (courseId != null) {
                     _courseNotes.value = userNotes
+                    _isCourseNotesLoaded.value = true
                 } else {
                     _notes.value = userNotes
                 }
@@ -282,14 +287,15 @@ class NotesViewModel(
         }
     }
 
-    fun deleteNote(noteId: String) {
+    fun deleteNote(noteId: String, courseId: String? = null) {
         Log.d(TAG, "Deleting note id=$noteId")
         viewModelScope.launch {
             _isLoading.value = true
 
             notesRepository.deleteNote(noteId)
                 .onSuccess {
-                    loadNotes() // Refresh the list
+                    delay(1000) // Wait 1 second before refreshing
+                    loadNotes(courseId) // Refresh the list
                     _selectedNote.value = null // Clear selection if deleted note was selected
                     Log.d(TAG, "Note deleted id=$noteId")
                 }
