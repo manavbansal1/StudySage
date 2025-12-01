@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.draw.clip
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.group_7.studysage.data.models.ContentSource
@@ -162,15 +165,56 @@ fun GameScreen(navController: NavController) {
 
             // Show loading/error states
             if (uiState.isLoading) {
-                Spacer(modifier = Modifier.height(24.dp))
-                CircularProgressIndicator()
-                uiState.uploadProgress?.let { progress ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = progress,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                Dialog(onDismissRequest = { }) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .wrapContentHeight(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 12.dp
+                        )
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(28.dp),
+                            modifier = Modifier.padding(40.dp)
+                        ) {
+                            Text(
+                                "Loading Game",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                )
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Text(
+                                    text = uiState.uploadProgress ?: "Please wait...",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
