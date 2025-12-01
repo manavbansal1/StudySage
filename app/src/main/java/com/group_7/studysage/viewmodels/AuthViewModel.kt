@@ -34,11 +34,92 @@ class AuthViewModel(
     private val _profileUpdated = MutableStateFlow(0)
     val profileUpdated: StateFlow<Int> = _profileUpdated
 
+    // Sign In form fields - preserved across rotation
+    private val _signInEmail = MutableStateFlow("")
+    val signInEmail: StateFlow<String> = _signInEmail
+
+    private val _signInPassword = MutableStateFlow("")
+    val signInPassword: StateFlow<String> = _signInPassword
+
+    private val _isSignInPasswordVisible = MutableStateFlow(false)
+    val isSignInPasswordVisible: StateFlow<Boolean> = _isSignInPasswordVisible
+
+    // Sign Up form fields - preserved across rotation
+    private val _signUpName = MutableStateFlow("")
+    val signUpName: StateFlow<String> = _signUpName
+
+    private val _signUpEmail = MutableStateFlow("")
+    val signUpEmail: StateFlow<String> = _signUpEmail
+
+    private val _signUpPassword = MutableStateFlow("")
+    val signUpPassword: StateFlow<String> = _signUpPassword
+
+    private val _signUpConfirmPassword = MutableStateFlow("")
+    val signUpConfirmPassword: StateFlow<String> = _signUpConfirmPassword
+
+    private val _isSignUpPasswordVisible = MutableStateFlow(false)
+    val isSignUpPasswordVisible: StateFlow<Boolean> = _isSignUpPasswordVisible
+
+    private val _isSignUpConfirmPasswordVisible = MutableStateFlow(false)
+    val isSignUpConfirmPasswordVisible: StateFlow<Boolean> = _isSignUpConfirmPasswordVisible
+
     init {
         if (_isSignedIn.value) {
             loadUserProfile()
             _currentUser.value = authRepository.currentUser
         }
+    }
+
+    // Form field update functions
+    fun setSignInEmail(email: String) {
+        _signInEmail.value = email
+    }
+
+    fun setSignInPassword(password: String) {
+        _signInPassword.value = password
+    }
+
+    fun toggleSignInPasswordVisibility() {
+        _isSignInPasswordVisible.value = !_isSignInPasswordVisible.value
+    }
+
+    fun setSignUpName(name: String) {
+        _signUpName.value = name
+    }
+
+    fun setSignUpEmail(email: String) {
+        _signUpEmail.value = email
+    }
+
+    fun setSignUpPassword(password: String) {
+        _signUpPassword.value = password
+    }
+
+    fun setSignUpConfirmPassword(password: String) {
+        _signUpConfirmPassword.value = password
+    }
+
+    fun toggleSignUpPasswordVisibility() {
+        _isSignUpPasswordVisible.value = !_isSignUpPasswordVisible.value
+    }
+
+    fun toggleSignUpConfirmPasswordVisibility() {
+        _isSignUpConfirmPasswordVisible.value = !_isSignUpConfirmPasswordVisible.value
+    }
+
+    fun clearSignInForm() {
+        _signInEmail.value = ""
+        _signInPassword.value = ""
+        _isSignInPasswordVisible.value = false
+    }
+
+    fun clearSignUpForm() {
+        _signUpName.value = ""
+        _signUpEmail.value = ""
+        _signUpPassword.value = ""
+        _signUpConfirmPassword.value = ""
+        _isSignUpPasswordVisible.value = false
+        _isSignUpConfirmPasswordVisible.value = false
     }
 
     fun signUp(email: String, password: String, name: String) {

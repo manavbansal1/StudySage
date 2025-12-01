@@ -32,12 +32,13 @@ fun SignUpScreen(
     onSignUpSuccess: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
-    var isConfirmPasswordVisible by remember { mutableStateOf(false) }
+    // Use ViewModel states instead of local remember states to survive rotation
+    val name by viewModel.signUpName.collectAsState()
+    val email by viewModel.signUpEmail.collectAsState()
+    val password by viewModel.signUpPassword.collectAsState()
+    val confirmPassword by viewModel.signUpConfirmPassword.collectAsState()
+    val isPasswordVisible by viewModel.isSignUpPasswordVisible.collectAsState()
+    val isConfirmPasswordVisible by viewModel.isSignUpConfirmPasswordVisible.collectAsState()
 
     val isLoading by viewModel.isLoading
     val errorMessage by viewModel.errorMessage
@@ -46,6 +47,7 @@ fun SignUpScreen(
     // Navigate to home when signed up successfully
     LaunchedEffect(isSignedIn) {
         if (isSignedIn) {
+            viewModel.clearSignUpForm()
             onSignUpSuccess()
         }
     }
@@ -91,7 +93,7 @@ fun SignUpScreen(
                 // Name Field
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { viewModel.setSignUpName(it) },
                     label = { Text("Full Name") },
                     leadingIcon = {
                         Icon(
@@ -112,7 +114,7 @@ fun SignUpScreen(
                 // Email Field
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { viewModel.setSignUpEmail(it) },
                     label = { Text("Email") },
                     leadingIcon = {
                         Icon(
@@ -134,7 +136,7 @@ fun SignUpScreen(
                 // Password Field
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = { viewModel.setSignUpPassword(it) },
                     label = { Text("Password") },
                     leadingIcon = {
                         Icon(
@@ -143,7 +145,7 @@ fun SignUpScreen(
                         )
                     },
                     trailingIcon = {
-                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                        IconButton(onClick = { viewModel.toggleSignUpPasswordVisibility() }) {
                             Icon(
                                 imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = if (isPasswordVisible) "Hide password" else "Show password"
@@ -165,7 +167,7 @@ fun SignUpScreen(
                 // Confirm Password Field
                 OutlinedTextField(
                     value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
+                    onValueChange = { viewModel.setSignUpConfirmPassword(it) },
                     label = { Text("Confirm Password") },
                     leadingIcon = {
                         Icon(
@@ -174,7 +176,7 @@ fun SignUpScreen(
                         )
                     },
                     trailingIcon = {
-                        IconButton(onClick = { isConfirmPasswordVisible = !isConfirmPasswordVisible }) {
+                        IconButton(onClick = { viewModel.toggleSignUpConfirmPasswordVisibility() }) {
                             Icon(
                                 imageVector = if (isConfirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = if (isConfirmPasswordVisible) "Hide password" else "Show password"
