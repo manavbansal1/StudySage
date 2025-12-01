@@ -19,10 +19,10 @@ object ApiConfig {
     // Backend url: studysage-backend-production.up.railway.app
     // Now that we have deployed the backend, we can use the railway url instead of ngrok
 
-   // private const val NGROK_URL = "https://studysage-backend-production.up.railway.app"
+   private const val NGROK_URL = "https://studysage-backend-production.up.railway.app"
 
-    private const val NGROK_URL = "https://unrefreshing-dusti-unflouted.ngrok-free.dev"
-    // private const val NGROK_URL = "https://perorational-maegan-hexaplar.ngrok-free.dev"
+//    private const val NGROK_URL = "https://unrefreshing-dusti-unflouted.ngrok-free.dev"
+//     private const val NGROK_URL = "https://perorational-maegan-hexaplar.ngrok-free.dev"
 
     // Local development URLs
     private const val LOCAL_HTTP_URL = "http://10.0.2.2:8080"

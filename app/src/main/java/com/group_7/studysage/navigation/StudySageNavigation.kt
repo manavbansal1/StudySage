@@ -359,7 +359,7 @@ fun StudySageNavigation(
             NavHost(
                 navController = navController,
                 startDestination = Screen.Home.route,
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier
             ) {
                 composable(
                     Screen.Home.route,

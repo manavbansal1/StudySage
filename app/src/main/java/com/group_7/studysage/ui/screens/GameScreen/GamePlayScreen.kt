@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.group_7.studysage.data.models.GameStatus
 import com.group_7.studysage.viewmodels.GamePlayViewModel
 import com.group_7.studysage.viewmodels.GamePlayViewModelFactory
 import com.group_7.studysage.data.websocket.GameWebSocketManager
@@ -72,6 +73,10 @@ fun GamePlayScreen(
             when {
                 gameUiState.isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                gameUiState.currentSession?.status == GameStatus.STARTING -> {
+                    // Show loading animation while questions are being generated
+                    QuestionGenerationLoadingScreen()
                 }
                 gameUiState.error != null -> {
                     Text(
@@ -1289,5 +1294,70 @@ fun FlashcardBattleScreen(
         } else {
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+}
+
+@Composable
+fun QuestionGenerationLoadingScreen() {
+    var dotCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(500)
+            dotCount = (dotCount + 1) % 4
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Animated CircularProgressIndicator
+        CircularProgressIndicator(
+            modifier = Modifier.size(64.dp),
+            color = MaterialTheme.colorScheme.primary,
+            strokeWidth = 6.dp
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text(
+            text = "Generating Questions${".".repeat(dotCount)}",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Please wait while AI creates personalized quiz questions",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Pulsing animation for visual interest
+        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+        val scale by infiniteTransition.animateFloat(
+            initialValue = 0.9f,
+            targetValue = 1.1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000, easing = EaseInOut),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale_animation"
+        )
+
+        Text(
+            text = "\uD83E\uDDE0",
+            fontSize = 48.sp,
+            modifier = Modifier.scale(scale)
+        )
     }
 }

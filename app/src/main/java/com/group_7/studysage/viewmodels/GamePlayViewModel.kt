@@ -167,7 +167,7 @@ class  GamePlayViewModel(
             .onEach { questionData ->
                 // Stop any existing timer
                 stopTimer()
-                
+
                 _gameUiState.value = _gameUiState.value.copy(
                     currentQuestion = questionData,
                     currentFlashcard = null, // Clear flashcard when question comes
@@ -175,9 +175,15 @@ class  GamePlayViewModel(
                     selectedAnswerIndex = null,
                     timeRemaining = questionData?.timeLimit ?: 0
                 )
-                
-                // Start countdown timer if question exists
+
+                // Send acknowledgement that question has been received and displayed
                 if (questionData != null) {
+                    val currentUser = authViewModel.currentUser.value
+                    currentUser?.let {
+                        webSocketManager.sendQuestionAck(it.uid, questionData.question.id)
+                        android.util.Log.d("GamePlayViewModel", "Sent QUESTION_ACK for question ${questionData.question.id}")
+                    }
+
                     questionStartTime = System.currentTimeMillis()
                     startTimer(questionData.timeLimit)
                 }
