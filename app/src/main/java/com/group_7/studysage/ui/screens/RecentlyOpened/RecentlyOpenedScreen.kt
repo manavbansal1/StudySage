@@ -66,6 +66,21 @@ fun RecentlyOpenedScreen(
         homeViewModel.loadRecentlyOpenedPdfs()
     }
 
+    // Refresh recently opened PDFs when screen becomes visible (after navigating back from courses screen)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                android.util.Log.d("RecentlyOpenedScreen", "Screen resumed - refreshing recently opened PDFs")
+                homeViewModel.loadRecentlyOpenedPdfs()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // Log when recentPdfs changes
     androidx.compose.runtime.LaunchedEffect(recentPdfs) {
         android.util.Log.d("RecentlyOpenedScreen", "Recent PDFs updated: ${recentPdfs.size} items")

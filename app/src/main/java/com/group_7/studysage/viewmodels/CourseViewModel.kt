@@ -31,7 +31,12 @@ data class CourseUiState(
     val pendingOpenNoteId: String? = null, // NEW: hold a noteId to open when course loads
     val isShowingFullscreenOverlay: Boolean = false, // NEW: track if quiz/NFC screens are showing
     val isRestoringState: Boolean = false, // NEW: track if we're restoring state after rotation
-    val shouldPopBackOnClose: Boolean = false // NEW: track if back button should pop navigation stack
+    val shouldPopBackOnClose: Boolean = false, // NEW: track if back button should pop navigation stack
+    // Edit/Delete dialog states - preserved across rotation
+    val courseToEdit: Course? = null,
+    val showEditDialog: Boolean = false,
+    val showDeleteDialog: Boolean = false,
+    val selectedCourseForAction: Course? = null
 )
 
 class CourseViewModel(
@@ -42,6 +47,10 @@ class CourseViewModel(
     companion object {
         private const val SELECTED_COURSE_ID_KEY = "selected_course_id"
         private const val SHOULD_POP_BACK_KEY = "should_pop_back"
+        private const val COURSE_TO_EDIT_ID_KEY = "course_to_edit_id"
+        private const val SHOW_EDIT_DIALOG_KEY = "show_edit_dialog"
+        private const val SHOW_DELETE_DIALOG_KEY = "show_delete_dialog"
+        private const val SELECTED_COURSE_FOR_ACTION_ID_KEY = "selected_course_for_action_id"
     }
 
     private val _uiState = MutableStateFlow(CourseUiState())
@@ -467,6 +476,73 @@ class CourseViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    // Edit/Delete Dialog Management Functions
+    fun setCourseToEdit(course: Course?) {
+        android.util.Log.d("CourseViewModel", "Setting courseToEdit: ${course?.id}")
+        savedStateHandle[COURSE_TO_EDIT_ID_KEY] = course?.id
+        _uiState.update { it.copy(courseToEdit = course) }
+    }
+
+    fun setShowEditDialog(show: Boolean) {
+        android.util.Log.d("CourseViewModel", "Setting showEditDialog: $show")
+        savedStateHandle[SHOW_EDIT_DIALOG_KEY] = show
+        _uiState.update { it.copy(showEditDialog = show) }
+
+        // Clear courseToEdit when closing dialog
+        if (!show) {
+            setCourseToEdit(null)
+        }
+    }
+
+    fun setShowDeleteDialog(show: Boolean) {
+        android.util.Log.d("CourseViewModel", "Setting showDeleteDialog: $show")
+        savedStateHandle[SHOW_DELETE_DIALOG_KEY] = show
+        _uiState.update { it.copy(showDeleteDialog = show) }
+
+        // Clear selectedCourseForAction when closing dialog
+        if (!show) {
+            setSelectedCourseForAction(null)
+        }
+    }
+
+    fun setSelectedCourseForAction(course: Course?) {
+        android.util.Log.d("CourseViewModel", "Setting selectedCourseForAction: ${course?.id}")
+        savedStateHandle[SELECTED_COURSE_FOR_ACTION_ID_KEY] = course?.id
+        _uiState.update { it.copy(selectedCourseForAction = course) }
+    }
+
+    // Restore dialog states after rotation
+    fun restoreDialogStates() {
+        val showEditDialog = savedStateHandle.get<Boolean>(SHOW_EDIT_DIALOG_KEY) ?: false
+        val showDeleteDialog = savedStateHandle.get<Boolean>(SHOW_DELETE_DIALOG_KEY) ?: false
+        val courseToEditId = savedStateHandle.get<String>(COURSE_TO_EDIT_ID_KEY)
+        val selectedCourseForActionId = savedStateHandle.get<String>(SELECTED_COURSE_FOR_ACTION_ID_KEY)
+
+        android.util.Log.d("CourseViewModel", "Restoring dialog states:")
+        android.util.Log.d("CourseViewModel", "  showEditDialog: $showEditDialog")
+        android.util.Log.d("CourseViewModel", "  showDeleteDialog: $showDeleteDialog")
+        android.util.Log.d("CourseViewModel", "  courseToEditId: $courseToEditId")
+        android.util.Log.d("CourseViewModel", "  selectedCourseForActionId: $selectedCourseForActionId")
+
+        // Restore the course objects by finding them in the courses list
+        val courseToEdit = if (courseToEditId != null) {
+            _uiState.value.allCourses.find { it.id == courseToEditId }
+        } else null
+
+        val selectedCourseForAction = if (selectedCourseForActionId != null) {
+            _uiState.value.allCourses.find { it.id == selectedCourseForActionId }
+        } else null
+
+        _uiState.update {
+            it.copy(
+                showEditDialog = showEditDialog,
+                showDeleteDialog = showDeleteDialog,
+                courseToEdit = courseToEdit,
+                selectedCourseForAction = selectedCourseForAction
+            )
         }
     }
 }

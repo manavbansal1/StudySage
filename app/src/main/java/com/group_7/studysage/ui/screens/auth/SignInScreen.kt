@@ -31,9 +31,10 @@ fun SignInScreen(
     onSignInSuccess: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    // Use ViewModel states instead of local remember states to survive rotation
+    val email by viewModel.signInEmail.collectAsState()
+    val password by viewModel.signInPassword.collectAsState()
+    val isPasswordVisible by viewModel.isSignInPasswordVisible.collectAsState()
 
     val isLoading by viewModel.isLoading
     val errorMessage by viewModel.errorMessage
@@ -42,6 +43,7 @@ fun SignInScreen(
     // Navigate to home when signed in
     LaunchedEffect(isSignedIn) {
         if (isSignedIn) {
+            viewModel.clearSignInForm()
             onSignInSuccess()
         }
     }
@@ -94,7 +96,7 @@ fun SignInScreen(
                 // Email Field
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { viewModel.setSignInEmail(it) },
                     label = { Text("Email") },
                     leadingIcon = {
                         Icon(
@@ -116,7 +118,7 @@ fun SignInScreen(
                 // Password Field
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = { viewModel.setSignInPassword(it) },
                     label = { Text("Password") },
                     leadingIcon = {
                         Icon(
@@ -125,7 +127,7 @@ fun SignInScreen(
                         )
                     },
                     trailingIcon = {
-                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                        IconButton(onClick = { viewModel.toggleSignInPasswordVisibility() }) {
                             Icon(
                                 imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = if (isPasswordVisible) "Hide password" else "Show password"

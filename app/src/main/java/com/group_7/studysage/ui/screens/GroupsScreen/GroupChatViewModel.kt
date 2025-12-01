@@ -70,6 +70,19 @@ class GroupChatViewModel(
     private val _uploadSuccess = MutableStateFlow<String?>(null)
     val uploadSuccess: StateFlow<String?> = _uploadSuccess.asStateFlow()
 
+    // Dialog states - preserved across rotation
+    private val _showImageSourceDialog = MutableStateFlow(false)
+    val showImageSourceDialog: StateFlow<Boolean> = _showImageSourceDialog.asStateFlow()
+
+    private val _showLeaveConfirmation = MutableStateFlow(false)
+    val showLeaveConfirmation: StateFlow<Boolean> = _showLeaveConfirmation.asStateFlow()
+
+    private val _showDeleteConfirmation = MutableStateFlow(false)
+    val showDeleteConfirmation: StateFlow<Boolean> = _showDeleteConfirmation.asStateFlow()
+
+    private val _showRemoveMembersRequiredDialog = MutableStateFlow(false)
+    val showRemoveMembersRequiredDialog: StateFlow<Boolean> = _showRemoveMembersRequiredDialog.asStateFlow()
+
     init {
         _currentUserId.value = authRepository.currentUser?.uid ?: ""
     }
@@ -429,6 +442,23 @@ class GroupChatViewModel(
 
     fun clearUploadSuccess() {
         _uploadSuccess.value = null
+    }
+
+    // Dialog state management functions
+    fun setShowImageSourceDialog(show: Boolean) {
+        _showImageSourceDialog.value = show
+    }
+
+    fun setShowLeaveConfirmation(show: Boolean) {
+        _showLeaveConfirmation.value = show
+    }
+
+    fun setShowDeleteConfirmation(show: Boolean) {
+        _showDeleteConfirmation.value = show
+    }
+
+    fun setShowRemoveMembersRequiredDialog(show: Boolean) {
+        _showRemoveMembersRequiredDialog.value = show
     }
 
     fun removeGroupFromUserProfile(groupId: String) {

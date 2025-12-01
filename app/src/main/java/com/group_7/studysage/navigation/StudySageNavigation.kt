@@ -427,7 +427,8 @@ fun StudySageNavigation(
                         onNavigateToCanvas = {
                             navController.navigate(Screen.CanvasIntegration.route)
                         },
-                        navController = navController
+                        navController = navController,
+                        homeViewModel = homeViewModel
                     )
                 }
 
@@ -478,7 +479,8 @@ fun StudySageNavigation(
                         onNavigateToCanvas = {
                             navController.navigate(Screen.CanvasIntegration.route)
                         },
-                        navController = navController
+                        navController = navController,
+                        homeViewModel = homeViewModel
                     )
                 }
                 composable(

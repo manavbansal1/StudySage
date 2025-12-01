@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,8 @@ import com.group_7.studysage.ui.theme.StudySageTheme
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.group_7.studysage.viewmodels.CourseViewModel
 import com.group_7.studysage.viewmodels.AddCourseViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * A consistent "glass" card style for the entire app.
@@ -106,18 +109,19 @@ fun CoursesScreen(
     navCourseId: String? = null,
     navNoteId: String? = null, // NEW optional nav params
     onNavigateToCanvas: () -> Unit = {},
-    navController: androidx.navigation.NavController? = null
+    navController: androidx.navigation.NavController? = null,
+    homeViewModel: com.group_7.studysage.viewmodels.HomeViewModel? = null // Add homeViewModel to refresh recently opened
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
     
-    // Edit/Delete State
+    // Edit/Delete State - now from ViewModel to survive rotation
     var showOptionsSheet by rememberSaveable { mutableStateOf(false) }
-    var courseToEdit by remember { mutableStateOf<Course?>(null) }
-    var showEditDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedCourseForAction by remember { mutableStateOf<Course?>(null) }
-    
+    val courseToEdit = uiState.courseToEdit
+    val showEditDialog = uiState.showEditDialog
+    val showDeleteDialog = uiState.showDeleteDialog
+    val selectedCourseForAction = uiState.selectedCourseForAction
+
     // ViewModel for add/edit course dialog (scoped to this screen)
     val addCourseViewModel: AddCourseViewModel = viewModel()
 
@@ -128,6 +132,14 @@ fun CoursesScreen(
         android.util.Log.d("CoursesScreen", "   Calling restoreSelectedCourseIfNeeded()...")
         viewModel.restoreSelectedCourseIfNeeded()
         android.util.Log.d("CoursesScreen", "========================================")
+    }
+
+    // Restore dialog states after courses are loaded (for rotation persistence)
+    LaunchedEffect(uiState.allCourses) {
+        if (uiState.allCourses.isNotEmpty()) {
+            android.util.Log.d("CoursesScreen", "🔄 Restoring dialog states after courses loaded")
+            viewModel.restoreDialogStates()
+        }
     }
 
     // If navigation provided a courseId, load it and set pendingNote
@@ -303,7 +315,7 @@ fun CoursesScreen(
                                 course = course,
                                 onClick = { viewModel.loadCourseWithNotes(course.id) },
                                 onLongClick = {
-                                    selectedCourseForAction = course
+                                    viewModel.setSelectedCourseForAction(course)
                                     showOptionsSheet = true
                                 }
                             )
@@ -346,8 +358,7 @@ fun CoursesScreen(
             year = courseToEdit!!.year,
             existingCourse = courseToEdit,
             onDismiss = { 
-                showEditDialog = false 
-                courseToEdit = null
+                viewModel.setShowEditDialog(false)
             },
             onConfirm = { title, code, instructor, description, credits, color ->
                 val updatedCourse = courseToEdit!!.copy(
@@ -359,8 +370,7 @@ fun CoursesScreen(
                     color = color
                 )
                 viewModel.updateCourse(updatedCourse)
-                showEditDialog = false
-                courseToEdit = null
+                viewModel.setShowEditDialog(false)
             },
             addCourseViewModel = addCourseViewModel
         )
@@ -368,13 +378,21 @@ fun CoursesScreen(
 
     // Delete Confirmation Dialog
     if (showDeleteDialog && selectedCourseForAction != null) {
+        val coroutineScope = rememberCoroutineScope()
         DeleteConfirmationDialog(
             courseName = selectedCourseForAction!!.title,
-            onDismiss = { showDeleteDialog = false },
+            onDismiss = { viewModel.setShowDeleteDialog(false) },
             onConfirm = {
-                viewModel.deleteCourse(selectedCourseForAction!!.id)
-                showDeleteDialog = false
-                selectedCourseForAction = null
+                val courseIdToDelete = selectedCourseForAction!!.id
+                android.util.Log.d("CourseScreen", "Deleting course: $courseIdToDelete")
+                viewModel.deleteCourse(courseIdToDelete)
+                viewModel.setShowDeleteDialog(false)
+                // Refresh recently opened after a short delay to ensure database cleanup completes
+                coroutineScope.launch {
+                    kotlinx.coroutines.delay(500) // Wait for backend to complete
+                    android.util.Log.d("CourseScreen", "Refreshing recently opened PDFs after course deletion")
+                    homeViewModel?.loadRecentlyOpenedPdfs()
+                }
             }
         )
     }
@@ -385,12 +403,12 @@ fun CoursesScreen(
             onDismiss = { showOptionsSheet = false },
             onEdit = {
                 showOptionsSheet = false
-                courseToEdit = selectedCourseForAction
-                showEditDialog = true
+                viewModel.setCourseToEdit(selectedCourseForAction)
+                viewModel.setShowEditDialog(true)
             },
             onDelete = {
                 showOptionsSheet = false
-                showDeleteDialog = true
+                viewModel.setShowDeleteDialog(true)
             }
         )
     }
