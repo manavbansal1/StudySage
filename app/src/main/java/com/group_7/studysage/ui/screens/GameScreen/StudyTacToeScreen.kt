@@ -8,22 +8,30 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.models.GameUiState
 import com.group_7.studysage.data.models.QuizQuestion
+import com.group_7.studysage.ui.screens.GameScreen.StudyTacToeViewModel
 
 /**
  * Study-Tac-Toe Game Screen
@@ -33,7 +41,8 @@ import com.group_7.studysage.data.models.QuizQuestion
 fun StudyTacToeScreen(
     gameUiState: GameUiState,
     onSquareClick: (Int) -> Unit,
-    onAnswerSubmit: (Int, Int, List<String>) -> Unit // (squareIndex, answerIndex, boardState)
+    onAnswerSubmit: (Int, Int, List<String>) -> Unit, // (squareIndex, answerIndex, boardState)
+    viewModel: StudyTacToeViewModel = viewModel()
 ) {
     val session = gameUiState.currentSession
     val players = session?.players?.values?.toList() ?: emptyList()
@@ -87,13 +96,39 @@ fun StudyTacToeScreen(
     val currentTurnPlayerId = session?.currentTurn
     val isCurrentPlayerTurn = currentTurnPlayerId == currentUserId
 
-    var selectedSquare by remember { mutableStateOf<Int?>(null) }
-    var currentQuestion by remember { mutableStateOf<QuizQuestion?>(null) }
-    var showQuestionDialog by remember { mutableStateOf(false) }
-    var waitingForAnswer by remember { mutableStateOf(false) }
+    // Collect ViewModel state
+    val selectedSquare by viewModel.selectedSquare.collectAsState()
+    val showQuestionDialog by viewModel.showQuestionDialog.collectAsState()
+    val waitingForAnswer by viewModel.waitingForAnswer.collectAsState()
+    val selectedQuestionIndex by viewModel.selectedQuestionIndex.collectAsState()
+    val attemptedSquares by viewModel.attemptedSquares.collectAsState()
+    val currentQuestion by viewModel.currentQuestion.collectAsState()
+    val selectedAnswerIndex by viewModel.selectedAnswerIndex.collectAsState()
 
-    // Track attempted squares per player - reset when turn changes
-    var attemptedSquares by remember(currentTurnPlayerId) { mutableStateOf(setOf<Int>()) }
+    // Update turn in ViewModel when it changes (to reset attempted squares)
+    LaunchedEffect(currentTurnPlayerId) {
+        android.util.Log.d("StudyTacToe", "=== TURN UPDATE LaunchedEffect ===")
+        android.util.Log.d("StudyTacToe", "Current turn ID: $currentTurnPlayerId")
+        viewModel.updateCurrentTurn(currentTurnPlayerId)
+    }
+
+    // Log ViewModel state changes
+    LaunchedEffect(showQuestionDialog, waitingForAnswer, attemptedSquares) {
+        android.util.Log.d("StudyTacToe", "=== ViewModel State Changed ===")
+        android.util.Log.d("StudyTacToe", "showDialog: $showQuestionDialog")
+        android.util.Log.d("StudyTacToe", "waitingForAnswer: $waitingForAnswer")
+        android.util.Log.d("StudyTacToe", "attemptedSquares: $attemptedSquares")
+        android.util.Log.d("StudyTacToe", "selectedSquare: $selectedSquare")
+        android.util.Log.d("StudyTacToe", "hasQuestion: ${currentQuestion != null}")
+    }
+
+    // Log current player turn state
+    LaunchedEffect(isCurrentPlayerTurn, currentTurnPlayerId, currentUserId) {
+        android.util.Log.d("StudyTacToe", "=== Player Turn State ===")
+        android.util.Log.d("StudyTacToe", "Current User ID: $currentUserId")
+        android.util.Log.d("StudyTacToe", "Current Turn Player ID: $currentTurnPlayerId")
+        android.util.Log.d("StudyTacToe", "Is Current Player Turn: $isCurrentPlayerTurn")
+    }
 
     // Compute winner and draw status from current board state
     // Use boardStateList for better change detection
@@ -102,6 +137,33 @@ fun StudyTacToeScreen(
 
     // Expose winner and draw as val instead of var for reactive updates
     val winner = winResult
+
+    // Collect result screen state from ViewModel
+    val showResultScreen by viewModel.showResultScreen.collectAsState()
+
+    // Detect when game is finished and trigger result screen
+    LaunchedEffect(winner, isDraw) {
+        if (winner != null || isDraw) {
+            android.util.Log.d("StudyTacToe", "Game finished! Winner: $winner, Draw: $isDraw")
+            // Delay to show the final move briefly before transitioning
+            kotlinx.coroutines.delay(1500)
+            viewModel.showResultScreen()
+        }
+    }
+
+    // Show result screen if game is finished
+    if (showResultScreen) {
+        StudyTacToeResultScreen(
+            gameUiState = gameUiState,
+            onBackClick = {
+                // Reset the flag and navigate back
+                viewModel.hideResultScreen()
+                // This will be handled by the parent's back navigation
+            },
+            viewModel = viewModel
+        )
+        return
+    }
 
     // Map each square (0-8) to a question index
     // Use at least 9 questions for the 9 squares
@@ -167,13 +229,17 @@ fun StudyTacToeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceEvenly
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header with game title and info icon
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -184,7 +250,8 @@ fun StudyTacToeScreen(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            var showInfoDialog by remember { mutableStateOf(false) }
+            var showInfoDialog by rememberSaveable { mutableStateOf(false) }
+
             IconButton(onClick = { showInfoDialog = true }) {
                 Icon(
                     Icons.Default.Info,
@@ -211,10 +278,10 @@ fun StudyTacToeScreen(
         key(boardStateList) {
             Card(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.9f)
                     .aspectRatio(1f)
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    .padding(vertical = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -222,30 +289,84 @@ fun StudyTacToeScreen(
                 TicTacToeGrid(
                     boardState = boardState,
                     onSquareClick = { index ->
-                    android.util.Log.d("StudyTacToe", "Square clicked: $index")
-                    android.util.Log.d("StudyTacToe", "Board empty: ${boardState[index].isEmpty()}")
-                    android.util.Log.d("StudyTacToe", "Is turn: $isCurrentPlayerTurn")
-                    android.util.Log.d("StudyTacToe", "Questions size: ${questions.size}")
+                    android.util.Log.d("StudyTacToe", "")
+                    android.util.Log.d("StudyTacToe", "╔════════════════════════════════════════")
+                    android.util.Log.d("StudyTacToe", "║ SQUARE $index CLICKED")
+                    android.util.Log.d("StudyTacToe", "╠════════════════════════════════════════")
+                    android.util.Log.d("StudyTacToe", "║ Board State:")
+                    android.util.Log.d("StudyTacToe", "║   Square[$index] empty: ${boardState[index].isEmpty()}")
+                    android.util.Log.d("StudyTacToe", "║   Square[$index] value: '${boardState[index]}'")
+                    android.util.Log.d("StudyTacToe", "║   Full board: ${boardState.contentToString()}")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Player State:")
+                    android.util.Log.d("StudyTacToe", "║   Current user ID: $currentUserId")
+                    android.util.Log.d("StudyTacToe", "║   Current turn player ID: $currentTurnPlayerId")
+                    android.util.Log.d("StudyTacToe", "║   Is current player turn: $isCurrentPlayerTurn")
+                    android.util.Log.d("StudyTacToe", "║   Current player symbol: $currentPlayer")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Attempt Tracking:")
+                    android.util.Log.d("StudyTacToe", "║   Square already attempted: ${attemptedSquares.contains(index)}")
+                    android.util.Log.d("StudyTacToe", "║   All attempted squares: $attemptedSquares")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Game State:")
+                    android.util.Log.d("StudyTacToe", "║   Winner: $winner")
+                    android.util.Log.d("StudyTacToe", "║   Is draw: $isDraw")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Dialog State:")
+                    android.util.Log.d("StudyTacToe", "║   Waiting for answer: $waitingForAnswer")
+                    android.util.Log.d("StudyTacToe", "║   Show question dialog: $showQuestionDialog")
+                    android.util.Log.d("StudyTacToe", "║   Selected square: $selectedSquare")
+                    android.util.Log.d("StudyTacToe", "║   Has current question: ${currentQuestion != null}")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ Questions:")
+                    android.util.Log.d("StudyTacToe", "║   Questions available: ${questions.size}")
+                    android.util.Log.d("StudyTacToe", "╠════════════════════════════════════════")
 
-                    if (boardState[index].isEmpty() &&
-                        !attemptedSquares.contains(index) &&  // Prevent re-attempting same square
+                    val canClick = boardState[index].isEmpty() &&
+                        !attemptedSquares.contains(index) &&
                         winner == null &&
                         !isDraw &&
                         isCurrentPlayerTurn &&
                         !waitingForAnswer &&
-                        questions.isNotEmpty()) {
+                        questions.isNotEmpty()
 
-                        selectedSquare = index
+                    android.util.Log.d("StudyTacToe", "║ EVALUATION:")
+                    android.util.Log.d("StudyTacToe", "║   Square empty? ${boardState[index].isEmpty()}")
+                    android.util.Log.d("StudyTacToe", "║   Not attempted? ${!attemptedSquares.contains(index)}")
+                    android.util.Log.d("StudyTacToe", "║   No winner? ${winner == null}")
+                    android.util.Log.d("StudyTacToe", "║   Not draw? ${!isDraw}")
+                    android.util.Log.d("StudyTacToe", "║   Is player turn? $isCurrentPlayerTurn")
+                    android.util.Log.d("StudyTacToe", "║   Not waiting? ${!waitingForAnswer}")
+                    android.util.Log.d("StudyTacToe", "║   Has questions? ${questions.isNotEmpty()}")
+                    android.util.Log.d("StudyTacToe", "║ ")
+                    android.util.Log.d("StudyTacToe", "║ CAN CLICK: $canClick")
+
+                    if (canClick) {
                         val questionIndex = squareToQuestionMap[index] ?: 0
-                        currentQuestion = questions.getOrNull(questionIndex)
+                        val question = questions.getOrNull(questionIndex)
 
-                        android.util.Log.d("StudyTacToe", "Question index: $questionIndex")
-                        android.util.Log.d("StudyTacToe", "Question: ${currentQuestion?.question}")
+                        android.util.Log.d("StudyTacToe", "║ ")
+                        android.util.Log.d("StudyTacToe", "║ ✓ OPENING DIALOG")
+                        android.util.Log.d("StudyTacToe", "║   Question index: $questionIndex")
+                        android.util.Log.d("StudyTacToe", "║   Question: ${question?.question}")
+                        android.util.Log.d("StudyTacToe", "╚════════════════════════════════════════")
 
-                        showQuestionDialog = true
-                        waitingForAnswer = true
-                    } else if (attemptedSquares.contains(index)) {
-                        android.util.Log.d("StudyTacToe", "Square $index already attempted, cannot retry")
+                        if (question != null) {
+                            viewModel.openQuestionDialog(index, questionIndex, question)
+                        } else {
+                            android.util.Log.e("StudyTacToe", "ERROR: Cannot open dialog - question is null!")
+                        }
+                    } else {
+                        android.util.Log.d("StudyTacToe", "║ ")
+                        android.util.Log.d("StudyTacToe", "║ ✗ CANNOT CLICK - Reasons:")
+                        if (!boardState[index].isEmpty()) android.util.Log.d("StudyTacToe", "║   ✗ Square is occupied with '${boardState[index]}'")
+                        if (attemptedSquares.contains(index)) android.util.Log.d("StudyTacToe", "║   ✗ Square already attempted this turn")
+                        if (winner != null) android.util.Log.d("StudyTacToe", "║   ✗ Game has winner: $winner")
+                        if (isDraw) android.util.Log.d("StudyTacToe", "║   ✗ Game is draw")
+                        if (!isCurrentPlayerTurn) android.util.Log.d("StudyTacToe", "║   ✗ Not your turn (turn: $currentTurnPlayerId, you: $currentUserId)")
+                        if (waitingForAnswer) android.util.Log.d("StudyTacToe", "║   ✗ Still waiting for previous answer")
+                        if (questions.isEmpty()) android.util.Log.d("StudyTacToe", "║   ✗ No questions loaded")
+                        android.util.Log.d("StudyTacToe", "╚════════════════════════════════════════")
                     }
                 },
                 enabled = winner == null && !isDraw && isCurrentPlayerTurn && !waitingForAnswer
@@ -253,114 +374,93 @@ fun StudyTacToeScreen(
         }
         }
 
-        // Turn indicator
-        if (winner == null && !isDraw) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isCurrentPlayerTurn)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Text(
-                    text = if (isCurrentPlayerTurn)
-                        "Your Turn! (${if (isPlayerX) "X" else "O"})"
-                    else
-                        "Opponent's Turn (${currentPlayer})",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        // Winner/Draw announcement
-        AnimatedVisibility(
-            visible = winner != null || isDraw,
-            enter = slideInVertically() + fadeIn(),
-            exit = slideOutVertically() + fadeOut()
+        // Turn indicator - always show during active game
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isCurrentPlayerTurn)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = if (winner != null) Icons.Default.EmojiEvents else Icons.Default.Handshake,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = if (winner != null) Color(0xFFFFD700) else MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = when {
-                            winner == "X" -> "$player1Name Wins!"
-                            winner == "O" -> "$player2Name Wins!"
-                            isDraw -> "It's a Draw!"
-                            else -> ""
-                        },
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            Text(
+                text = if (isCurrentPlayerTurn)
+                    "Your Turn! (${if (isPlayerX) "X" else "O"})"
+                else
+                    "Opponent's Turn (${currentPlayer})",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
         }
     }
 
-    // Question Dialog
-    if (showQuestionDialog && currentQuestion != null) {
-        QuestionDialog(
-            question = currentQuestion!!,
-            onDismiss = {
-                showQuestionDialog = false
-                selectedSquare = null
-                currentQuestion = null
-                waitingForAnswer = false
-            },
-            onAnswerSelected = { answerIndex ->
-                val isCorrect = answerIndex == currentQuestion!!.correctAnswer
 
-                selectedSquare?.let { square ->
-                    if (isCorrect) {
-                        // Correct answer - build new board with this player's move
-                        val newBoard = boardState.copyOf()
-                        newBoard[square] = currentPlayer
-                        
-                        // Track the attempt locally
-                        attemptedSquares = attemptedSquares + square
+    // Question Dialog - only show if we have both the dialog flag and question data
+    currentQuestion?.let { question ->
+        if (showQuestionDialog) {
+            // Capture values that won't change during callback execution
+            val squareToAnswer = selectedSquare
 
-                        // Submit answer and new board state to backend
-                        // Backend will validate, update Firebase, switch turn, and broadcast ROOM_UPDATE
-                        onAnswerSubmit(square, answerIndex, newBoard.toList())
+            QuestionDialog(
+                question = question,
+                selectedAnswer = selectedAnswerIndex,
+                onAnswerChanged = { viewModel.updateSelectedAnswer(it) },
+                onDismiss = {
+                    android.util.Log.d("StudyTacToe", "=== DIALOG DISMISSED ===")
+                    viewModel.closeQuestionDialog()
+                },
+                onAnswerSelected = { answerIndex ->
+                    android.util.Log.d("StudyTacToe", "=== ANSWER SELECTED ===")
+                    android.util.Log.d("StudyTacToe", "Answer index: $answerIndex")
+                    android.util.Log.d("StudyTacToe", "Correct answer: ${question.correctAnswer}")
+                    android.util.Log.d("StudyTacToe", "Question: ${question.question}")
 
-                        // DON'T update local state here - wait for backend ROOM_UPDATE
-                        // This ensures both players see the same board state
-                    } else {
-                        // Incorrect answer - still submit but board won't change
-                        attemptedSquares = attemptedSquares + square
-                        // Submit answer to backend with current board (unchanged)
-                        onAnswerSubmit(square, answerIndex, boardState.toList())
-                    }
+                    val isCorrect = answerIndex == question.correctAnswer
+                    android.util.Log.d("StudyTacToe", "Is correct: $isCorrect")
 
-                    // Backend ROOM_UPDATE will handle board state sync and turn switching
+                    squareToAnswer?.let { square ->
+                        android.util.Log.d("StudyTacToe", "=== PROCESSING ANSWER for square $square ===")
+                        android.util.Log.d("StudyTacToe", "Current player: $currentPlayer")
+                        android.util.Log.d("StudyTacToe", "Current board state: ${boardState.contentToString()}")
+
+                        // Track the attempt in ViewModel regardless of correctness
+                        viewModel.markSquareAttempted(square)
+
+                        if (isCorrect) {
+                            // Correct answer - build new board with this player's move
+                            val newBoard = boardState.copyOf()
+                            newBoard[square] = currentPlayer
+
+                            android.util.Log.d("StudyTacToe", "✓ CORRECT ANSWER! Placing $currentPlayer at square $square")
+                            android.util.Log.d("StudyTacToe", "New board state: ${newBoard.contentToString()}")
+
+                            // Submit answer and new board state to backend
+                            // Backend will validate, update Firebase, switch turn, and broadcast ROOM_UPDATE
+                            android.util.Log.d("StudyTacToe", "Submitting answer to backend...")
+                            onAnswerSubmit(square, answerIndex, newBoard.toList())
+                        } else {
+                            // Incorrect answer - still submit but board won't change
+                            android.util.Log.d("StudyTacToe", "✗ INCORRECT ANSWER for square $square")
+                            android.util.Log.d("StudyTacToe", "Board state unchanged: ${boardState.contentToString()}")
+
+                            // Submit answer to backend with current board (unchanged)
+                            android.util.Log.d("StudyTacToe", "Submitting incorrect answer to backend...")
+                            onAnswerSubmit(square, answerIndex, boardState.toList())
+                        }
+
+                        android.util.Log.d("StudyTacToe", "=== CLOSING DIALOG after answer submission ===")
+                        // Close dialog immediately after submission
+                        viewModel.closeQuestionDialog()
+
+                    } ?: android.util.Log.e("StudyTacToe", "ERROR: selectedSquare is null when submitting answer!")
                 }
-
-                showQuestionDialog = false
-                selectedSquare = null
-                currentQuestion = null
-                waitingForAnswer = false
-            }
-        )
+            )
+        }
     }
 }
 
@@ -513,9 +613,9 @@ fun PlayerCard(
                 else -> MaterialTheme.colorScheme.surfaceVariant
             }
         ),
-        border = if (isActive) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isActive) 8.dp else 2.dp
+            defaultElevation = if (isActive) 4.dp else 2.dp
         )
     ) {
         Column(
@@ -550,10 +650,11 @@ fun PlayerCard(
 @Composable
 fun QuestionDialog(
     question: QuizQuestion,
+    selectedAnswer: Int?,
+    onAnswerChanged: (Int?) -> Unit,
     onDismiss: () -> Unit,
     onAnswerSelected: (Int) -> Unit
 ) {
-    var selectedAnswer by remember { mutableStateOf<Int?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -562,56 +663,139 @@ fun QuestionDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    Icons.Default.QuestionMark,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Answer to Claim Square",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.QuestionMark,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Knowledge Challenge",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "Answer to claim your square",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
             }
         },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = question.question,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
-                    text = question.question,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    text = "Select your answer:",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 question.options.forEachIndexed { index, option ->
+                    val isSelected = selectedAnswer == index
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.02f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "option_scale"
+                    )
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable { selectedAnswer = index },
+                            .padding(vertical = 6.dp)
+                            .scale(scale)
+                            .shadow(
+                                elevation = if (isSelected) 8.dp else 2.dp,
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        onClick = { onAnswerChanged(index) },
+                        shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (selectedAnswer == index)
+                            containerColor = if (isSelected)
                                 MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surface
+                            else MaterialTheme.colorScheme.surface
                         ),
                         border = BorderStroke(
-                            width = if (selectedAnswer == index) 2.dp else 1.dp,
-                            color = if (selectedAnswer == index)
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected)
                                 MaterialTheme.colorScheme.primary
                             else
-                                MaterialTheme.colorScheme.outline
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                         )
                     ) {
-                        Text(
-                            text = option,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = ('A' + index).toString(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = option,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -621,18 +805,31 @@ fun QuestionDialog(
                 onClick = {
                     selectedAnswer?.let { onAnswerSelected(it) }
                 },
-                enabled = selectedAnswer != null
+                enabled = selectedAnswer != null,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(48.dp)
             ) {
-                Text("Submit Answer")
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Submit Answer", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(48.dp)
+            ) {
                 Text("Cancel")
             }
         }
     )
 }
+
 
 @Composable
 fun GameInfoDialog(onDismiss: () -> Unit) {
@@ -734,4 +931,376 @@ private fun checkWinner(board: Array<String>): String? {
     }
 
     return null
+}
+
+/**
+ * Study-Tac-Toe Result Screen
+ * Displays the winner or draw result with beautiful animations - matching QuizRace style
+ */
+@Composable
+fun StudyTacToeResultScreen(
+    gameUiState: GameUiState,
+    onBackClick: () -> Unit,
+    viewModel: StudyTacToeViewModel = viewModel()
+) {
+    val session = gameUiState.currentSession
+    val players = session?.players?.values?.toList() ?: emptyList()
+    val boardState = session?.boardState?.toTypedArray() ?: Array(9) { "" }
+
+    val winner = checkWinner(boardState)
+    val isDraw = winner == null && boardState.all { it.isNotEmpty() }
+
+    val player1Name = players.getOrNull(0)?.name ?: "Player 1"
+    val player2Name = players.getOrNull(1)?.name ?: "Player 2"
+
+    val winnerName = when (winner) {
+        "X" -> player1Name
+        "O" -> player2Name
+        else -> null
+    }
+
+    var visible by rememberSaveable { mutableStateOf(false) }
+    var hasAnimated by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!hasAnimated) {
+            kotlinx.coroutines.delay(200)
+            visible = true
+            hasAnimated = true
+        } else {
+            // Already animated before (e.g., after rotation), show immediately
+            visible = true
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Trophy icon with bounce animation (matching QuizRace)
+        val trophyScale by animateFloatAsState(
+            targetValue = if (visible) 1f else 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "trophy_scale"
+        )
+
+        Text(
+            text = if (winner != null) "🏆" else "🤝",
+            style = MaterialTheme.typography.displayLarge,
+            fontSize = 80.sp,
+            modifier = Modifier.scale(trophyScale)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Title with slide-in animation (matching QuizRace)
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { 50 },
+                animationSpec = tween(400, delayMillis = 300, easing = EaseOut)
+            ) + fadeIn(tween(400, delayMillis = 300))
+        ) {
+            Text(
+                text = if (winner != null) "Game Complete!" else "It's a Draw!",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Winner/Results card (matching QuizRace leaderboard style)
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { 100 },
+                animationSpec = tween(500, delayMillis = 500, easing = EaseOut)
+            ) + fadeIn(tween(500, delayMillis = 500))
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (winnerName != null) {
+                    // Winner display
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "Winner",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Gold medal badge
+                                    Surface(
+                                        modifier = Modifier.size(48.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color(0xFFFFD700)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = "🏆",
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontSize = 24.sp
+                                            )
+                                        }
+                                    }
+
+                                    Column {
+                                        Text(
+                                            text = winnerName,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 24.sp
+                                        )
+                                        Text(
+                                            text = if (winner == "X") "Player X" else "Player O",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (winner == "X") Color(0xFF2196F3) else Color(0xFFE91E63),
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (isDraw) {
+                    // Draw display
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Handshake,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "Results",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Show both players with equal standing
+                            listOf(
+                                Triple(player1Name, "Player X", Color(0xFF2196F3)),
+                                Triple(player2Name, "Player O", Color(0xFFE91E63))
+                            ).forEachIndexed { index, (name, role, color) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier.size(40.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = color.copy(alpha = 0.2f)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = if (role == "Player X") "X" else "O",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = color
+                                                )
+                                            }
+                                        }
+
+                                        Column {
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 18.sp
+                                            )
+                                            Text(
+                                                text = role,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = color,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+                                if (index == 0) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Well played by both!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                }
+
+                // Final board state
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Final Board",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        for (row in 0..2) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                for (col in 0..2) {
+                                    val index = row * 3 + col
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .padding(4.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                                            .border(
+                                                width = 2.dp,
+                                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (boardState[index].isNotEmpty()) {
+                                            Text(
+                                                text = boardState[index],
+                                                style = MaterialTheme.typography.displayMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (boardState[index] == "X")
+                                                    Color(0xFF2196F3)
+                                                else
+                                                    Color(0xFFE91E63)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Back button (matching QuizRace)
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(
+                initialOffsetY = { 100 },
+                animationSpec = tween(500, delayMillis = 700, easing = EaseOut)
+            ) + fadeIn(tween(500, delayMillis = 700))
+        ) {
+            Button(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Back to Lobby",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }

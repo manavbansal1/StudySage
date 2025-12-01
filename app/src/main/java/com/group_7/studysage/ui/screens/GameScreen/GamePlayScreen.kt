@@ -39,8 +39,11 @@ fun GamePlayScreen(
     gameCode: String,
     authViewModel: AuthViewModel
 ) {
+    // Remember the WebSocketManager instance to survive recomposition
+    val webSocketManager = remember { GameWebSocketManager() }
+
     val gamePlayViewModel: GamePlayViewModel = viewModel(
-        factory = GamePlayViewModelFactory(GameWebSocketManager(), authViewModel)
+        factory = GamePlayViewModelFactory(webSocketManager, authViewModel)
     )
 
     val gameUiState by gamePlayViewModel.gameUiState.collectAsState()
@@ -78,10 +81,18 @@ fun GamePlayScreen(
                     )
                 }
                 gameUiState.gameFinished -> {
-                    GameResultsScreen(
-                        gameUiState = gameUiState,
-                        onBackClick = { navController.popBackStack() }
-                    )
+                    // Show StudyTacToe-specific result screen if it's a TacToe game
+                    if (gameUiState.currentSession?.gameType == GameType.STUDY_TAC_TOE) {
+                        StudyTacToeResultScreen(
+                            gameUiState = gameUiState,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    } else {
+                        GameResultsScreen(
+                            gameUiState = gameUiState,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
                 }
                 gameUiState.currentSession?.gameType == GameType.STUDY_TAC_TOE &&
                 gameUiState.currentSession?.status == com.group_7.studysage.data.models.GameStatus.IN_PROGRESS -> {
