@@ -145,12 +145,12 @@ fun CourseDetailScreen(
     val showShareNFCScreen by notesViewModel.showNfcShareDialog.collectAsState()
     val showPodcastScreen by notesViewModel.showPodcastScreen.collectAsState()
     val showQuizGeneratingDialog by notesViewModel.showQuizGeneratingDialog.collectAsState()
+    val showReceiveNFCScreen by notesViewModel.showNfcReceiveScreen.collectAsState()
     val noteToShare by notesViewModel.nfcShareNote.collectAsState()
 
     // Local states (not preserved on rotation)
     var showGenerateSummaryDialog by remember { mutableStateOf(false) }
     var showUploadOptionsSheet by remember { mutableStateOf(false) }
-    var showReceiveNFCScreen by remember { mutableStateOf(false) }
     var showPlayQuizScreen by remember { mutableStateOf(false) }
 
     // Upload states
@@ -231,7 +231,7 @@ fun CourseDetailScreen(
         ReceiveNFCScreen(
             courseId = course.id,
             onBack = {
-                showReceiveNFCScreen = false
+                notesViewModel.setShowNfcReceiveScreen(false)
                 // Explicitly reset overlay state to ensure navbar shows again
                 courseViewModel.setFullscreenOverlay(false)
             }
@@ -651,7 +651,7 @@ fun CourseDetailScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             showUploadOptionsSheet = false
-                            showReceiveNFCScreen = true
+                            notesViewModel.setShowNfcReceiveScreen(true)
                         },
                     color = MaterialTheme.colorScheme.surfaceContainerLow
                 ) {

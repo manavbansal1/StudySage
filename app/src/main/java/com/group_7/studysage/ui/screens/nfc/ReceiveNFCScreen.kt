@@ -73,10 +73,27 @@ fun ReceiveNFCScreen(
 
     val nfcManager = remember { NFCManager(activity) }
 
-    var isListening by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var receivedPayload by remember { mutableStateOf<NFCPayload?>(null) }
-    var isProcessing by remember { mutableStateOf(false) }
+    // Use ViewModel states instead of local remember states to survive rotation
+    val nfcState by notesViewModel.nfcReceiveState.collectAsState()
+    val isListening = nfcState.isListening
+    val errorMessage = nfcState.errorMessage
+    val receivedPayloadJson = nfcState.receivedPayloadJson
+    val isProcessing = nfcState.isProcessing
+    val noteAdded = nfcState.noteAdded
+
+    // Parse received payload from JSON
+    val receivedPayload = remember(receivedPayloadJson) {
+        receivedPayloadJson?.let { json ->
+            try {
+                // Parse JSON back to NFCPayload
+                // This is a simple approach - you might want to use a proper JSON library
+                com.google.gson.Gson().fromJson(json, NFCPayload::class.java)
+            } catch (e: Exception) {
+                Log.e("NFC_RECEIVE", "Error parsing payload JSON", e)
+                null
+            }
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "nfc_pulse")
     val scale by infiniteTransition.animateFloat(
@@ -93,29 +110,28 @@ fun ReceiveNFCScreen(
         Log.d("NFC_RECEIVE", "Initializing receive screen for course: $courseId")
 
         if (!nfcManager.isNfcAvailable()) {
-            errorMessage = "NFC not available on this device"
+            notesViewModel.updateNfcReceiveState(errorMessage = "NFC not available on this device")
             Log.e("NFC_RECEIVE", "NFC not available")
             return@LaunchedEffect
         }
 
         if (!nfcManager.isNfcEnabled()) {
-            errorMessage = "Please enable NFC in your device settings"
+            notesViewModel.updateNfcReceiveState(errorMessage = "Please enable NFC in your device settings")
             Log.e("NFC_RECEIVE", "NFC not enabled")
             return@LaunchedEffect
         }
 
         try {
             activity.enterReceiveMode()
-            isListening = true
+            notesViewModel.updateNfcReceiveState(isListening = true)
             Log.d("NFC_RECEIVE", "Ready to receive. Reader mode active.")
         } catch (e: Exception) {
             Log.e("NFC_RECEIVE", "Error entering receive mode", e)
-            errorMessage = "Failed to start NFC receiving: ${e.message}"
+            notesViewModel.updateNfcReceiveState(errorMessage = "Failed to start NFC receiving: ${e.message}")
         }
     }
 
     val receivedData by activity.nfcDataReceived
-    var noteAdded by remember { mutableStateOf(false) }
 
     LaunchedEffect(receivedData) {
         if (receivedData == null || !isListening) return@LaunchedEffect
@@ -126,12 +142,21 @@ fun ReceiveNFCScreen(
 
         if (payload != null) {
             Log.d("NFC_RECEIVE", "Successfully received: ${payload.noteTitle}")
-            receivedPayload = payload
-            isProcessing = false
+            // Convert payload to JSON string for SavedStateHandle compatibility
+            val payloadJson = try {
+                com.google.gson.Gson().toJson(payload)
+            } catch (e: Exception) {
+                Log.e("NFC_RECEIVE", "Error converting payload to JSON", e)
+                null
+            }
+            notesViewModel.updateNfcReceiveState(
+                receivedPayloadJson = payloadJson,
+                isProcessing = false
+            )
             activity.consumeNfcData()
         } else {
             Log.e("NFC_RECEIVE", "Received null payload")
-            errorMessage = "Failed to read NFC data"
+            notesViewModel.updateNfcReceiveState(errorMessage = "Failed to read NFC data")
         }
     }
 
@@ -139,12 +164,14 @@ fun ReceiveNFCScreen(
         onDispose {
             Log.d("NFC_RECEIVE", "Cleaning up receive screen")
             activity.exitNfcMode()
+            notesViewModel.clearNfcReceiveState()
         }
     }
 
     BackHandler {
         Log.d("NFC_RECEIVE", "Back button pressed")
         activity.exitNfcMode()
+        notesViewModel.clearNfcReceiveState()
         onBack()
     }
 
@@ -379,7 +406,7 @@ fun ReceiveNFCScreen(
                 
                 Button(
                     onClick = {
-                        isProcessing = true
+                        notesViewModel.updateNfcReceiveState(isProcessing = true)
                         scope.launch {
                             try {
                                 val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -408,7 +435,7 @@ fun ReceiveNFCScreen(
                                     .set(note)
                                     .await()
 
-                                noteAdded = true
+                                notesViewModel.updateNfcReceiveState(noteAdded = true, isProcessing = false)
 
                                 Toast.makeText(
                                     context,
@@ -424,8 +451,7 @@ fun ReceiveNFCScreen(
                                     "Failed to add note: ${e.message}",
                                     Toast.LENGTH_LONG
                                 ).show()
-                            } finally {
-                                isProcessing = false
+                                notesViewModel.updateNfcReceiveState(isProcessing = false)
                             }
                         }
                     },
@@ -452,6 +478,7 @@ fun ReceiveNFCScreen(
                 Button(
                     onClick = {
                         activity.exitNfcMode()
+                        notesViewModel.clearNfcReceiveState()
                         onBack()
                     },
                     modifier = Modifier.fillMaxWidth(),

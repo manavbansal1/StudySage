@@ -41,6 +41,7 @@ class NotesViewModel(
         private const val SHOW_PODCAST_KEY = "show_podcast"
         private const val SHOW_QUIZ_GENERATING_DIALOG_KEY = "show_quiz_generating_dialog"
         private const val QUIZ_PREFERENCES_KEY = "quiz_preferences"
+        private const val SHOW_NFC_RECEIVE_SCREEN_KEY = "show_nfc_receive_screen"
         private const val NFC_SHARE_NOTE_ID_KEY = "nfc_share_note_id"
     }
 
@@ -95,6 +96,18 @@ class NotesViewModel(
     private val _tempFlashcardState = MutableStateFlow(TempFlashcardState())
     val tempFlashcardState: StateFlow<TempFlashcardState> = _tempFlashcardState.asStateFlow()
 
+    // NFC receive screen state - preserved across rotation
+    data class NfcReceiveState(
+        val isListening: Boolean = false,
+        val errorMessage: String? = null,
+        val receivedPayloadJson: String? = null, // Store as JSON string for SavedStateHandle compatibility
+        val isProcessing: Boolean = false,
+        val noteAdded: Boolean = false
+    )
+
+    private val _nfcReceiveState = MutableStateFlow(NfcReceiveState())
+    val nfcReceiveState: StateFlow<NfcReceiveState> = _nfcReceiveState.asStateFlow()
+
     // Note detail screen states - preserved across rotation
     private val _showAiSummaryScreen = MutableStateFlow(false)
     val showAiSummaryScreen: StateFlow<Boolean> = _showAiSummaryScreen.asStateFlow()
@@ -114,6 +127,9 @@ class NotesViewModel(
     private val _quizPreferences = MutableStateFlow("")
     val quizPreferences: StateFlow<String> = _quizPreferences.asStateFlow()
 
+    private val _showNfcReceiveScreen = MutableStateFlow(false)
+    val showNfcReceiveScreen: StateFlow<Boolean> = _showNfcReceiveScreen.asStateFlow()
+
     // Note being shared via NFC - preserved across rotation
     private val _nfcShareNote = MutableStateFlow<Note?>(null)
     val nfcShareNote: StateFlow<Note?> = _nfcShareNote.asStateFlow()
@@ -126,6 +142,7 @@ class NotesViewModel(
         _showPodcastScreen.value = savedStateHandle.get<Boolean>(SHOW_PODCAST_KEY) ?: false
         _showQuizGeneratingDialog.value = savedStateHandle.get<Boolean>(SHOW_QUIZ_GENERATING_DIALOG_KEY) ?: false
         _quizPreferences.value = savedStateHandle.get<String>(QUIZ_PREFERENCES_KEY) ?: ""
+        _showNfcReceiveScreen.value = savedStateHandle.get<Boolean>(SHOW_NFC_RECEIVE_SCREEN_KEY) ?: false
 
         Log.d(TAG, "NotesViewModel initialized - Screen states restored:")
         Log.d(TAG, "  AI Summary: ${_showAiSummaryScreen.value}")
@@ -788,6 +805,16 @@ class NotesViewModel(
     }
 
     /**
+     * Show/hide NFC Receive screen
+     * State is preserved across rotation via SavedStateHandle
+     */
+    fun setShowNfcReceiveScreen(show: Boolean) {
+        Log.d(TAG, "Setting showNfcReceiveScreen: $show")
+        savedStateHandle[SHOW_NFC_RECEIVE_SCREEN_KEY] = show
+        _showNfcReceiveScreen.value = show
+    }
+
+    /**
      * Set note to share via NFC
      * State is preserved across rotation via SavedStateHandle
      */
@@ -842,5 +869,31 @@ class NotesViewModel(
         setShowNfcShareDialog(false)
         setShowPodcastScreen(false)
         setNfcShareNote(null)
+    }
+
+    // ============================================
+    // NFC RECEIVE STATE MANAGEMENT
+    // ============================================
+
+    fun updateNfcReceiveState(
+        isListening: Boolean? = null,
+        errorMessage: String? = null,
+        receivedPayloadJson: String? = null,
+        isProcessing: Boolean? = null,
+        noteAdded: Boolean? = null
+    ) {
+        _nfcReceiveState.update { current ->
+            current.copy(
+                isListening = isListening ?: current.isListening,
+                errorMessage = errorMessage ?: current.errorMessage,
+                receivedPayloadJson = receivedPayloadJson ?: current.receivedPayloadJson,
+                isProcessing = isProcessing ?: current.isProcessing,
+                noteAdded = noteAdded ?: current.noteAdded
+            )
+        }
+    }
+
+    fun clearNfcReceiveState() {
+        _nfcReceiveState.value = NfcReceiveState()
     }
 }

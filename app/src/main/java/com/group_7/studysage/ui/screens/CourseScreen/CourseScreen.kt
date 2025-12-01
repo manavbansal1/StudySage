@@ -111,13 +111,13 @@ fun CoursesScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
     
-    // Edit/Delete State
+    // Edit/Delete State - now from ViewModel to survive rotation
     var showOptionsSheet by rememberSaveable { mutableStateOf(false) }
-    var courseToEdit by remember { mutableStateOf<Course?>(null) }
-    var showEditDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedCourseForAction by remember { mutableStateOf<Course?>(null) }
-    
+    val courseToEdit = uiState.courseToEdit
+    val showEditDialog = uiState.showEditDialog
+    val showDeleteDialog = uiState.showDeleteDialog
+    val selectedCourseForAction = uiState.selectedCourseForAction
+
     // ViewModel for add/edit course dialog (scoped to this screen)
     val addCourseViewModel: AddCourseViewModel = viewModel()
 
@@ -128,6 +128,14 @@ fun CoursesScreen(
         android.util.Log.d("CoursesScreen", "   Calling restoreSelectedCourseIfNeeded()...")
         viewModel.restoreSelectedCourseIfNeeded()
         android.util.Log.d("CoursesScreen", "========================================")
+    }
+
+    // Restore dialog states after courses are loaded (for rotation persistence)
+    LaunchedEffect(uiState.allCourses) {
+        if (uiState.allCourses.isNotEmpty()) {
+            android.util.Log.d("CoursesScreen", "🔄 Restoring dialog states after courses loaded")
+            viewModel.restoreDialogStates()
+        }
     }
 
     // If navigation provided a courseId, load it and set pendingNote
@@ -303,7 +311,7 @@ fun CoursesScreen(
                                 course = course,
                                 onClick = { viewModel.loadCourseWithNotes(course.id) },
                                 onLongClick = {
-                                    selectedCourseForAction = course
+                                    viewModel.setSelectedCourseForAction(course)
                                     showOptionsSheet = true
                                 }
                             )
@@ -346,8 +354,7 @@ fun CoursesScreen(
             year = courseToEdit!!.year,
             existingCourse = courseToEdit,
             onDismiss = { 
-                showEditDialog = false 
-                courseToEdit = null
+                viewModel.setShowEditDialog(false)
             },
             onConfirm = { title, code, instructor, description, credits, color ->
                 val updatedCourse = courseToEdit!!.copy(
@@ -359,8 +366,7 @@ fun CoursesScreen(
                     color = color
                 )
                 viewModel.updateCourse(updatedCourse)
-                showEditDialog = false
-                courseToEdit = null
+                viewModel.setShowEditDialog(false)
             },
             addCourseViewModel = addCourseViewModel
         )
@@ -370,11 +376,10 @@ fun CoursesScreen(
     if (showDeleteDialog && selectedCourseForAction != null) {
         DeleteConfirmationDialog(
             courseName = selectedCourseForAction!!.title,
-            onDismiss = { showDeleteDialog = false },
+            onDismiss = { viewModel.setShowDeleteDialog(false) },
             onConfirm = {
                 viewModel.deleteCourse(selectedCourseForAction!!.id)
-                showDeleteDialog = false
-                selectedCourseForAction = null
+                viewModel.setShowDeleteDialog(false)
             }
         )
     }
@@ -385,12 +390,12 @@ fun CoursesScreen(
             onDismiss = { showOptionsSheet = false },
             onEdit = {
                 showOptionsSheet = false
-                courseToEdit = selectedCourseForAction
-                showEditDialog = true
+                viewModel.setCourseToEdit(selectedCourseForAction)
+                viewModel.setShowEditDialog(true)
             },
             onDelete = {
                 showOptionsSheet = false
-                showDeleteDialog = true
+                viewModel.setShowDeleteDialog(true)
             }
         )
     }
