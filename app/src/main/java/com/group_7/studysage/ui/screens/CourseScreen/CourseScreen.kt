@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,8 @@ import com.group_7.studysage.ui.theme.StudySageTheme
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.group_7.studysage.viewmodels.CourseViewModel
 import com.group_7.studysage.viewmodels.AddCourseViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * A consistent "glass" card style for the entire app.
@@ -106,7 +109,8 @@ fun CoursesScreen(
     navCourseId: String? = null,
     navNoteId: String? = null, // NEW optional nav params
     onNavigateToCanvas: () -> Unit = {},
-    navController: androidx.navigation.NavController? = null
+    navController: androidx.navigation.NavController? = null,
+    homeViewModel: com.group_7.studysage.viewmodels.HomeViewModel? = null // Add homeViewModel to refresh recently opened
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCourseDialog by rememberSaveable { mutableStateOf(false) }
@@ -374,12 +378,21 @@ fun CoursesScreen(
 
     // Delete Confirmation Dialog
     if (showDeleteDialog && selectedCourseForAction != null) {
+        val coroutineScope = rememberCoroutineScope()
         DeleteConfirmationDialog(
             courseName = selectedCourseForAction!!.title,
             onDismiss = { viewModel.setShowDeleteDialog(false) },
             onConfirm = {
-                viewModel.deleteCourse(selectedCourseForAction!!.id)
+                val courseIdToDelete = selectedCourseForAction!!.id
+                android.util.Log.d("CourseScreen", "Deleting course: $courseIdToDelete")
+                viewModel.deleteCourse(courseIdToDelete)
                 viewModel.setShowDeleteDialog(false)
+                // Refresh recently opened after a short delay to ensure database cleanup completes
+                coroutineScope.launch {
+                    kotlinx.coroutines.delay(500) // Wait for backend to complete
+                    android.util.Log.d("CourseScreen", "Refreshing recently opened PDFs after course deletion")
+                    homeViewModel?.loadRecentlyOpenedPdfs()
+                }
             }
         )
     }

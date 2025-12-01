@@ -169,6 +169,21 @@ fun HomeScreen(
     // Collect dailyTasks StateFlow from homeViewModel
     val dailyTasksFromViewModel by homeViewModel.dailyTasks.collectAsState()
 
+    // Refresh recently opened PDFs when screen becomes visible (after navigating back from courses screen)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                android.util.Log.d("HomeScreen", "Screen resumed - refreshing recently opened PDFs")
+                homeViewModel.loadRecentlyOpenedPdfs()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // XP Animation state
     val showXPAnimation = remember { mutableStateOf(false) }
     val recentXPGained = remember { mutableStateOf(0) }

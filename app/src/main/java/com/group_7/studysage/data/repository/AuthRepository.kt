@@ -732,6 +732,34 @@ class AuthRepository(
     }
 
     /**
+     * Remove all recently opened notes for a specific course
+     * Called when a course is deleted to clean up recently opened items
+     */
+    suspend fun removeRecentlyOpenedByCourseId(courseId: String): Result<Unit> {
+        return try {
+            val userId = currentUser?.uid ?: return Result.failure(Exception("No user logged in"))
+            val profile = getUserProfile()
+
+            // Get existing recently opened list
+            @Suppress("UNCHECKED_CAST")
+            val recentlyOpened = (profile?.get("recentlyOpened") as? List<Map<String, Any>>) ?: emptyList()
+
+            // Filter out all notes that belong to the deleted course
+            val filteredList = recentlyOpened.filter { it["courseId"] != courseId }
+
+            firestore.collection("users").document(userId)
+                .update("recentlyOpened", filteredList)
+                .await()
+
+            Log.d(TAG, "Removed ${recentlyOpened.size - filteredList.size} notes from recently opened for course $courseId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to remove recently opened notes for course $courseId: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Update user's daily streak based on app open
      * Called when MainActivity is created
      * - Increments streak if app opened on consecutive days

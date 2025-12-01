@@ -116,6 +116,21 @@ class CourseRepository {
 
             // Delete the course
             firestore.collection("courses").document(courseId).delete().await()
+
+            // Remove all recently opened items related to this course
+            try {
+                val authRepository = AuthRepository()
+                val removeResult = authRepository.removeRecentlyOpenedByCourseId(courseId)
+                removeResult.onSuccess {
+                    Log.d(TAG, "Successfully removed recently opened items for deleted course: $courseId")
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to remove recently opened items for course $courseId: ${error.message}", error)
+                }
+            } catch (e: Exception) {
+                // Log but don't fail the entire operation if recently opened cleanup fails
+                Log.e(TAG, "Exception removing recently opened items for course $courseId: ${e.message}", e)
+            }
+
             Result.success(Unit)
 
         } catch (e: Exception) {
