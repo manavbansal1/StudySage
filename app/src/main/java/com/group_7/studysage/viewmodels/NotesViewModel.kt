@@ -34,6 +34,12 @@ class NotesViewModel(
         private const val TAG = "NotesViewModel"
         private const val SELECTED_NOTE_ID_KEY = "selected_note_id"
         private const val SHOW_NOTE_OPTIONS_KEY = "show_note_options"
+        // Note detail screen state keys
+        private const val SHOW_AI_SUMMARY_KEY = "show_ai_summary"
+        private const val SHOW_FLASHCARDS_KEY = "show_flashcards"
+        private const val SHOW_NFC_SHARE_KEY = "show_nfc_share"
+        private const val SHOW_PODCAST_KEY = "show_podcast"
+        private const val NFC_SHARE_NOTE_ID_KEY = "nfc_share_note_id"
     }
 
     private val notesRepository: NotesRepository = NotesRepository(application.applicationContext)
@@ -87,8 +93,42 @@ class NotesViewModel(
     private val _tempFlashcardState = MutableStateFlow(TempFlashcardState())
     val tempFlashcardState: StateFlow<TempFlashcardState> = _tempFlashcardState.asStateFlow()
 
+    // Note detail screen states - preserved across rotation
+    private val _showAiSummaryScreen = MutableStateFlow(false)
+    val showAiSummaryScreen: StateFlow<Boolean> = _showAiSummaryScreen.asStateFlow()
+
+    private val _showFlashcardsScreen = MutableStateFlow(false)
+    val showFlashcardsScreen: StateFlow<Boolean> = _showFlashcardsScreen.asStateFlow()
+
+    private val _showNfcShareDialog = MutableStateFlow(false)
+    val showNfcShareDialog: StateFlow<Boolean> = _showNfcShareDialog.asStateFlow()
+
+    private val _showPodcastScreen = MutableStateFlow(false)
+    val showPodcastScreen: StateFlow<Boolean> = _showPodcastScreen.asStateFlow()
+
+    // Note being shared via NFC - preserved across rotation
+    private val _nfcShareNote = MutableStateFlow<Note?>(null)
+    val nfcShareNote: StateFlow<Note?> = _nfcShareNote.asStateFlow()
+
     init {
-        // Initial load is handled by LaunchedEffect in the UI, which can provide courseId
+        // Restore screen states from SavedStateHandle
+        _showAiSummaryScreen.value = savedStateHandle.get<Boolean>(SHOW_AI_SUMMARY_KEY) ?: false
+        _showFlashcardsScreen.value = savedStateHandle.get<Boolean>(SHOW_FLASHCARDS_KEY) ?: false
+        _showNfcShareDialog.value = savedStateHandle.get<Boolean>(SHOW_NFC_SHARE_KEY) ?: false
+        _showPodcastScreen.value = savedStateHandle.get<Boolean>(SHOW_PODCAST_KEY) ?: false
+
+        Log.d(TAG, "NotesViewModel initialized - Screen states restored:")
+        Log.d(TAG, "  AI Summary: ${_showAiSummaryScreen.value}")
+        Log.d(TAG, "  Flashcards: ${_showFlashcardsScreen.value}")
+        Log.d(TAG, "  NFC Share: ${_showNfcShareDialog.value}")
+        Log.d(TAG, "  Podcast: ${_showPodcastScreen.value}")
+
+        // Restore NFC share note if needed
+        val nfcShareNoteId = savedStateHandle.get<String>(NFC_SHARE_NOTE_ID_KEY)
+        if (nfcShareNoteId != null && _showNfcShareDialog.value) {
+            Log.d(TAG, "  Restoring NFC share note: $nfcShareNoteId")
+            loadNoteForNfcShare(nfcShareNoteId)
+        }
     }
 
     fun loadNotes(courseId: String? = null) {
@@ -661,5 +701,111 @@ class NotesViewModel(
         _tempFlashcardState.update {
             TempFlashcardState()
         }
+    }
+
+    // ============================================
+    // NOTE DETAIL SCREEN STATE MANAGEMENT
+    // ============================================
+
+    /**
+     * Show/hide AI Summary screen
+     * State is preserved across rotation via SavedStateHandle
+     */
+    fun setShowAiSummaryScreen(show: Boolean) {
+        Log.d(TAG, "Setting showAiSummaryScreen: $show")
+        savedStateHandle[SHOW_AI_SUMMARY_KEY] = show
+        _showAiSummaryScreen.value = show
+    }
+
+    /**
+     * Show/hide Flashcards screen
+     * State is preserved across rotation via SavedStateHandle
+     */
+    fun setShowFlashcardsScreen(show: Boolean) {
+        Log.d(TAG, "Setting showFlashcardsScreen: $show")
+        savedStateHandle[SHOW_FLASHCARDS_KEY] = show
+        _showFlashcardsScreen.value = show
+    }
+
+    /**
+     * Show/hide NFC Share dialog
+     * State is preserved across rotation via SavedStateHandle
+     */
+    fun setShowNfcShareDialog(show: Boolean) {
+        Log.d(TAG, "Setting showNfcShareDialog: $show")
+        savedStateHandle[SHOW_NFC_SHARE_KEY] = show
+        _showNfcShareDialog.value = show
+    }
+
+    /**
+     * Show/hide Podcast screen
+     * State is preserved across rotation via SavedStateHandle
+     */
+    fun setShowPodcastScreen(show: Boolean) {
+        Log.d(TAG, "Setting showPodcastScreen: $show")
+        savedStateHandle[SHOW_PODCAST_KEY] = show
+        _showPodcastScreen.value = show
+
+        // Clear podcast data when closing the screen
+        if (!show) {
+            clearPodcastData()
+        }
+    }
+
+    /**
+     * Set note to share via NFC
+     * State is preserved across rotation via SavedStateHandle
+     */
+    fun setNfcShareNote(note: Note?) {
+        Log.d(TAG, "Setting NFC share note: ${note?.id ?: "null"}")
+        if (note != null) {
+            savedStateHandle[NFC_SHARE_NOTE_ID_KEY] = note.id
+            _nfcShareNote.value = note
+        } else {
+            savedStateHandle.remove<String>(NFC_SHARE_NOTE_ID_KEY)
+            _nfcShareNote.value = null
+        }
+    }
+
+    /**
+     * Load note for NFC sharing by ID
+     * Called during restoration after rotation
+     */
+    private fun loadNoteForNfcShare(noteId: String) {
+        if (noteId.isBlank()) return
+
+        Log.d(TAG, "Loading note for NFC share: $noteId")
+        viewModelScope.launch {
+            try {
+                val note = notesRepository.getNoteById(noteId)
+                if (note != null) {
+                    _nfcShareNote.value = note
+                    Log.d(TAG, "NFC share note loaded: $noteId")
+                } else {
+                    Log.e(TAG, "Note not found for NFC share: $noteId")
+                    // Clear the state if note not found
+                    setShowNfcShareDialog(false)
+                    setNfcShareNote(null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load NFC share note: ${e.message}", e)
+                // Clear the state on error
+                setShowNfcShareDialog(false)
+                setNfcShareNote(null)
+            }
+        }
+    }
+
+    /**
+     * Clear all note detail screen states
+     * Call this when closing the note detail or navigating away
+     */
+    fun clearAllNoteDetailScreens() {
+        Log.d(TAG, "Clearing all note detail screen states")
+        setShowAiSummaryScreen(false)
+        setShowFlashcardsScreen(false)
+        setShowNfcShareDialog(false)
+        setShowPodcastScreen(false)
+        setNfcShareNote(null)
     }
 }

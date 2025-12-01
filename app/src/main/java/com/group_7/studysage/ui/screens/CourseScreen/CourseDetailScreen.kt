@@ -131,7 +131,6 @@ fun CourseDetailScreen(
     }
     android.util.Log.d("CourseDetailScreen", "========================================")
 
-    var noteToShare by remember { mutableStateOf<Note?>(null) }
     var showUploadDialog by remember { mutableStateOf(false) }
     var pendingFileUri by remember { mutableStateOf<Uri?>(null) }
     var pendingFileName by remember { mutableStateOf("") }
@@ -140,15 +139,19 @@ fun CourseDetailScreen(
     val selectedNote by notesViewModel.selectedNote.collectAsState()
     val showNoteOptions by notesViewModel.showNoteOptions.collectAsState()
 
-    var showSummaryScreen by remember { mutableStateOf(false) }
+    // States preserved across rotation via NotesViewModel
+    val showSummaryScreen by notesViewModel.showAiSummaryScreen.collectAsState()
+    val showFlashcardScreen by notesViewModel.showFlashcardsScreen.collectAsState()
+    val showShareNFCScreen by notesViewModel.showNfcShareDialog.collectAsState()
+    val showPodcastScreen by notesViewModel.showPodcastScreen.collectAsState()
+    val noteToShare by notesViewModel.nfcShareNote.collectAsState()
+
+    // Local states (not preserved on rotation)
     var showGenerateSummaryDialog by remember { mutableStateOf(false) }
-    var showFlashcardScreen by remember { mutableStateOf(false) }
     var showUploadOptionsSheet by remember { mutableStateOf(false) }
-    var showShareNFCScreen by remember { mutableStateOf(false) }
     var showReceiveNFCScreen by remember { mutableStateOf(false) }
     var showPlayQuizScreen by remember { mutableStateOf(false) }
     var showQuizGeneratingDialog by remember { mutableStateOf(false) }
-    var showPodcastScreen by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -215,8 +218,8 @@ fun CourseDetailScreen(
         ShareNFCScreen(
             note = noteToShare!!,
             onBack = {
-                showShareNFCScreen = false
-                noteToShare = null
+                notesViewModel.setShowNfcShareDialog(false)
+                notesViewModel.setNfcShareNote(null)
                 // Explicitly reset overlay state to ensure navbar shows again
                 courseViewModel.setFullscreenOverlay(false)
             }
@@ -260,7 +263,7 @@ fun CourseDetailScreen(
             note = selectedNote!!,
             notesViewModel = notesViewModel,
             onBack = {
-                showPodcastScreen = false
+                notesViewModel.setShowPodcastScreen(false)
                 notesViewModel.clearSelectedNote()
             }
         )
@@ -281,7 +284,7 @@ fun CourseDetailScreen(
                 note = summaryNote,
                 isLoading = isSummaryLoading,
                 onBack = {
-                    showSummaryScreen = false
+                    notesViewModel.setShowAiSummaryScreen(false)
                     notesViewModel.clearSelectedNote()
                 },
                 onDownload = { notesViewModel.downloadNote(context, summaryNote) },
@@ -297,7 +300,7 @@ fun CourseDetailScreen(
                         title = { Text("AI Summary") },
                         navigationIcon = {
                             IconButton(onClick = {
-                                showSummaryScreen = false
+                                notesViewModel.setShowAiSummaryScreen(false)
                                 notesViewModel.clearSelectedNote()
                             }) {
                                 Icon(
@@ -374,7 +377,7 @@ fun CourseDetailScreen(
         com.group_7.studysage.ui.screens.Flashcards.FlashcardScreen(
             note = selectedNote!!,
             onBack = {
-                showFlashcardScreen = false
+                notesViewModel.setShowFlashcardsScreen(false)
                 notesViewModel.clearSelectedNote()
             }
         )
@@ -803,7 +806,7 @@ fun CourseDetailScreen(
                         } else {
                             notesViewModel.selectNote(note, showOptions = false)
                             if (note.summary.isNotBlank()) {
-                                showSummaryScreen = true
+                                notesViewModel.setShowAiSummaryScreen(true)
                                 if (note.summary.isBlank()) notesViewModel.loadNoteById(note.id)
                             } else {
                                 showGenerateSummaryDialog = true
@@ -819,7 +822,7 @@ fun CourseDetailScreen(
                     icon = Icons.Default.Style, // Changed to Style for cards
                     onClick = {
                         notesViewModel.setShowNoteOptions(false)
-                        showFlashcardScreen = true
+                        notesViewModel.setShowFlashcardsScreen(true)
                     }
                 )
 
@@ -838,9 +841,9 @@ fun CourseDetailScreen(
                     subtitle = "Share with another device",
                     icon = Icons.Default.Nfc,
                     onClick = {
-                        noteToShare = selectedNote
+                        notesViewModel.setNfcShareNote(selectedNote)
                         notesViewModel.clearSelectedNote()
-                        showShareNFCScreen = true
+                        notesViewModel.setShowNfcShareDialog(true)
                     }
                 )
 
@@ -850,7 +853,7 @@ fun CourseDetailScreen(
                     icon = Icons.Default.Headphones,
                     onClick = {
                         notesViewModel.setShowNoteOptions(false)
-                        showPodcastScreen = true
+                        notesViewModel.setShowPodcastScreen(true)
                     }
                 )
             }
@@ -885,7 +888,7 @@ fun CourseDetailScreen(
                         preferences
                     )
                     showGenerateSummaryDialog = false
-                    showSummaryScreen = true
+                    notesViewModel.setShowAiSummaryScreen(true)
                 } else {
                     selectedNoteState?.id?.let { notesViewModel.loadNoteById(it) }
                 }
