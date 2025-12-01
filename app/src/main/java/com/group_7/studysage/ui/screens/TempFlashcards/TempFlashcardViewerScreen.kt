@@ -3,7 +3,9 @@ package com.group_7.studysage.ui.screens.TempFlashcards
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
@@ -14,12 +16,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group_7.studysage.data.models.Flashcard
 import com.group_7.studysage.viewmodels.HomeViewModel
+import com.group_7.studysage.viewmodels.TempFlashcardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,16 +31,20 @@ fun TempFlashcardViewerScreen(
     flashcards: List<Flashcard>,
     fileName: String,
     onBack: () -> Unit,
-    homeViewModel: HomeViewModel = viewModel()
+    homeViewModel: HomeViewModel = viewModel(),
+    tempFlashcardViewModel: TempFlashcardViewModel = viewModel()
 ) {
-    var currentIndex by rememberSaveable { mutableIntStateOf(0) }
-    var isFlipped by rememberSaveable { mutableStateOf(false) }
+    val tempUiState by tempFlashcardViewModel.uiState.collectAsState()
+    var currentIndex by rememberSaveable { mutableIntStateOf(tempUiState.currentCardIndex) }
     var showCompletionDialog by remember { mutableStateOf(false) }
     var taskCompleted by remember { mutableStateOf(false) }
 
-    // Reset flip when changing cards
+    // Get current card's flip state from ViewModel
+    val isFlipped = tempUiState.flipStates[currentIndex] ?: false
+
+    // Update ViewModel when currentIndex changes
     LaunchedEffect(currentIndex) {
-        isFlipped = false
+        tempFlashcardViewModel.setCurrentCardIndex(currentIndex)
     }
 
     // Automatically complete flashcard task when user finishes all flashcards
@@ -70,6 +78,10 @@ fun TempFlashcardViewerScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val scrollState = rememberScrollState()
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -101,6 +113,13 @@ fun TempFlashcardViewerScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .then(
+                            if (isLandscape) {
+                                Modifier.verticalScroll(scrollState)
+                            } else {
+                                Modifier
+                            }
+                        )
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -133,10 +152,19 @@ fun TempFlashcardViewerScreen(
                     FlipCard(
                         flashcard = flashcards[currentIndex],
                         isFlipped = isFlipped,
-                        onFlip = { isFlipped = !isFlipped },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
+                        onFlip = {
+                            // Toggle flip state for current card using ViewModel
+                            tempFlashcardViewModel.toggleFlipState(currentIndex)
+                        },
+                        modifier = if (isLandscape) {
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 300.dp, max = 500.dp)
+                        } else {
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -254,6 +282,8 @@ fun FlipCard(
         label = "cardRotation"
     )
 
+    val cardScrollState = rememberScrollState()
+
     Card(
         modifier = modifier
             .graphicsLayer {
@@ -270,6 +300,7 @@ fun FlipCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(cardScrollState)
                 .padding(32.dp),
             contentAlignment = Alignment.Center
         ) {
