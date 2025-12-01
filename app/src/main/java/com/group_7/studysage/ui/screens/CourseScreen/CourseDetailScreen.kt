@@ -144,6 +144,7 @@ fun CourseDetailScreen(
     val showFlashcardScreen by notesViewModel.showFlashcardsScreen.collectAsState()
     val showShareNFCScreen by notesViewModel.showNfcShareDialog.collectAsState()
     val showPodcastScreen by notesViewModel.showPodcastScreen.collectAsState()
+    val showQuizGeneratingDialog by notesViewModel.showQuizGeneratingDialog.collectAsState()
     val noteToShare by notesViewModel.nfcShareNote.collectAsState()
 
     // Local states (not preserved on rotation)
@@ -151,7 +152,6 @@ fun CourseDetailScreen(
     var showUploadOptionsSheet by remember { mutableStateOf(false) }
     var showReceiveNFCScreen by remember { mutableStateOf(false) }
     var showPlayQuizScreen by remember { mutableStateOf(false) }
-    var showQuizGeneratingDialog by remember { mutableStateOf(false) }
 
     // Upload states
     val isLoading by homeViewModel.isLoading
@@ -832,7 +832,7 @@ fun CourseDetailScreen(
                     icon = Icons.Default.Quiz,
                     onClick = {
                         notesViewModel.setShowNoteOptions(false)
-                        showQuizGeneratingDialog = true
+                        notesViewModel.setShowQuizGeneratingDialog(true)
                     }
                 )
 
@@ -898,11 +898,11 @@ fun CourseDetailScreen(
 
     // Quiz generation dialog and logic
     if (showQuizGeneratingDialog && selectedNote != null) {
-        var quizPreferences by remember { mutableStateOf("") }
+        val quizPreferences by notesViewModel.quizPreferences.collectAsState()
 
         AlertDialog(
             onDismissRequest = {
-                showQuizGeneratingDialog = false
+                notesViewModel.setShowQuizGeneratingDialog(false)
                 notesViewModel.clearSelectedNote()
             },
             icon = {
@@ -962,7 +962,7 @@ fun CourseDetailScreen(
                     
                     OutlinedTextField(
                         value = quizPreferences,
-                        onValueChange = { quizPreferences = it },
+                        onValueChange = { notesViewModel.setQuizPreferences(it) },
                         label = { Text("Quiz Preferences") },
                         placeholder = { Text("e.g., 10 questions, focus on definitions, easy difficulty") },
                         modifier = Modifier.fillMaxWidth(),
@@ -1007,7 +1007,7 @@ fun CourseDetailScreen(
                         gameViewModel.setSelectedNote(selectedNote!!)
                         gameViewModel.setUserPreferences(quizPreferences.ifBlank { "Generate a quiz with multiple choice questions" })
                         gameViewModel.generateQuiz()
-                        showQuizGeneratingDialog = false
+                        notesViewModel.setShowQuizGeneratingDialog(false)
                     },
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
@@ -1027,7 +1027,7 @@ fun CourseDetailScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        showQuizGeneratingDialog = false
+                        notesViewModel.setShowQuizGeneratingDialog(false)
                         notesViewModel.clearSelectedNote()
                     },
                     shape = RoundedCornerShape(12.dp)

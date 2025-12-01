@@ -59,10 +59,12 @@ fun GroupDetailsOverlay(
     val uploadError by groupChatViewModel.uploadError.collectAsState()
     val uploadSuccess by groupChatViewModel.uploadSuccess.collectAsState()
 
-    var showImageSourceDialog by remember { mutableStateOf(false) }
-    var showLeaveConfirmation by remember { mutableStateOf(false) }
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    var showRemoveMembersRequiredDialog by remember { mutableStateOf(false) }
+    // Dialog states preserved across rotation via ViewModel
+    val showImageSourceDialog by groupChatViewModel.showImageSourceDialog.collectAsState()
+    val showLeaveConfirmation by groupChatViewModel.showLeaveConfirmation.collectAsState()
+    val showDeleteConfirmation by groupChatViewModel.showDeleteConfirmation.collectAsState()
+    val showRemoveMembersRequiredDialog by groupChatViewModel.showRemoveMembersRequiredDialog.collectAsState()
+
     var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Auto-dismiss success message
@@ -174,7 +176,7 @@ fun GroupDetailsOverlay(
                             isUploading = isUploadingImage,
                             onProfilePicClick = {
                                 if (isAdmin) {
-                                    showImageSourceDialog = true
+                                    groupChatViewModel.setShowImageSourceDialog(true)
                                 }
                             }
                         )
@@ -335,7 +337,7 @@ fun GroupDetailsOverlay(
                         // Leave Group Button
                         if (!isAdmin) {
                             Button(
-                                onClick = { showLeaveConfirmation = true },
+                                onClick = { groupChatViewModel.setShowLeaveConfirmation(true) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp),
@@ -361,9 +363,9 @@ fun GroupDetailsOverlay(
                             Button(
                                 onClick = {
                                     if (memberCount > 1) {
-                                        showRemoveMembersRequiredDialog = true
+                                        groupChatViewModel.setShowRemoveMembersRequiredDialog(true)
                                     } else {
-                                        showDeleteConfirmation = true
+                                        groupChatViewModel.setShowDeleteConfirmation(true)
                                     }
                                 },
                                 modifier = Modifier
@@ -398,19 +400,19 @@ fun GroupDetailsOverlay(
     // Image Source Dialog
     if (showImageSourceDialog) {
         AlertDialog(
-            onDismissRequest = { showImageSourceDialog = false },
+            onDismissRequest = { groupChatViewModel.setShowImageSourceDialog(false) },
             title = { Text("Change Group Picture") },
             text = { Text("Choose image source") },
             confirmButton = {
                 TextButton(onClick = {
-                    showImageSourceDialog = false
+                    groupChatViewModel.setShowImageSourceDialog(false)
                     imagePickerLauncher.launch("image/*")
                 }) {
                     Text("Gallery")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImageSourceDialog = false }) {
+                TextButton(onClick = { groupChatViewModel.setShowImageSourceDialog(false) }) {
                     Text("Cancel")
                 }
             },
@@ -423,7 +425,7 @@ fun GroupDetailsOverlay(
     // Leave Confirmation
     if (showLeaveConfirmation) {
         AlertDialog(
-            onDismissRequest = { showLeaveConfirmation = false },
+            onDismissRequest = { groupChatViewModel.setShowLeaveConfirmation(false) },
             icon = {
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = MaterialTheme.colorScheme.error)
             },
@@ -432,7 +434,7 @@ fun GroupDetailsOverlay(
             confirmButton = {
                 Button(
                     onClick = {
-                        showLeaveConfirmation = false
+                        groupChatViewModel.setShowLeaveConfirmation(false)
                         onLeaveGroup()
                         onDismiss()
                     },
@@ -444,7 +446,7 @@ fun GroupDetailsOverlay(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLeaveConfirmation = false }) {
+                TextButton(onClick = { groupChatViewModel.setShowLeaveConfirmation(false) }) {
                     Text("Cancel")
                 }
             },
@@ -457,7 +459,7 @@ fun GroupDetailsOverlay(
     // Remove Members Required Dialog
     if (showRemoveMembersRequiredDialog) {
         AlertDialog(
-            onDismissRequest = { showRemoveMembersRequiredDialog = false },
+            onDismissRequest = { groupChatViewModel.setShowRemoveMembersRequiredDialog(false) },
             icon = {
                 Icon(Icons.Default.GroupRemove, null, tint = MaterialTheme.colorScheme.error)
             },
@@ -468,7 +470,7 @@ fun GroupDetailsOverlay(
             confirmButton = {
                 Button(
                     onClick = {
-                        showRemoveMembersRequiredDialog = false
+                        groupChatViewModel.setShowRemoveMembersRequiredDialog(false)
                         onRemoveAllMembers()
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -479,7 +481,7 @@ fun GroupDetailsOverlay(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRemoveMembersRequiredDialog = false }) {
+                TextButton(onClick = { groupChatViewModel.setShowRemoveMembersRequiredDialog(false) }) {
                     Text("Cancel")
                 }
             },
@@ -492,7 +494,7 @@ fun GroupDetailsOverlay(
     // Delete Confirmation
     if (showDeleteConfirmation) {
         AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
+            onDismissRequest = { groupChatViewModel.setShowDeleteConfirmation(false) },
             icon = {
                 Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
             },
@@ -503,7 +505,7 @@ fun GroupDetailsOverlay(
             confirmButton = {
                 Button(
                     onClick = {
-                        showDeleteConfirmation = false
+                        groupChatViewModel.setShowDeleteConfirmation(false)
                         onDeleteGroup()
                         onDismiss()
                     },
@@ -515,7 +517,7 @@ fun GroupDetailsOverlay(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
+                TextButton(onClick = { groupChatViewModel.setShowDeleteConfirmation(false) }) {
                     Text("Cancel")
                 }
             },
