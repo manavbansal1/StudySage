@@ -541,42 +541,8 @@ class GroupRepository(
 
             Log.d(TAG, "Found ${memberIds.size} members to notify")
 
-            // Truncate message for notification
-            val truncatedMessage = NotificationHelper.truncateMessage(messageText, 100)
-
-            // Send notification to each member
-            memberIds.forEach { memberId ->
-                try {
-                    // Check if notifications are enabled for this user
-                    val notificationsEnabled = try {
-                        val userDoc = firestore.collection("users")
-                            .document(memberId)
-                            .get()
-                            .await()
-                        userDoc.getBoolean("settings.notificationsEnabled") ?: false
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error checking notification settings for $memberId: ${e.message}")
-                        false
-                    }
-
-                    // Send notification if user has notifications enabled
-                    // Note: We send even when app is in foreground for group messages
-                    if (notificationsEnabled) {
-                        StudySageNotificationManager.showGroupMessage(
-                            context = context,
-                            groupName = groupName,
-                            senderName = senderName,
-                            message = truncatedMessage
-                        )
-                        Log.d(TAG, "✅ Notification sent to member: $memberId")
-                    } else {
-                        Log.d(TAG, "❌ Skipping notification for member: $memberId (notifications disabled in settings)")
-                    }
-                } catch (e: Exception) {
-                    // Log but continue with other members
-                    Log.e(TAG, "Error sending notification to member $memberId", e)
-                }
-            }
+            // Group notifications have been removed
+            Log.d(TAG, "Group notifications disabled - ${memberIds.size} members not notified")
 
             Log.d(TAG, "Finished notifying group members")
 

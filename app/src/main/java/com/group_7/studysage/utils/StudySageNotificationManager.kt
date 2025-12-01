@@ -49,7 +49,8 @@ object StudySageNotificationManager {
     fun init(context: Context) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                val notificationManager =
+                    context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
 
                 if (notificationManager == null) {
                     Log.e(TAG, "NotificationManager is null. Cannot create channels.")
@@ -124,7 +125,8 @@ object StudySageNotificationManager {
                 return
             }
 
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             if (notificationManager == null) {
                 Log.e(TAG, "NotificationManager is null. Cannot show notification.")
                 return
@@ -181,7 +183,8 @@ object StudySageNotificationManager {
                 return
             }
 
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             if (notificationManager == null) {
                 Log.e(TAG, "NotificationManager is null. Cannot show notification.")
                 return
@@ -224,74 +227,4 @@ object StudySageNotificationManager {
             Log.e(TAG, "Error showing note uploaded notification", e)
         }
     }
-
-    /**
-     * Cancel a specific notification by ID.
-     *
-     * @param context Application or Activity context
-     * @param notificationId The ID of the notification to cancel
-     */
-    fun cancelNotification(context: Context, notificationId: Int) {
-        try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.cancel(notificationId)
-            Log.d(TAG, "Notification $notificationId canceled")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error canceling notification", e)
-        }
-    }
-
-    /**
-     * Cancel all notifications from this app.
-     *
-     * @param context Application or Activity context
-     */
-    fun cancelAllNotifications(context: Context) {
-        try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.cancelAll()
-            Log.d(TAG, "All notifications canceled")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error canceling all notifications", e)
-        }
-    }
-
-    /**
-     * Check if notifications are enabled for the app.
-     *
-     * @param context Application or Activity context
-     * @return true if notifications are enabled, false otherwise
-     */
-    fun areNotificationsEnabled(context: Context): Boolean {
-        return try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.areNotificationsEnabled() ?: false
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking notification status", e)
-            false
-        }
-    }
-
-    /**
-     * Check if a specific notification channel is enabled (Android O+).
-     *
-     * @param context Application or Activity context
-     * @param channelId The ID of the channel to check
-     * @return true if the channel is enabled, false otherwise
-     */
-    fun isChannelEnabled(context: Context, channelId: String): Boolean {
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                val channel = notificationManager?.getNotificationChannel(channelId)
-                channel?.importance != NotificationManager.IMPORTANCE_NONE
-            } else {
-                true // Channels don't exist before O, so assume enabled
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking channel status", e)
-            false
-        }
-    }
 }
-
