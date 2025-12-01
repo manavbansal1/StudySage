@@ -180,7 +180,7 @@ fun StudySageNavigation(
         // Track previous user ID to detect changes - use remember with a key to persist across recomposition
         val previousUserId = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
-        // Detect when user ID changes (different user logs in) and reload study time data
+        // Detect when user ID changes (different user logs in) and refresh all screens
         androidx.compose.runtime.LaunchedEffect(currentUserId) {
             android.util.Log.d("StudySageNav", "========================================")
             android.util.Log.d("StudySageNav", "🔍 LaunchedEffect triggered")
@@ -196,13 +196,30 @@ fun StudySageNavigation(
                     android.util.Log.d("StudySageNav", "👤 DIFFERENT USER DETECTED!")
                     android.util.Log.d("StudySageNav", "   Previous: ${previousUserId.value}")
                     android.util.Log.d("StudySageNav", "   Current:  $currentUserId")
-                    android.util.Log.d("StudySageNav", "🧹 Calling reloadStudyTimeForCurrentUser()...")
-                    homeViewModel.reloadStudyTimeForCurrentUser()
-                    android.util.Log.d("StudySageNav", "✅ reloadStudyTimeForCurrentUser() completed")
+                    android.util.Log.d("StudySageNav", "🔄 Refreshing all screens...")
+
+                    // Refresh Home screen data
+                    homeViewModel.refreshHomeData()
+                    android.util.Log.d("StudySageNav", "✅ Home screen refreshed")
+
+                    // Refresh Course screen data
+                    courseViewModel.refreshCourses()
+                    android.util.Log.d("StudySageNav", "✅ Course screen refreshed")
+
+                    android.util.Log.d("StudySageNav", "✅ All screens refreshed")
                 } else if (isFirstLogin) {
                     android.util.Log.d("StudySageNav", "🔐 First user login: $currentUserId")
-                    android.util.Log.d("StudySageNav", "📂 Loading initial data...")
-                    homeViewModel.reloadStudyTimeForCurrentUser()
+                    android.util.Log.d("StudySageNav", "📂 Loading all screen data...")
+
+                    // Load Home screen data
+                    homeViewModel.refreshHomeData()
+                    android.util.Log.d("StudySageNav", "✅ Home screen loaded")
+
+                    // Load Course screen data
+                    courseViewModel.loadCourses()
+                    android.util.Log.d("StudySageNav", "✅ Course screen loaded")
+
+                    android.util.Log.d("StudySageNav", "✅ All screens loaded")
                 } else {
                     android.util.Log.d("StudySageNav", "ℹ️ Same user, no reset needed ($currentUserId)")
                 }
