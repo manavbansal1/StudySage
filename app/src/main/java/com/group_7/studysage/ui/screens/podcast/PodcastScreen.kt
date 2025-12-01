@@ -3,6 +3,7 @@ package com.group_7.studysage.ui.screens.podcast
 import android.media.MediaPlayer
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.group_7.studysage.data.repository.Note
 import com.group_7.studysage.viewmodels.NotesViewModel
 import kotlinx.coroutines.delay
@@ -169,8 +172,15 @@ fun PodcastScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Podcast") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Podcast",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = {
                         mediaPlayer?.release()
@@ -178,7 +188,11 @@ fun PodcastScreen(
                         notesViewModel.clearPodcastData()
                         onBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
                 },
                 actions = {
@@ -194,7 +208,7 @@ fun PodcastScreen(
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Regenerate Podcast",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = Color.White
                             )
                         }
                     }
@@ -206,7 +220,7 @@ fun PodcastScreen(
                             Icon(
                                 imageVector = Icons.Default.Download,
                                 contentDescription = "Download Podcast",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = Color.White
                             )
                         }
                     }
@@ -216,17 +230,17 @@ fun PodcastScreen(
                             Icon(
                                 imageVector = Icons.Default.Article,
                                 contentDescription = "View Script",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = Color.White
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
@@ -237,9 +251,9 @@ fun PodcastScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(vertical = 24.dp),
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Note title
                 Text(
@@ -247,45 +261,27 @@ fun PodcastScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 32.dp)
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
-
-                // Show loading state
-                if (isPodcastGenerating) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .padding(bottom = 24.dp),
-                        strokeWidth = 8.dp
-                    )
-
-                    Text(
-                        text = podcastGenerationStatus ?: "Generating podcast...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
 
                 // Show error message
                 errorMessage?.let { error ->
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Error,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(end = 12.dp)
+                                tint = MaterialTheme.colorScheme.error
                             )
                             Text(
                                 text = error,
@@ -299,169 +295,24 @@ fun PodcastScreen(
                 // Show player controls when audio is ready
                 if (podcastAudioPath != null && !isPodcastGenerating) {
                     // Podcast icon
-                    Box(
-                        modifier = Modifier
-                            .size(200.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .padding(40.dp),
-                        contentAlignment = Alignment.Center
+                    Card(
+                        modifier = Modifier.size(200.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Podcasts,
-                            contentDescription = null,
-                            modifier = Modifier.size(120.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(48.dp))
-
-                    // Progress slider
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Slider(
-                            value = if (duration > 0) currentPosition.toFloat() else 0f,
-                            onValueChange = { newValue ->
-                                try {
-                                    val seekPosition = newValue.toInt()
-                                    mediaPlayer?.let { mp ->
-                                        if (seekPosition >= 0 && seekPosition <= duration) {
-                                            mp.seekTo(seekPosition)
-                                            currentPosition = seekPosition
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    android.util.Log.e("PodcastScreen", "Seek error: ${e.message}")
-                                }
-                            },
-                            valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 32.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = formatTime(currentPosition),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = formatTime(duration),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Playback controls row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Volume control button
-                        IconButton(
-                            onClick = { showVolumeDialog = true },
-                            modifier = Modifier.size(56.dp)
+                                .fillMaxSize()
+                                .padding(40.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.VolumeUp,
-                                contentDescription = "Volume",
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Skip backward 10 seconds
-                        IconButton(
-                            onClick = {
-                                mediaPlayer?.let {
-                                    val newPosition = (currentPosition - 10000).coerceAtLeast(0)
-                                    it.seekTo(newPosition)
-                                    currentPosition = newPosition
-                                }
-                            },
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Replay10,
-                                contentDescription = "Skip back 10 seconds",
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Play/Pause button
-                        FloatingActionButton(
-                            onClick = {
-                                mediaPlayer?.let {
-                                    if (isPlaying) {
-                                        it.pause()
-                                        isPlaying = false
-                                    } else {
-                                        it.start()
-                                        isPlaying = true
-                                    }
-                                }
-                            },
-                            modifier = Modifier.size(56.dp),
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                modifier = Modifier.size(36.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Skip forward 10 seconds
-                        IconButton(
-                            onClick = {
-                                mediaPlayer?.let {
-                                    val newPosition = (currentPosition + 10000).coerceAtMost(duration)
-                                    it.seekTo(newPosition)
-                                    currentPosition = newPosition
-                                }
-                            },
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Forward10,
-                                contentDescription = "Skip forward 10 seconds",
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Playback speed button
-                        IconButton(
-                            onClick = { showSpeedDialog = true },
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Speed,
-                                contentDescription = "Playback speed",
-                                modifier = Modifier.size(24.dp),
+                                imageVector = Icons.Default.Podcasts,
+                                contentDescription = null,
+                                modifier = Modifier.size(120.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -469,17 +320,188 @@ fun PodcastScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Status text - centered
-                    Box(
+                    // Progress slider
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                     ) {
-                        Text(
-                            text = if (isPlaying) "Now Playing" else "Paused",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Slider(
+                                value = if (duration > 0) currentPosition.toFloat() else 0f,
+                                onValueChange = { newValue ->
+                                    try {
+                                        val seekPosition = newValue.toInt()
+                                        mediaPlayer?.let { mp ->
+                                            if (seekPosition >= 0 && seekPosition <= duration) {
+                                                mp.seekTo(seekPosition)
+                                                currentPosition = seekPosition
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("PodcastScreen", "Seek error: ${e.message}")
+                                    }
+                                },
+                                valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = formatTime(currentPosition),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = formatTime(duration),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Playback controls
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Volume control button
+                                IconButton(
+                                    onClick = { showVolumeDialog = true },
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VolumeUp,
+                                        contentDescription = "Volume",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Skip backward 10 seconds
+                                IconButton(
+                                    onClick = {
+                                        mediaPlayer?.let {
+                                            val newPosition = (currentPosition - 10000).coerceAtLeast(0)
+                                            it.seekTo(newPosition)
+                                            currentPosition = newPosition
+                                        }
+                                    },
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Replay10,
+                                        contentDescription = "Skip back 10 seconds",
+                                        modifier = Modifier.size(32.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Play/Pause button
+                                FloatingActionButton(
+                                    onClick = {
+                                        mediaPlayer?.let {
+                                            if (isPlaying) {
+                                                it.pause()
+                                                isPlaying = false
+                                            } else {
+                                                it.start()
+                                                isPlaying = true
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.size(56.dp),
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = if (isPlaying) "Pause" else "Play",
+                                        modifier = Modifier.size(36.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Skip forward 10 seconds
+                                IconButton(
+                                    onClick = {
+                                        mediaPlayer?.let {
+                                            val newPosition = (currentPosition + 10000).coerceAtMost(duration)
+                                            it.seekTo(newPosition)
+                                            currentPosition = newPosition
+                                        }
+                                    },
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Forward10,
+                                        contentDescription = "Skip forward 10 seconds",
+                                        modifier = Modifier.size(32.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Playback speed button
+                                IconButton(
+                                    onClick = { showSpeedDialog = true },
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Speed,
+                                        contentDescription = "Playback speed",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Status text
+                            Text(
+                                text = if (isPlaying) "Now Playing" else "Paused",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -653,6 +675,61 @@ fun PodcastScreen(
                     }
                 }
             )
+        }
+    }
+
+    // Loading dialog while generating podcast - Using "Uploading Note" animation style
+    if (isPodcastGenerating) {
+        Dialog(onDismissRequest = { /* Can't dismiss while generating */ }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 12.dp
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                    modifier = Modifier.padding(40.dp)
+                ) {
+                    Text(
+                        text = "Generating Podcast",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = podcastGenerationStatus ?: "Processing your document...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
     }
 }
