@@ -1,3 +1,21 @@
+/**
+ * Manages all your courses so you can organize notes by class instead of having
+ * everything mixed together in one big mess.
+ * 
+ * What it does:
+ * - Creates and manages course info
+ * - Links notes to specific courses
+ * - Tracks your progress in each class
+ * - Can sync with Canvas if your school uses it
+ * - Suggests study materials based on your courses
+ * 
+ * - Automatically detects courses from syllabi you upload
+ * - Color coding for easy organization
+ * - Progress tracking and reminders
+ * - Calendar integration for deadlines
+ * 
+ * Syncs across all your devices and works offline too.
+ */
 package com.group_7.studysage.data.repository
 
 import android.util.Log

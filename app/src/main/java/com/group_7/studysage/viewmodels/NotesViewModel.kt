@@ -1,3 +1,18 @@
+/**
+ * This is the brain that manages everything related to notes in the app.
+ * It sits between the UI and the actual data, handling user actions and
+ * keeping track of loading states, errors, and all that stuff.
+ * 
+ * What it manages:
+ * - Uploading and processing notes with progress updates
+ * - Generating podcasts from your notes (pretty cool!)
+ * - Creating flashcards for studying
+ * - NFC sharing between phones
+ * - Error messages and loading indicators
+ * 
+ * Uses StateFlow so the UI updates automatically when things change.
+ * Also remembers stuff even if you rotate your phone or the app gets killed.
+ */
 package com.group_7.studysage.viewmodels
 
 import android.app.Application

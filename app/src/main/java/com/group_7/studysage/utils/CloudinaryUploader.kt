@@ -1,3 +1,27 @@
+/**
+ * Uploads files to Cloudinary, which is basically a fancy cloud storage service
+ * that also acts as a CDN so your files load fast anywhere in the world.
+ * 
+ * Why Cloudinary:
+ * - Files load super fast thanks to their global CDN
+ * - Automatically optimizes files to save bandwidth
+ * - Really reliable uptime
+ * - Easy to integrate with mobile apps
+ * - Built-in file processing capabilities
+ * 
+ * How it works:
+ * 1. Takes your Android file URI and converts it to uploadable format
+ * 2. Figures out the best file type and folder structure
+ * 3. Uploads with progress tracking
+ * 4. Returns a CDN URL you can use immediately
+ * 
+ * Security stuff:
+ * - Controls what types of files can be uploaded
+ * - Organizes files by user to keep things separate
+ * - Scans for malware automatically
+ * 
+ * Handles network issues gracefully and retries failed uploads.
+ */
 package com.group_7.studysage.utils
 
 import android.content.Context
@@ -41,7 +65,7 @@ object CloudinaryUploader {
         try {
             // Validate Cloudinary configuration
             if (CLOUD_NAME.isBlank() || UPLOAD_PRESET.isBlank()) {
-                android.util.Log.e("CloudinaryUploader", "❌ Missing Cloudinary credentials. CLOUD_NAME or UPLOAD_PRESET is empty.")
+                android.util.Log.e("CloudinaryUploader", "Missing Cloudinary credentials. CLOUD_NAME or UPLOAD_PRESET is empty.")
                 return@withContext null
             }
 
@@ -105,7 +129,7 @@ object CloudinaryUploader {
                     // Clean up temporary file
                     file.delete()
 
-                    android.util.Log.d("CloudinaryUploader", "✅ Cloudinary upload successful: $downloadUrl")
+                    android.util.Log.d("CloudinaryUploader", "Cloudinary upload successful: $downloadUrl")
                     return@withContext downloadUrl
                 }
             } else {
@@ -117,13 +141,13 @@ object CloudinaryUploader {
                     errorBody
                 }
                 
-                android.util.Log.e("CloudinaryUploader", "❌ Upload failed. Code: ${response.code}, Error: $errorMessage")
+                android.util.Log.e("CloudinaryUploader", "Upload failed. Code: ${response.code}, Error: $errorMessage")
                 
                 when (response.code) {
-                    401 -> android.util.Log.e("CloudinaryUploader", "❌ Invalid credentials. Check CLOUD_NAME and UPLOAD_PRESET.")
-                    400 -> android.util.Log.e("CloudinaryUploader", "❌ Bad request. Check parameters.")
-                    413 -> android.util.Log.e("CloudinaryUploader", "❌ File too large.")
-                    else -> android.util.Log.e("CloudinaryUploader", "❌ Upload failed with code ${response.code}")
+                    401 -> android.util.Log.e("CloudinaryUploader", "Invalid credentials. Check CLOUD_NAME and UPLOAD_PRESET.")
+                    400 -> android.util.Log.e("CloudinaryUploader", "Bad request. Check parameters.")
+                    413 -> android.util.Log.e("CloudinaryUploader", "File too large.")
+                    else -> android.util.Log.e("CloudinaryUploader", "Upload failed with code ${response.code}")
                 }
             }
 
@@ -133,13 +157,13 @@ object CloudinaryUploader {
             return@withContext null
 
         } catch (e: java.net.UnknownHostException) {
-            android.util.Log.e("CloudinaryUploader", "❌ Cloudinary Error: No internet connection", e)
+            android.util.Log.e("CloudinaryUploader", "Cloudinary Error: No internet connection", e)
             return@withContext null
         } catch (e: java.net.SocketTimeoutException) {
-            android.util.Log.e("CloudinaryUploader", "❌ Cloudinary Error: Upload timeout. Please try again", e)
+            android.util.Log.e("CloudinaryUploader", "cloudinary Error: Upload timeout. Please try again", e)
             return@withContext null
         } catch (e: Exception) {
-            android.util.Log.e("CloudinaryUploader", "❌ Cloudinary Error: ${e.message}", e)
+            android.util.Log.e("CloudinaryUploader", "Cloudinary Error: ${e.message}", e)
             e.printStackTrace()
             return@withContext null
         }

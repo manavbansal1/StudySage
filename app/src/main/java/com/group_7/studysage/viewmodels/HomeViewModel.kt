@@ -1,3 +1,33 @@
+/**
+ * Controls the main dashboard/home screen that you see when you open the app.
+ * Brings together all your data and shows the most important stuff at a glance.
+ * 
+ * What's on the dashboard:
+ * - Your profile info and study stats
+ * - Recent notes and uploads
+ * - Course overview and progress
+ * - Study streaks and achievements
+ * - Quick action buttons for common tasks
+ * 
+ * Data features:
+ * - Combines info from multiple sources
+ * - Calculates your study statistics and trends
+ * - Gives personalized recommendations
+ * - Tracks how engaged you are with the app
+ * 
+ * User experience:
+ * - Pull-to-refresh to update everything
+ * - Smart prioritization of what to show first
+ * - Contextual study suggestions
+ * - Progress visualization to keep you motivated
+ * 
+ * Performance stuff:
+ * - Loads data efficiently in the background
+ * - Caches content for quick startup
+ * - Lazy loads less important content
+ * 
+ * Handles errors gracefully and retries failed operations automatically.
+ */
 package com.group_7.studysage.viewmodels
 
 import android.app.Application

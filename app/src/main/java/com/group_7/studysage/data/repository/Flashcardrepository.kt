@@ -24,6 +24,7 @@ class FlashcardRepository {
     /**
      * Generate flashcards using AI from note content.
      * Works universally for any topic.
+     * Used a custom prompt that generated the best results in testing.
      */
     suspend fun generateFlashcardsWithAI(
         noteContent: String,
@@ -139,12 +140,12 @@ class FlashcardRepository {
                 "What is the main idea of"
             )
 
-            // --- From key points (best fallback data) ---
+            // use in case of critical failure with AI generation
             keyPoints.take(numberOfCards).forEachIndexed { i, point ->
                 val pattern = questionPatterns[i % questionPatterns.size]
                 val cleanPoint = point.trim().replaceFirstChar { it.uppercase() }
 
-                // Use the key point itself as the answer, and create a question based on its start.
+        
                 val questionFragment = cleanPoint.split(" ").take(4).joinToString(" ")
 
                 var question = "$pattern $questionFragment...?"
@@ -245,7 +246,7 @@ class FlashcardRepository {
 
             // Iterate up to the expected count or the actual length
             for (i in 0 until minOf(jsonArray.length(), expectedCount)) {
-                val obj = jsonArray.optJSONObject(i) // Use optJSONObject for safety
+                val obj = jsonArray.optJSONObject(i)
 
                 if (obj != null) {
                     val q = obj.optString("question", "").trim()
@@ -280,12 +281,12 @@ class FlashcardRepository {
             .trim()
             .replaceFirstChar { it.uppercase() }
             .let {
-                // Trim trailing punctuation marks like '.', ':' before adding '?'
+                // Trim trailing punctuation marks like '.', ':' before adding '?' to make sure it seems like a question
                 val cleaned = it.trimEnd('.', ':')
                 // Ensure it ends with a question mark and clean up double question marks
                 if (!cleaned.endsWith("?")) cleaned + "?" else cleaned
             }
-            .replace("? ?", "?") // Fix for double '?' after forced append
+            .replace("? ?", "?")
             .replace("..", ".")
     }
 

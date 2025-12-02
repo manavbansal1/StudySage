@@ -1,3 +1,19 @@
+/**
+ * Turns your boring study notes into podcasts you can actually listen to.
+ * Super useful when you're driving or at the gym and want to review material.
+ * 
+ * 1. Takes your note text and asks AI to make it sound like a podcast script
+ * 2. Uses Google's text-to-speech to turn the script into audio
+ * 3. Saves the audio file on your phone so you can listen offline
+ * 4. Shows you progress while it's working
+ * 
+ * The AI makes the content way more engaging than just reading dry textbook stuff.
+ * Handles long notes by breaking them into chunks since TTS has limits.
+ * If something fails, it automatically tries again.
+ *
+ * Help was taken from https://cloud.google.com/text-to-speech/docs/basics
+ * to integrate Google Cloud TTS via a Cloud Run backend.
+ */
 package com.group_7.studysage.data.repository
 
 import android.content.Context

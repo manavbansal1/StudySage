@@ -1,16 +1,25 @@
+/**
+ * This is where everything starts when you open the app.
+ * Handles the main screen, navigation between different parts of the app,
+ * and all that NFC sharing stuff when you tap phones together.
+ * 
+ * Main things it does:
+ * - Sets up the app's navigation
+ * - Manages user login state
+ * - Handles NFC sharing between devices
+ * - Coordinates with all the different ViewModels
+ * 
+ * Built with Jetpack Compose so no more messy XML files.
+ */
 package com.group_7.studysage
 
-import android.Manifest
 import android.nfc.NfcAdapter
 import android.nfc.Tag
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,7 +39,6 @@ import com.group_7.studysage.viewmodels.AuthViewModelFactory
 import com.group_7.studysage.viewmodels.HomeViewModel
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.group_7.studysage.utils.PermissionHandler
-import com.group_7.studysage.utils.NotificationPermissionHelper
 import com.group_7.studysage.utils.StudySageNotificationManager
 import com.group_7.studysage.utils.ReminderScheduler
 import com.group_7.studysage.services.NfcHostApduService
@@ -256,40 +264,6 @@ fun StudySageApp() {
             // App is being disposed/backgrounded - stop tracking
             homeViewModel.stopStudyTimeTracking()
             Log.d("StudySageApp", "📚 Study time tracking stopped (app inactive)")
-        }
-    }
-
-    // Permission launcher for notifications (Android 13+)
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            // Permission granted
-            Log.d("NotificationPermission", "Permission GRANTED")
-        } else {
-            // Permission denied
-            Log.d("NotificationPermission", "Permission DENIED")
-        }
-    }
-
-    // Request permission on launch if needed
-    LaunchedEffect(Unit) {
-        Log.d("NotificationPermission", "LaunchedEffect triggered")
-        Log.d("NotificationPermission", "Android version: ${Build.VERSION.SDK_INT}")
-        Log.d("NotificationPermission", "TIRAMISU: ${Build.VERSION_CODES.TIRAMISU}")
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val isGranted = NotificationPermissionHelper.isNotificationPermissionGranted(context)
-            Log.d("NotificationPermission", "Permission already granted: $isGranted")
-
-            if (!isGranted) {
-                Log.d("NotificationPermission", "Requesting permission...")
-                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                Log.d("NotificationPermission", "Permission already granted, skipping request")
-            }
-        } else {
-            Log.d("NotificationPermission", "Android version < 13, no permission needed")
         }
     }
 

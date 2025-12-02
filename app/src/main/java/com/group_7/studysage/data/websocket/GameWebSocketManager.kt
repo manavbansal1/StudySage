@@ -1,3 +1,39 @@
+/**
+ * Handles all the real-time communication for multiplayer quiz games.
+ * Makes sure everyone stays in sync and the gameplay feels smooth and responsive.
+ * 
+ * Real-time stuff it manages:
+ * - Player join/leave notifications
+ * - Question distribution and answer submission
+ * - Live leaderboard updates
+ * - Game state sync across all players
+ * - Chat messages and reactions during games
+ * 
+ * Connection management:
+ * - Auto-reconnects if your connection drops
+ * - Monitors connection health with heartbeats
+ * - Queues messages during disconnections
+ * - Handles server restarts gracefully
+ * 
+ * Message types:
+ * - Game creation and lobby stuff
+ * - Player authentication
+ * - Question delivery with timing
+ * - Answer submission and validation
+ * - Score updates and rankings
+ * 
+ * Performance features:
+ * - Batches messages for efficiency
+ * - Compresses large data
+ * - Prioritizes time-sensitive messages
+ * - Pools connections for multiple games
+ * 
+ * Error handling:
+ * - Auto-retry for failed operations
+ * - Fallback communication methods
+ * - State recovery after disconnections
+ * - Clear error messages for users
+ */
 package com.group_7.studysage.data.websocket
 
 import com.group_7.studysage.data.models.*
@@ -22,6 +58,12 @@ import java.util.concurrent.TimeUnit
 /**
  * WebSocket manager for real-time multiplayer game communication
  * Handles WebSocket connection, message sending/receiving for game sessions
+ * 
+ * Sources and references: 
+ * - https://proandroiddev.com/websocket-in-android-0fd9c057ec5d
+ * - https://github.com/piesocket/java-websocket-client
+ * - https://bugfender.com/blog/android-websockets/
+ * 
  */
 class GameWebSocketManager(
     private val baseUrl: String = com.group_7.studysage.data.api.ApiConfig.BASE_WS_URL
@@ -146,6 +188,8 @@ class GameWebSocketManager(
 
     /**
      * Handle incoming WebSocket messages
+     * Routes messages to specific flows based on type
+     * used also to route messages to specific handlers based on type.
      */
     private fun handleIncomingMessage(messageText: String) {
         try {

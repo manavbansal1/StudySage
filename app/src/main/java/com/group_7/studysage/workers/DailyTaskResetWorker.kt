@@ -1,3 +1,18 @@
+/**
+ * Background worker that runs daily to reset tasks, update streaks,
+ * and handle all the gamification stuff. Keeps your daily challenges fresh
+ * and maintains your progress tracking.
+ * 
+ * - Resets daily task completion status
+ * - Updates study streaks based on yesterday's activity
+ * - Calculates and awards daily XP bonuses
+ * - Generates new daily challenges
+ * - Cleans up expired temporary data
+ * 
+ * - Daily login bonuses and rewards
+ * - Streak calculations and milestone rewards
+ * .
+ */
 package com.group_7.studysage.workers
 
 import android.content.Context
@@ -40,14 +55,14 @@ class DailyTaskResetWorker(
             val result = tasksRepository.checkAndGenerateTasksForToday()
 
             if (result.isSuccess) {
-                Log.d(TAG, "✅ Daily tasks generated successfully")
+                Log.d(TAG, "Daily tasks generated successfully")
                 Result.success()
             } else {
-                Log.e(TAG, "❌ Failed to generate daily tasks: ${result.exceptionOrNull()?.message}")
+                Log.e(TAG, "Failed to generate daily tasks: ${result.exceptionOrNull()?.message}")
                 Result.retry()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error in daily task reset worker: ${e.message}", e)
+            Log.e(TAG, "Error in daily task reset worker: ${e.message}", e)
             Result.failure()
         }
     }
