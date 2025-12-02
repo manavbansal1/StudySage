@@ -57,7 +57,8 @@ object PermissionHandler {
                 // Android 13+
                 permissions += listOf(
                     Manifest.permission.READ_MEDIA_IMAGES,
-                    Manifest.permission.READ_MEDIA_VIDEO
+                    Manifest.permission.READ_MEDIA_VIDEO,
+                    Manifest.permission.POST_NOTIFICATIONS  // Add notification permission for Android 13+
                 )
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
