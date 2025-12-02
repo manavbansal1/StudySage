@@ -1,3 +1,31 @@
+/**
+ * 
+ * This repository handles all authentication-related operations for StudySage,
+ * ensuring secure user access and proper session management. It integrates with
+ * Firebase Authentication to make surer users can sign up, log in, and manage their profiles
+ * 
+ * 
+ * Authentication methods supported:
+ * - Email/password authentication with validation
+ * email sending through Resend API
+ * 
+ * 
+ * User profile management:
+ * - Profile creation and customization
+ * - Preference storage and synchronization
+ * - Account deletion and data cleanup
+ * 
+ * This repo also manages group invites and membership:
+ * - Sending and receiving group invitations
+ * - Accepting and declining invites
+ * - Managing group membership lists
+ * 
+ * 
+ * Error handling:
+ * - Graceful handling of network failures
+ * - User-friendly error messages
+ * - Automatic retry for transient failures
+ */
 package com.group_7.studysage.data.repository
 
 import android.util.Log

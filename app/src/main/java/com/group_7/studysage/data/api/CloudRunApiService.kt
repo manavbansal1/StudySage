@@ -1,3 +1,13 @@
+/**
+ * This service talks to our serverless backend that runs on Google Cloud.
+ * It handles all the heavy AI stuff like generating summaries and converting text to speech.
+ * 
+ * - Sends text to Gemini AI for processing
+ * - Converts text to audio for podcasts using Google TTS
+ * - Handles all the HTTP requests and responses
+ * 
+ * Pretty much the bridge between our app and the smart AI services.
+ */
 package com.group_7.studysage.data.api
 
 import android.util.Log

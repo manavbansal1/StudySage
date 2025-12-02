@@ -32,6 +32,11 @@ enum class ContentSource {
     TEXT
 }
 
+/**
+ * WebSocket message types for multiplayer game communication
+ * need the acks to make sure questions are received before starting timers
+ * we alkso need message types for different game events
+ */
 @Serializable
 enum class MessageType {
     // Connection

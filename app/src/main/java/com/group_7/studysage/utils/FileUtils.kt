@@ -1,3 +1,22 @@
+/**
+ * Bunch of utility functions for handling files safely.
+ * Checks file types, sizes, and makes sure nothing malicious gets through.
+ * 
+ * What it does:
+ * - Detects file types and validates them
+ * - Enforces file size limits so huge files don't crash the app
+ * - Converts Android URIs to actual files
+ * - Figures out MIME types
+ * - Basic security scanning
+ * 
+ * 
+ * Security stuff:
+ * - Size limits to prevent memory issues
+ * - Content validation to catch bad files
+ * - Extension vs MIME type verification
+ * 
+ * Handles errors gracefully and gives useful error messages.
+ */
 package com.group_7.studysage.utils
 
 import android.content.Context

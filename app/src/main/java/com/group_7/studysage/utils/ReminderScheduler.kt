@@ -1,3 +1,12 @@
+/**
+ * Schedules all the study reminders and notifications.
+ * Gets smarter over time by learning when you actually respond to reminders.
+ * 
+ * - Study session reminders
+ * 
+ * 
+ * Tracks which reminders actually work to improve the system over time.
+ */
 package com.group_7.studysage.utils
 
 import android.content.Context

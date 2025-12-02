@@ -1,3 +1,18 @@
+/**
+ * This handles all the note uploading and processing stuff.
+ * When you upload a PDF or document, this is what does all the work
+ * behind the scenes to extract text, generate summaries, and save everything.
+ * 
+ * What it does:
+ * - Takes your uploaded files (PDF, DOC, TXT, etc.) and extracts the text
+ * - Sends the text to AI to create summaries and key points
+ * - Stores files on Cloudinary (like a fancy file storage service)
+ * - Saves everything to Firebase so you can access it anywhere
+ * - Shows progress updates while processing
+ * 
+ * Has some limits like 10MB max file size so it doesn't crash your phone.
+ * Also retries if the AI service is being slow or fails.
+ */
 package com.group_7.studysage.data.repository
 
 import android.content.Context
@@ -215,6 +230,9 @@ class NotesRepository(
     /**
      * Get course name by ID from Firestore.
      * Helper method for notification messages.
+     * used querySnapshot to get document and then get title field.
+     * used doumentation of firestore to get this done.]
+     * source: https://firebase.google.com/docs/firestore/query-data/get-data#get_a_document
      */
     private suspend fun getCourseNameById(courseId: String): String {
         return try {

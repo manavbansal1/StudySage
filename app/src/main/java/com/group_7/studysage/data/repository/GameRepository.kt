@@ -1,3 +1,23 @@
+/**
+ * Handles the multiplayer quiz game stuff. Think Kahoot but with your own study notes.
+ * You can challenge friends using questions generated from your uploaded materials.
+ * 
+ * - Creates game lobbies with custom settings
+ * - Uses AI to generate quiz questions from your notes
+ * - Manages real-time gameplay with WebSockets
+ * - Keeps track of scores and player stats
+ * - Handles different game modes and difficulties
+ * 
+ * Game flow is pretty simple:
+ * 1. Someone creates a game and shares the code
+ * 2. Others join with the code
+ * 3. AI generates questions from selected notes
+ * 4. Everyone answers in real-time with live leaderboards
+ * 5. Results get saved to your profile
+ * 6. In the case that any player or even bothj do not answer the question, they will be marked as incorrect and no points will be awarded.
+ * 
+ * Uses WebSockets for real-time updates and caches questions to avoid spamming the AI.
+ */
 package com.group_7.studysage.data.repository
 
 import com.google.firebase.firestore.ktx.firestore
@@ -28,6 +48,7 @@ class GameRepository(
 
     /**
      * Generate quiz questions from note content using AI
+     * returns in the specific Quiz format
      */
     suspend fun generateQuizQuestions(
         noteId: String,

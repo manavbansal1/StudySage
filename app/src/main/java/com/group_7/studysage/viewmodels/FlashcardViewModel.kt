@@ -1,3 +1,25 @@
+/**
+ * Manages the flashcard system - creating, studying, and tracking progress
+ * with digital flashcards generated from your notes.
+ * 
+ * What it does:
+ * - Uses AI to generate flashcards from your note content
+ * - Handles interactive study sessions with spaced repetition
+ * - Tracks your progress and performance
+ * - Lets you create custom flashcards
+ * - Share flashcard sets with study groups
+ * 
+ * Study features:
+ * - Spaced repetition algorithm for better memory retention
+ * - Adaptive difficulty based on how well you're doing
+ * - Personalized study schedules
+ * - Multiple choice and fill-in-the-blank formats
+ * - Image support for visual learners
+ * - Timed study sessions and challenges
+ * 
+ * Syncs across devices and works offline. Also integrates with the course system
+ * and multiplayer games for a complete study experience.
+ */
 package com.group_7.studysage.viewmodels
 
 import android.util.Log

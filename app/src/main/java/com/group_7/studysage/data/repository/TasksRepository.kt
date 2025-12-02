@@ -14,6 +14,22 @@ import java.util.Locale
 
 /**
  * Repository for managing daily tasks in Firestore
+ * Handles fetching, generating, and completing daily tasks
+ * Tasks are stored under:
+ * users/{userId}/dailyTasks/{date}
+ * where {date} is in "yyyy-MM-dd" format
+ * Each dailyTasks document contains a "tasks" array of task items
+ * Each task item has:
+ * - id: String
+ * - title: String
+ * - description: String
+ * - xpReward: Int
+ * - isCompleted: Boolean
+ * - completedAt: Timestamp?
+ * - taskType: String   
+ * 
+ * 
+ * 
  */
 class TasksRepository(
     private val firestore: FirebaseFirestore,

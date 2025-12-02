@@ -1,4 +1,5 @@
-package com.group_7.studysage.ui.theme
+
+package com.group_7.studysage.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

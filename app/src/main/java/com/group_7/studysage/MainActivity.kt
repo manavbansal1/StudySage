@@ -1,3 +1,16 @@
+/**
+ * This is where everything starts when you open the app.
+ * Handles the main screen, navigation between different parts of the app,
+ * and all that NFC sharing stuff when you tap phones together.
+ * 
+ * Main things it does:
+ * - Sets up the app's navigation
+ * - Manages user login state
+ * - Handles NFC sharing between devices
+ * - Coordinates with all the different ViewModels
+ * 
+ * Built with Jetpack Compose so no more messy XML files.
+ */
 package com.group_7.studysage
 
 import android.Manifest

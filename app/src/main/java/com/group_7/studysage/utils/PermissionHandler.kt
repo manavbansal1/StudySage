@@ -1,3 +1,18 @@
+/**
+ * Handles all the permission requests in the app - storage, camera, notifications, etc.
+ * Makes sure the experience is smooth and explains why permissions are needed.
+ * 
+ * - Storage access for uploading and downloading files
+ * - Camera access for document scanning
+ * - Notification permissions for study reminders
+ * - Microphone access for voice notes
+ * - NFC permissions for phone-to-phone sharing
+ * 
+ * - Clear explanations for why each permission is needed
+ * - Graceful handling when permissions are denied
+ * - Educational dialogs that build trust
+ * - Asks for permissions progressively, not all at once
+ */
 package com.group_7.studysage.utils
 
 import android.Manifest

@@ -1,3 +1,19 @@
+/**
+ * Resend Email Service - Automated email communication system
+ * 
+ * This service handles all automated email communications for StudySage,
+ * including verification emails, password resets, and study reminders.
+ * It integrates with Resend API for reliable email delivery.
+ * 
+ * Used to send a welcome email to new users upon registration.
+
+ * 
+ * The service uses modern email best practices to ensure
+ * high deliverability and professional appearance.
+ * 
+ * Used email template to create a welcome email with:
+ * source https://beefree.io/templates
+ */
 package com.group_7.studysage.utils
 
 import android.util.Log
@@ -19,7 +35,6 @@ object ResendEmailService {
     private const val TAG = "ResendEmailService"
     private const val RESEND_API_URL = "https://api.resend.com/emails"
     private const val TIMEOUT_SECONDS = 30L
-    // Course website URL used in the welcome email CTA. Change this value if your course page is different.
     private const val COURSE_WEBSITE_URL = "https://studysage.vercel.app/"
 
     private val client = OkHttpClient.Builder()

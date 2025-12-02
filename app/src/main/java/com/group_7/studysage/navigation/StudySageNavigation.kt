@@ -1,3 +1,26 @@
+/**
+ * This handles all the navigation between different screens in the app.
+ * Uses Jetpack Compose Navigation so everything feels smooth and modern.
+ * 
+ * Main navigation areas:
+ * - Auth stuff (login, signup, password reset)
+ * - Main app (home, notes, courses, games, profile)
+ * - Settings and help screens
+ * - Deep links for sharing and notifications
+ * 
+ * - Type-safe navigation (fewer crashes from typos)
+ * - Smooth animations between screens
+ * - Remembers where you were if you rotate the phone
+ * - Handles the back button properly
+ * - Bottom navigation that works like you'd expect
+ * 
+ * Basically the traffic director for the entire app.
+ * 
+ * Sources:
+ * - Official docs: https://developer.android.com/jetpack/compose/navigation
+ * 
+ * 
+ */
 package com.group_7.studysage.navigation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -147,16 +170,9 @@ fun StudySageNavigation(
 
         // Remember the factory to avoid recreating ViewModel on every recomposition
         val courseViewModelFactory = remember {
-            android.util.Log.d("StudySageNavigation", "========================================")
-            android.util.Log.d("StudySageNavigation", "🏗️ Creating CourseViewModel Factory")
-            android.util.Log.d("StudySageNavigation", "   Context: ${context::class.simpleName}")
             viewModelFactory {
                 initializer {
-                    android.util.Log.d("StudySageNavigation", "   📦 Factory initializer called")
-                    android.util.Log.d("StudySageNavigation", "   Creating SavedStateHandle...")
                     val handle = createSavedStateHandle()
-                    android.util.Log.d("StudySageNavigation", "   SavedStateHandle created: ${handle.hashCode()}")
-                    android.util.Log.d("StudySageNavigation", "   SavedStateHandle keys: ${handle.keys()}")
                     CourseViewModel(
                         courseRepository = CourseRepository(),
                         savedStateHandle = handle
@@ -169,8 +185,7 @@ fun StudySageNavigation(
             viewModelStoreOwner = activity,
             factory = courseViewModelFactory
         )
-        android.util.Log.d("StudySageNavigation", "✅ CourseViewModel instance: ${courseViewModel.hashCode()}")
-        android.util.Log.d("StudySageNavigation", "========================================")
+
 
         val homeViewModel: HomeViewModel = viewModel()
 
@@ -182,10 +197,6 @@ fun StudySageNavigation(
 
         // Detect when user ID changes (different user logs in) and refresh all screens
         androidx.compose.runtime.LaunchedEffect(currentUserId) {
-            android.util.Log.d("StudySageNav", "========================================")
-            android.util.Log.d("StudySageNav", "🔍 LaunchedEffect triggered")
-            android.util.Log.d("StudySageNav", "   currentUserId: $currentUserId")
-            android.util.Log.d("StudySageNav", "   previousUserId: ${previousUserId.value}")
 
             if (currentUserId != null) {
                 // Check if this is a different user or first login
@@ -193,47 +204,28 @@ fun StudySageNavigation(
                 val isFirstLogin = previousUserId.value == null
 
                 if (isDifferentUser) {
-                    android.util.Log.d("StudySageNav", "👤 DIFFERENT USER DETECTED!")
-                    android.util.Log.d("StudySageNav", "   Previous: ${previousUserId.value}")
-                    android.util.Log.d("StudySageNav", "   Current:  $currentUserId")
-                    android.util.Log.d("StudySageNav", "🔄 Refreshing all screens...")
 
                     // Refresh Home screen data
                     homeViewModel.refreshHomeData()
-                    android.util.Log.d("StudySageNav", "✅ Home screen refreshed")
 
                     // Refresh Course screen data
                     courseViewModel.refreshCourses()
-                    android.util.Log.d("StudySageNav", "✅ Course screen refreshed")
 
-                    android.util.Log.d("StudySageNav", "✅ All screens refreshed")
                 } else if (isFirstLogin) {
-                    android.util.Log.d("StudySageNav", "🔐 First user login: $currentUserId")
-                    android.util.Log.d("StudySageNav", "📂 Loading all screen data...")
 
                     // Load Home screen data
                     homeViewModel.refreshHomeData()
-                    android.util.Log.d("StudySageNav", "✅ Home screen loaded")
-
                     // Load Course screen data
                     courseViewModel.loadCourses()
-                    android.util.Log.d("StudySageNav", "✅ Course screen loaded")
-
-                    android.util.Log.d("StudySageNav", "✅ All screens loaded")
                 } else {
-                    android.util.Log.d("StudySageNav", "ℹ️ Same user, no reset needed ($currentUserId)")
                 }
 
                 // Update previous user ID AFTER the check
                 previousUserId.value = currentUserId
-                android.util.Log.d("StudySageNav", "📝 Updated previousUserId to: $currentUserId")
             } else {
-                android.util.Log.d("StudySageNav", "⚠️ currentUserId is null (user signed out?)")
                 // Clear previous user ID so next sign-in is treated as new
                 previousUserId.value = null
-                android.util.Log.d("StudySageNav", "🧹 Cleared previousUserId")
             }
-            android.util.Log.d("StudySageNav", "========================================")
         }
 
         val screens = listOf(Screen.Home, Screen.Course, Screen.Groups, Screen.Games)
@@ -252,8 +244,6 @@ fun StudySageNavigation(
 
             // Only clear if we have a selected course AND we're navigating to a non-course screen
             if (!isCourseRoute && courseUiState.selectedCourse != null && currentRoute != null) {
-                android.util.Log.d("StudySageNavigation", "📍 Navigating away from courses to: $currentRoute")
-                android.util.Log.d("StudySageNavigation", "🧹 Clearing selected course due to navigation")
                 courseViewModel.clearSelectedCourse()
             }
         }

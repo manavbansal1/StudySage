@@ -1,3 +1,15 @@
+/**
+ * Manages all the notifications in the app - study reminders, upload completions,
+ * game invites, and all that good stuff to keep you engaged and on track.
+ * 
+ * Types of notifications:
+ * - Study reminders based on your schedule
+ * - Upload completion alerts
+ * - Game invitations from friends
+ * - Daily task reminders and achievements
+ * 
+ * Uses proper Android notification channels and respects system settings.
+ */
 package com.group_7.studysage.utils
 
 import android.Manifest

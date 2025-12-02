@@ -1,7 +1,22 @@
+/**
+ * Handles the NFC (tap-to-share) functionality.
+ * 
+ * What you can share:
+ * - Individual notes and documents
+ * - Complete flashcard sets
+ * - Study group info and join codes
+ * - Course materials
+ * 
+ * - Uses Android's NFC APIs for device communication
+ * - Formats data properly for cross-device compatibility
+ * - Encrypts data during transmission for security
+ * - Falls back to other sharing methods if NFC isn't available
+ * 
+ */
 package com.group_7.studysage.utils
 
 import android.app.Activity
-import android.content.Intent
+import android.content.Context
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep

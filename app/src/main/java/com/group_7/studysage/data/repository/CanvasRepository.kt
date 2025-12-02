@@ -7,6 +7,21 @@ import com.group_7.studysage.data.api.CanvasApiService
 import com.group_7.studysage.data.api.CanvasCourse
 import kotlinx.coroutines.tasks.await
 
+/**
+ * Repository for managing Canvas LMS integration
+ * Handles saving tokens, syncing courses, and fetching data from Firestore
+ * 
+ * - Save and retrieve Canvas access tokens
+ * - Sync courses from Canvas to Firestore
+ * - Validate Canvas tokens
+ * - Disconnect Canvas and clean up data
+ * - Fetch Canvas courses from Firestore
+ * 
+ * it requires a token to access the Canvas API
+ *
+ */
+
+
 class CanvasRepository {
     
     companion object {
@@ -151,6 +166,21 @@ class CanvasRepository {
     suspend fun validateCanvasToken(accessToken: String): Result<Boolean> {
         return canvasApi.validateToken(accessToken)
     }
+
+
+fun getRandomColorHex(): String {
+    val colors = listOf(
+        "#F87171", // Red
+        "#FBBF24", // Yellow
+        "#34D399", // Green
+        "#60A5FA", // Blue
+        "#A78BFA", // Purple
+        "#F472B6", // Pink
+        "#F59E0B", // Amber
+        "#10B981"  // Emerald
+    )
+    return colors.random()
+}
     
     /**
      * Remove Canvas connection
@@ -223,13 +253,13 @@ class CanvasRepository {
                     "year" to year,
                     "instructor" to "", // Canvas doesn't provide this in course list
                     "description" to "Imported from Canvas",
-                    "color" to "#4CAF50", // Green color for Canvas courses
+                    "color" to getRandomColorHex(), // Random color for each course
                     "credits" to 3, // Default credits
                     "createdAt" to System.currentTimeMillis(),
                     "updatedAt" to System.currentTimeMillis(),
                     "userId" to userId,
                     "isArchived" to false,
-                    "source" to "canvas", // Extra field to identify Canvas courses
+                    "source" to "canvas", 
                     "canvasCourseId" to course.id
                 )
                 
@@ -282,7 +312,7 @@ class CanvasRepository {
                 "year" to currentYear,
                 "instructor" to "",
                 "description" to "Imported from Canvas",
-                "color" to "#4CAF50",
+                "color" to getRandomColorHex(),
                 "credits" to 3,
                 "createdAt" to System.currentTimeMillis(),
                 "updatedAt" to System.currentTimeMillis(),
