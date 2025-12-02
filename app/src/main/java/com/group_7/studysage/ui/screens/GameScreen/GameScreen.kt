@@ -46,11 +46,40 @@ fun GameScreen(navController: NavController) {
     var showHostDialog by rememberSaveable { mutableStateOf(false) }
     var showJoinDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Clear game code when navigating back to this screen
+    // Save game code across configuration changes (screen rotation)
+    var savedGameCode by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Update saved game code when it changes in the ViewModel
+    LaunchedEffect(uiState.gameCode) {
+        if (uiState.gameCode != null) {
+            savedGameCode = uiState.gameCode
+        }
+    }
+
+    // Restore game code to ViewModel if it was saved but ViewModel state was lost
+    LaunchedEffect(savedGameCode) {
+        if (savedGameCode != null && uiState.gameCode == null) {
+            // ViewModel was recreated, but we have a saved code - don't restore it
+            // as this means we're coming back to this screen
+        }
+    }
+
+    // Track if we're navigating away from this screen
+    var hasNavigatedAway by rememberSaveable { mutableStateOf(false) }
+
+    // Clear game code when navigating away and back to this screen
     DisposableEffect(navController) {
         val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
             if (destination.route == "games") {
-                viewModel.clearGameCode()
+                // If we previously navigated away, clear the codes
+                if (hasNavigatedAway) {
+                    viewModel.clearGameCode()
+                    savedGameCode = null
+                    hasNavigatedAway = false
+                }
+            } else {
+                // Mark that we've navigated away from the games screen
+                hasNavigatedAway = true
             }
         }
         navController.addOnDestinationChangedListener(listener)
@@ -246,7 +275,7 @@ fun GameScreen(navController: NavController) {
                 }
             }
 
-            uiState.gameCode?.let { code ->
+            savedGameCode?.let { code ->
                 Spacer(modifier = Modifier.height(24.dp))
                 GameCodeDisplay(
                     gameCode = code,
