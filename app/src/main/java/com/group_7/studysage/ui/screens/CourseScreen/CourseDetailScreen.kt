@@ -247,6 +247,11 @@ fun CourseDetailScreen(
                 notesViewModel.setShowNfcReceiveScreen(false)
                 // Explicitly reset overlay state to ensure navbar shows again
                 courseViewModel.setFullscreenOverlay(false)
+                
+                // Refresh data as requested
+                notesViewModel.loadNotes(course.id)
+                courseViewModel.refreshCourse(course.id)
+                courseViewModel.loadCourses()
             }
         )
         return

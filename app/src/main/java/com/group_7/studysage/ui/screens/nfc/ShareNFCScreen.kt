@@ -80,6 +80,7 @@ fun ShareNFCScreen(
             originalFileName = note.originalFileName,
             fileType = note.fileType,
             content = note.content,
+            summary = note.summary,
             tags = note.tags
         )
     }

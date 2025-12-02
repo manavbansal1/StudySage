@@ -11,6 +11,7 @@ data class NFCPayload(
     val originalFileName: String,
     val fileType: String,
     val content: String = "",
+    val summary: String = "",
     val tags: List<String> = emptyList(),
     val courseId: String = "", // Will be set by receiver
     val timestamp: Long = System.currentTimeMillis()

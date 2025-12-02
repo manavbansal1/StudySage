@@ -46,12 +46,15 @@ fun ReceiveNFCScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Receive via NFC") },
+                    title = { Text("Receive via NFC", color = Color.White) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
         ) { paddingValues ->
@@ -191,7 +194,10 @@ fun ReceiveNFCScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         }
@@ -420,7 +426,7 @@ fun ReceiveNFCScreen(
                                     title = receivedPayload!!.noteTitle,
                                     originalFileName = receivedPayload!!.originalFileName,
                                     content = receivedPayload!!.content,
-                                    summary = "",
+                                    summary = receivedPayload!!.summary,
                                     keyPoints = emptyList(),
                                     tags = receivedPayload!!.tags,
                                     userId = userId,
