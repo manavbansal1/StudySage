@@ -185,11 +185,12 @@ fun GroupScreen(
                     }
                     is GroupUiState.Success -> {
                         if (state.groups.isEmpty()) {
-                            // Use Box to center the empty state
+                            // Use Box with minimum height to center the empty state
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f),
+                                    .heightIn(min = 400.dp)
+                                    .padding(top = 40.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 EmptyGroupsState(

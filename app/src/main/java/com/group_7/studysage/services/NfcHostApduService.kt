@@ -5,6 +5,18 @@ import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.util.Log
 
+
+/**
+ * NFC Host-based Card Emulation Service for sending and receiving data via NFC.
+ * This service handles APDU commands from NFC readers.
+ * - Listens for SELECT AID commands to initiate communication.
+ * - Sends data to the NFC reader when requested.
+ * - Receives data from the NFC reader and notifies the activity.
+ *
+ * while solving we faced some isses with nfc data transfer so we used this guide
+ * https://developer.android.com/develop/connectivity/nfc/hce
+ * https://developer.android.com/reference/android/nfc/package-summary
+ */
 class NfcHostApduService : HostApduService() {
 
     companion object {
